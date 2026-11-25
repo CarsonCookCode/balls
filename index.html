@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#0d1216">
 <title>Ball Lab</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%230d1216'/%3E%3Ccircle cx='16' cy='16' r='11' fill='%238f2732' stroke='%23c9a45c' stroke-width='3'/%3E%3Cpath d='M16 9 L21 16 L16 23 L11 16 Z' fill='%23f3ead6'/%3E%3C/svg%3E">
@@ -20,7 +20,7 @@
   --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .32 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
   --grain-soft:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' seed='9'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .13 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
 }
-*{box-sizing:border-box}
+*{box-sizing:border-box;touch-action:manipulation}
 html{background:var(--night)}
 body{
   margin:0;min-height:100dvh;color:var(--ivory);font:500 18px/1.3 var(--text);
@@ -98,6 +98,12 @@ h3{margin:0;padding-bottom:10px;font:700 15px/1 var(--display);letter-spacing:.1
   </ul>
 </section>
 
-<p id="build">Build 11</p>
+<p id="build">Build 12</p>
+<script>
+// no zooming on a quick double tap
+let lastTap=0;
+document.addEventListener('touchend',e=>{const now=Date.now(),quick=now-lastTap<350;lastTap=now;if(!quick)return;e.preventDefault();const c=e.target.closest('a');if(c)c.click()},{passive:false});
+for(const ev of ['gesturestart','gesturechange','dblclick'])document.addEventListener(ev,e=>e.preventDefault());
+</script>
 </body>
 </html>

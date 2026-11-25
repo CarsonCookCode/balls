@@ -684,13 +684,13 @@ function drawFighter(f,isYou){
   g.fillStyle=lin(g,x-r,y-r,x+r,y+r,[0,GOLD_HI,.45,GOLD,1,GOLD_LO]);g.strokeStyle=EDGE;g.lineWidth=Math.max(.45,r*.035);disc(x,y,r);g.fill();g.stroke();
   if(r>=11){
     g.strokeStyle='rgba(60,42,12,.75)';g.lineWidth=Math.max(.3,r*.03);g.beginPath();
-    for(let k=0;k<28;k++){const a=k/28*TAU;g.moveTo(x+Math.cos(a)*(r*.955),y+Math.sin(a)*(r*.955));g.lineTo(x+Math.cos(a+.07)*(r*.9),y+Math.sin(a+.07)*(r*.9))}
+    for(let k=0;k<28;k++){const a=k/28*TAU;g.moveTo(x+Math.cos(a)*(r*.975),y+Math.sin(a)*(r*.975));g.lineTo(x+Math.cos(a+.05)*(r*.945),y+Math.sin(a+.05)*(r*.945))}
     g.stroke();
   }
-  g.fillStyle=EDGE;disc(x,y,r*.86);g.fill();
-  g.fillStyle=rad(g,x-r*.25,y-r*.3,r*.1,x,y,r*.85,[0,shade(col,.28),.55,col,1,shade(col,-.35)]);disc(x,y,r*.8);g.fill();
+  g.fillStyle=EDGE;disc(x,y,r*.925);g.fill();                 // a slim gold ring: the enamel takes most of the medallion
+  g.fillStyle=rad(g,x-r*.25,y-r*.3,r*.1,x,y,r*.92,[0,shade(col,.28),.55,col,1,shade(col,-.35)]);disc(x,y,r*.885);g.fill();
   g.save();
-  g.translate(x,y-r*.06);g.scale(r*.8,r*.8);
+  g.translate(x,y-r*.06);g.scale(r*.84,r*.84);
   g.fillStyle=IVORY;g.strokeStyle=IVORY;g.lineCap='round';g.lineJoin='round';g.lineWidth=.06;
   g.shadowColor='rgba(0,0,0,.45)';g.shadowOffsetX=0;g.shadowOffsetY=Math.max(.6,r*.05*PX);g.shadowBlur=0;
   (L.crest||plainCrest)(IVORY,col);

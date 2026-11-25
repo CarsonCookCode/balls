@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 11';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 12';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -294,16 +294,17 @@ function boardBody(){
     `<button type="button" id="btnClose" class="quiet" data-act="closeboard">Back</button>`;
 }
 function duelBody(){
-  const who=i=>esc(duel.who[i]),t=[typeOf(duel.a),typeOf(duel.b)],c=[duel.a.color,duel.b.color];
+  // kept short so the arena has the screen; the fighters' names are already above the health bars
+  const t=[typeOf(duel.a),typeOf(duel.b)];
   return `<p class="stepn">Today’s duel · best of three</p>`+
-    `<h2 class="ph vsh"><span style="color:${c[0]}">${t[0]}</span><small>vs</small><span style="color:${c[1]}">${t[1]}</span></h2>`+
-    `<p class="score"><span>${who(0)}</span><b>${duel.score[0]} – ${duel.score[1]}</b><span>${who(1)}</span></p>`+
-    (duel.done?`<h2 class="ph" style="color:${c[duel.winner]}">${t[duel.winner]} wins today’s duel</h2>`+
+    `<p class="duelrow"><span>${t[0]}<small>${esc(duel.who[0])}</small></span><b>${duel.score[0]} – ${duel.score[1]}</b><span>${t[1]}<small>${esc(duel.who[1])}</small></span></p>`+
+    (duel.done?`<h2 class="ph">${t[duel.winner]} wins today’s duel</h2>`+
       `<button type="button" id="btnToBoard" class="go" data-act="board">Back to the ladder</button>`
-      :`<p class="ps">${summary(duel.a)}</p><p class="ps">${summary(duel.b)}</p>`);
+      :`<button type="button" id="btnLeave" class="quiet" data-act="board">Leave the duel</button>`);
 }
 function render(){
-  const P=$('panel');
+  const P=$('panel'),B=document.body;
+  if(B&&B.dataset)B.dataset.mode=mode;                 // the stylesheet gives the arena more room while a fight is on
   $('btnSpeed').hidden=!(mode==='fight'||mode==='duel');
   $('btnBoard').hidden=!(mode==='make'||mode==='over');
   if(mode==='make')P.innerHTML=makeBody();
@@ -354,6 +355,18 @@ $('panel').addEventListener('input',e=>{
   save();
 });
 document.addEventListener('contextmenu',e=>{if(!e.target.closest('input'))e.preventDefault()});
+// No zooming, ever. The stylesheet already asks for this; some phones still zoom on a quick double tap, so the second
+// tap of a pair is swallowed here and passed on as a plain click to whatever control was under it.
+let lastTap=0;
+document.addEventListener('touchend',e=>{
+  const now=Date.now(),quick=now-lastTap<350;
+  lastTap=now;
+  if(!quick||e.target.closest('input,textarea,video'))return;
+  e.preventDefault();
+  const c=e.target.closest('button,a,[data-act]');
+  if(c&&!c.disabled)c.click();
+},{passive:false});
+for(const ev of ['gesturestart','gesturechange','dblclick'])document.addEventListener(ev,e=>e.preventDefault());
 $('btnBoard').addEventListener('click',()=>{if(mode!=='make'&&mode!=='over')return;backTo=mode;mode='board';render()});
 $('btnSpeed').addEventListener('click',()=>{speed=speed===1?2:speed===2?4:1;$('btnSpeed').textContent='Speed '+speed+'×';try{localStorage.setItem('brawl.speed',String(speed))}catch(e){}});
 $('btnSound').addEventListener('click',()=>{muted=!muted;$('btnSound').setAttribute('aria-pressed',String(!muted));if(!muted)audioOn()});

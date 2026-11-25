@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 13';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 14';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -154,7 +154,7 @@ function onEvents(ev){
     const col=e.i>=0&&match?match.f[e.i].col:'#fff4c2';
     if(e.k==='hit'){
       say(e.x,e.y,'-'+Math.max(1,Math.round(e.dmg))+(e.crit?'!':''),e.crit?'#ffd447':'#ff5a4f',e.crit);
-      shake=Math.max(shake,Math.min(9,2+e.dmg*.4));
+      if(e.dmg>=18||e.crit)shake=Math.max(shake,Math.min(3,e.dmg*.08));
       hitSound(e);
     }else if(e.k==='heal'){say(e.x,e.y,'+'+Math.max(1,Math.round(e.dmg)),'#7ddc5a')}
     else if(e.k==='block'){say(e.x,e.y,'Blocked','#bcd4ff');burst(e.x,e.y,8,60,160,.25);sfx('bell',.8)}
@@ -163,7 +163,7 @@ function onEvents(ev){
     else if(e.k==='bump'){sfx('soft',.4)}
     else if(e.k==='shot'){sfx((match&&e.i>=0&&SHOT_SFX[match.f[e.i].key])||'twang',.6)}
     else if(e.k==='mine'){sfx('latch',.6)}
-    else if(e.k==='boom'){burst(e.x,e.y,12,80,240,.35);ring(e.x,e.y,6,34,.3,'#ffd447',3);shake=Math.max(shake,9);sfx('boom',.9)}
+    else if(e.k==='boom'){burst(e.x,e.y,12,80,240,.35);ring(e.x,e.y,6,34,.3,'#ffd447',3);shake=Math.max(shake,4);sfx('boom',.9)}
     else if(e.k==='zap'){
       const pts=[[e.x,e.y]],n=5;
       for(let k=1;k<n;k++){const t=k/n;pts.push([e.x+(e.x2-e.x)*t+(Math.random()-.5)*18,e.y+(e.y2-e.y)*t+(Math.random()-.5)*18])}
@@ -173,7 +173,7 @@ function onEvents(ev){
     else if(e.k==='fade'){ring(e.x,e.y,26,6,.35,col);sfx('fall',.6)}
     else if(e.k==='appear'){ring(e.x,e.y,6,40,.3,col,3);burst(e.x,e.y,10,60,200,.3,col);sfx('rise',.7)}
     else if(e.k==='pull'){ring(e.x,e.y,90,20,1.05,col);sfx('hum',.7)}
-    else if(e.k==='blast'){ring(e.x,e.y,10,e.r,.3,col,4);shake=Math.max(shake,7);sfx('thump',1,.8)}
+    else if(e.k==='blast'){ring(e.x,e.y,10,e.r,.3,col,4);shake=Math.max(shake,3);sfx('thump',1,.8)}
     else if(e.k==='freeze'){say(e.x,e.y,'Frozen','#9fe0ff',true);ring(e.x,e.y,44,24,.4,'#9fe0ff',3);sfx('shatter',.9)}
     else if(e.k==='spawn'){burst(e.x,e.y,5,30,90,.25,col);sfx('pop',.6)}
     else if(e.k==='pop'){burst(e.x,e.y,4,30,100,.2,col);sfx('tick',.5)}
@@ -181,14 +181,14 @@ function onEvents(ev){
     else if(e.k==='ring'){ring(e.x,e.y,e.r0||6,e.r||40,e.life||.3,e.col||col,e.w||3)}
     else if(e.k==='text'){say(e.x,e.y,String(e.txt),e.col||col,e.big)}
     else if(e.k==='burst'){burst(e.x,e.y,e.n||10,60,200,.3,e.col||col)}
-    else if(e.k==='ko'){burst(e.x,e.y,26,60,300,.6);shake=14;sfx('rumble',1);sfx('iron',1,.8)}
+    else if(e.k==='ko'){burst(e.x,e.y,26,60,300,.6);shake=8;sfx('rumble',1);sfx('iron',1,.8)}
   }
   ev.length=0;
 }
 
 // ----- drawing: the arena itself is drawn by brawl-looks.js -----
 function fit(){
-  const r=cv.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);
+  const r=cv.getBoundingClientRect(),dpr=Math.min(3,window.devicePixelRatio||1);
   const w=Math.max(1,Math.round(r.width*dpr)),h=Math.max(1,Math.round(r.height*dpr));
   if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}
 }
@@ -198,7 +198,33 @@ function draw(){
   const s=Math.min(cw/(AW+M*2),ch/(AW+M*2));
   const sx=calm?0:(Math.random()-.5)*shake,sy=calm?0:(Math.random()-.5)*shake;
   ctx.setTransform(s,0,0,s,(cw-AW*s)/2+sx*s,(ch-AW*s)/2+sy*s);
-  drawArena(ctx,match,you,fx);
+  drawSmooth(ctx,match,you,fx);
+}
+// Draws the arena with everything that moves placed part-way between its last two simulation steps.
+let lerpA=1;
+const lerpKeep=[];
+function snap(m){
+  for(const f of m.f){f.px=f.x;f.py=f.y;f.pa=f.ang}
+  for(const q of m.minions){q.px=q.x;q.py=q.y}
+  for(const q of m.bullets){q.px=q.x;q.py=q.y}
+}
+function ease(o,a){
+  if(o.px===undefined)return;
+  const dx=o.x-o.px,dy=o.y-o.py;
+  if(dx*dx+dy*dy>900)return;                           // a blink or a swap: do not smear it across the arena
+  lerpKeep.push(o,o.x,o.y,o.ang);
+  o.x=o.px+dx*a;o.y=o.py+dy*a;
+  if(o.pa!==undefined)o.ang=o.pa+(o.ang-o.pa)*a;
+}
+function drawSmooth(c,m,youSide,fxs){
+  const a=lerpA;
+  if(!m||a>=1){drawArena(c,m,youSide,fxs);return}
+  lerpKeep.length=0;
+  for(const f of m.f)ease(f,a);
+  for(const q of m.minions)ease(q,a);
+  for(const q of m.bullets)ease(q,a);
+  try{drawArena(c,m,youSide,fxs)}
+  finally{for(let i=0;i<lerpKeep.length;i+=4){const o=lerpKeep[i];o.x=lerpKeep[i+1];o.y=lerpKeep[i+2];if(lerpKeep[i+3]!==undefined)o.ang=lerpKeep[i+3]}}
 }
 
 // ----- health bars -----
@@ -233,8 +259,9 @@ function frame(ts){
   if(match&&(mode==='make'||playing)){
     acc+=dt*(playing?speed:1);
     let n=0;
-    while(acc>=DT&&n<10){match.step();onEvents(match.events);acc-=DT;n++}
+    while(acc>=DT&&n<10){snap(match);match.step();onEvents(match.events);acc-=DT;n++}
     if(n===10)acc=0;
+    lerpA=match.over?1:acc/DT;
     if(match.over){
       overFor+=dt;
       if(mode==='make'&&overFor>1.2)practice();
@@ -242,11 +269,12 @@ function frame(ts){
       else if(mode==='duel'&&!duel.done&&overFor>1.2)duelDone();
     }
   }
+  if(!(match&&(mode==='make'||playing)))lerpA=1;
   for(let i=floats.length-1;i>=0;i--){const f=floats[i];f.life-=dt;f.y-=28*dt;if(f.life<=0)floats.splice(i,1)}
   for(let i=sparks.length-1;i>=0;i--){const p=sparks[i];p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.life<=0)sparks.splice(i,1)}
   for(let i=rings.length-1;i>=0;i--){rings[i].life-=dt;if(rings[i].life<=0)rings.splice(i,1)}
   for(let i=bolts.length-1;i>=0;i--){bolts[i].life-=dt;if(bolts[i].life<=0)bolts.splice(i,1)}
-  shake*=.85;if(shake<.2)shake=0;
+  shake*=.78;if(shake<.3)shake=0;
   draw();hud();
   if(window.Broadcast&&Broadcast.onFrame)Broadcast.onFrame(dt);
   requestAnimationFrame(frame);

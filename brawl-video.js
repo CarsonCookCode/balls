@@ -95,7 +95,7 @@
     const s=AS/AW,k=(typeof calm!=='undefined'&&calm)?0:(typeof shake==='number'?shake:0);
     const ox=(Math.random()-.5)*k*s*.6,oy=(Math.random()-.5)*k*s*.6;
     c.setTransform(s,0,0,s,AX+ox,AY+oy);
-    try{drawArena(c,typeof match!=='undefined'?match:null,-1,fx)}catch(e){failNote=failNote||String(e&&e.message||e)}
+    try{(typeof drawSmooth==='function'?drawSmooth:drawArena)(c,typeof match!=='undefined'?match:null,-1,fx)}catch(e){failNote=failNote||String(e&&e.message||e)}
     c.setTransform(1,0,0,1,0,0);
     c.globalAlpha=1;c.setLineDash([]);c.lineCap='butt';
   }

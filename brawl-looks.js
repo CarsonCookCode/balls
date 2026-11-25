@@ -764,7 +764,7 @@ function drawArena(c,match,you,fx){
   const hot=!!(match&&match.t>SUDDEN&&!match.over);
   g.save();
   resetInk(1);
-  if(!floorTried){floorTried=true;const o=offscreen(AW*4,AW*4);if(o){Orn.floor(o.c,0,0,AW*4,6);FLOOR=o.cv}}
+  if(!floorTried){floorTried=true;const o=offscreen(AW*5,AW*5);if(o){Orn.floor(o.c,0,0,AW*5,6);FLOOR=o.cv}}
   if(FLOOR)g.drawImage(FLOOR,0,0,AW,AW);else Orn.floor(g,0,0,AW,6);
   if(match){
     // the Painter's stain soaks into the flagstones

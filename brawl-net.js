@@ -1,8 +1,9 @@
 // Shared ladder for Ball Brawl, stored in a Firebase Realtime Database through its plain web address (no library).
 // With NET.url empty the game is offline: the ladder holds house fighters and your own climb only.
 //   ladder/<UTC day>/<player id> = {n:name, k:class, s:strength, z:size, c:colour, u:[upgrade ids], r:rungs cleared, t:server time}
-// Everything read back is checked before use, because anyone can write to a test-mode database.
-const NET={url:''};   // for example 'https://your-project-default-rtdb.firebaseio.com' (no trailing slash)
+// The database's rules open only ladder/<day>/<16-character id>, check each entry's shape, and refuse deletes.
+// Everything read back is still checked before use, because anyone may write an entry.
+const NET={url:'https://ball-brawl-9b1bb-default-rtdb.firebaseio.com'};   // no trailing slash; '' turns the shared ladder off
 const Net={
   rows:[],        // today's entries from everyone, oldest first
   id:'',          // this browser's player id

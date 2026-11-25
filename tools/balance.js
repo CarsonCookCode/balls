@@ -59,10 +59,15 @@ function workerMain() {
       for (const seed of p.seeds) {
         const rnd = S.mulberry32(seed), b = build(p.spec), fights = []; let rung = 1; const p0 = count;
         const off = {}, got = {};
+        // the two second chances a player gets: a shield from rung 5 and an extra life after rung 10. The shield is the
+        // player's to place; here it is simply spent on the first loss, which is the least it is worth.
+        let shield = 0, life = 0, gotShield = false, gotLife = false;
         while (rung <= p.cap) {
+          if (rung >= 5 && !gotShield) { gotShield = true; shield = 1; }
+          if (rung > 10 && !gotLife) { gotLife = true; life = 1; }
           const won = play(b, S.rival(rung, rnd), (rnd() * 2147483647) | 0).winner === 0;
           fights.push(won ? 1 : 0);
-          if (!won) break;
+          if (!won) { if (shield) { shield = 0; continue; } if (life) { life = 0; continue; } break; }
           const o = S.offers(b, rnd, 3);
           if (o.length) {
             let pick = o[(rnd() * o.length) | 0];

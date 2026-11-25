@@ -12,7 +12,7 @@ FIGHTERS.cactus   ={name:'Cactus',     color:'#5fae5a',hp:100,speed:160,spin:0, 
 FIGHTERS.tide     ={name:'Tide',       color:'#3f8fd1',hp:100,speed:165,spin:0,  dmg:35.6,cd:3.2,arms:[],desc:'Sends a wave across the arena that slams the rival into the far wall.',sig:['Spring tide','Waves come more often'],sfx:{hit:'thump',shot:'whoosh'}};
 FIGHTERS.quake    ={name:'Quake',      color:'#a8794a',hp:100,speed:200,spin:0,  dmg:19.5,cd:.6, arms:[],desc:'Shakes the ground when it hits a wall. Rivals near any wall are hurt.',sig:['Aftershock','The danger reaches further from the walls'],sfx:{hit:'thump'}};
 FIGHTERS.firefly  ={name:'Firefly',    color:'#e8d24a',hp:75, speed:230,spin:0,  dmg:4.54,cd:.35,arms:[],desc:'Quick and frail. Every touch leaves an ember that keeps burning.',sig:['Wildfire','More embers that burn hotter and for longer'],sfx:{hit:'tick'}};
-FIGHTERS.crystal  ={name:'Crystal',    color:'#b9a7f0',hp:100,speed:165,spin:4.4,dmg:15.23,cd:.4, arms:[{a:0,l:24,d:.8},{a:Math.PI,l:24,d:.8}],desc:'Part of every hit from a distance bounces back at whoever sent it.',sig:['Flawless','Sends back more, and grows another shard'],sfx:{hit:'glass'}};
+FIGHTERS.crystal  ={name:'Crystal',    color:'#b9a7f0',hp:100,speed:165,spin:4.4,dmg:15.49,cd:.4, arms:[{a:0,l:24,d:.8},{a:Math.PI,l:24,d:.8}],desc:'Part of every hit from a distance bounces back at whoever sent it.',sig:['Flawless','Sends back more, and grows another shard'],sfx:{hit:'glass'}};
 FIGHTERS.sandstorm={name:'Sandstorm',  color:'#d9b06a',hp:100,speed:170,spin:0,  dmg:9.86,cd:.5, arms:[],desc:'Rivals caught in its sand take more and more damage from everything.',sig:['Dust devil','A wider cloud of sand'],sfx:{hit:''}};
 ROSTER.push('tornado','storm','glacier','mushroom','cactus','tide','quake','firefly','crystal','sandstorm');
 
@@ -278,7 +278,7 @@ BEHAVE.crystal={
     let L=2;for(const a of src.arms)L=Math.max(L,a.l+(a.head||0));
     if(gap(src,f)<=f.r+src.r+L+8)return 1;
     S.busy=true;
-    m.hurt(src,dmg*Math.min(.9,FIGHTERS.crystal.dmg/15*(.4+.08*f.sig)*f.dmgMul),f);   // a share of the hit, never more than nine tenths
+    m.hurt(src,dmg/Math.max(1,src.dmgMul)*Math.min(.9,FIGHTERS.crystal.dmg/15*(.4+.08*f.sig)*f.dmgMul),f);   // a share of the hit, never more than nine tenths; a stronger rival does not feed it more
     S.busy=false;
     S.rays.push({x:src.x,y:src.y,t:.2});
     m.events.push({k:'parry',x:f.x,y:f.y});

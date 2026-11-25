@@ -21,7 +21,7 @@ const FIGHTERS={
   magnet: {name:'Magnet',     color:'#e2526f',hp:100,speed:160,spin:0,  dmg:30.91,  cd:1.4,arms:[],desc:'Drags the rival in, then blasts them away.',sig:['Stronger field','A bigger, harder blast, more often']},
   mirror: {name:'Mirror',     color:'#a9b8d9',hp:100,speed:175,spin:0,  dmg:11.3,   cd:.5, arms:[],desc:'Splits off a copy of itself whenever it is hit.',sig:['Hall of mirrors','More copies, sooner, and they hit harder']},
   spider: {name:'Spider',     color:'#8a6bd1',hp:100,speed:195,spin:0,  dmg:8.88,   cd:.5, arms:[],desc:'Strings webs between walls that slow whoever crosses.',sig:['More silk','More webs at once']},
-  necro:  {name:'Necromancer',color:'#6fd3a0',hp:100,speed:160,spin:4.6,dmg:14.61,  cd:.45,arms:[{a:0,l:30}],desc:'Every wound it deals raises a minion.',sig:['Horde','More minions, tougher and quicker']},
+  necro:  {name:'Necromancer',color:'#6fd3a0',hp:100,speed:160,spin:4.6,dmg:14.67,  cd:.45,arms:[{a:0,l:30}],desc:'Every wound it deals raises a minion.',sig:['Horde','More minions, tougher and quicker']},
   painter:{name:'Painter',    color:'#ff7fd0',hp:100,speed:200,spin:0,  dmg:3.59, cd:.25,arms:[],desc:'Paints the floor. Its paint heals it and hurts the rival.',sig:['Wide brush','Paints a wider stripe']},
   clock:  {name:'Clockmaker', color:'#d9b36c',hp:100,speed:160,spin:4.2,dmg:21.34,  cd:.4, arms:[{a:0,l:34},{a:Math.PI,l:20,d:.6,rate:.4}],desc:'Freezes the rival for a moment every few seconds.',sig:['Slow time','Longer freezes, more often']},
 };
@@ -304,8 +304,8 @@ const BEHAVE={
     tick(f){if(f.s.cd>0)f.s.cd-=DT},
     dealt(f,v,dmg,m){
       if(f.s.cd>0||mine(f,m,'bone')>=3+f.sig)return;
-      f.s.cd=.8;
-      m.spawn(f,v.x,v.y,{kind:'bone',r:10,hp:6+3*f.sig,dmg:FIGHTERS.necro.dmg*.5,sp:125+12*f.sig,home:400,life:9+2*f.sig,wear:3});
+      f.s.cd=.8/f.spdMul;
+      m.spawn(f,v.x,v.y,{kind:'bone',r:10,hp:(6+3*f.sig)*f.max/100,dmg:FIGHTERS.necro.dmg*.5,sp:125+12*f.sig,home:400,life:9+2*f.sig,wear:3});
     }},
   painter:{tick(f,e,m,rage){
     const D=FIGHTERS.painter,P=m.paint,w=f.sig;

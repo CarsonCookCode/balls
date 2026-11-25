@@ -625,19 +625,22 @@ LOOKS.penguin={
   }};
 
 LOOKS.capybara={
-  crest(fg,bg){                                           // a capybara's head, an orange balanced on top
+  crest(fg,bg){                                           // a capybara in profile: barrel body, blunt square muzzle, an orange on its head
     g.lineJoin='round';g.lineCap='round';g.fillStyle=fg;
-    g.beginPath();g.arc(.36,-.26,.13,0,P3_TAU);g.fill();
-    g.beginPath();
-    g.moveTo(-.4,-.24);g.lineTo(.3,-.24);g.quadraticCurveTo(.6,-.24,.6,.06);g.lineTo(.6,.2);g.quadraticCurveTo(.6,.46,.34,.46);
-    g.lineTo(-.4,.46);g.quadraticCurveTo(-.68,.46,-.68,.18);g.lineTo(-.68,.04);g.quadraticCurveTo(-.68,-.24,-.4,-.24);g.fill();
+    g.beginPath();                                                                   // one outline, so no seam shows where the parts meet
+    g.ellipse(-.14,.2,.5,.3,0,0,P3_TAU);                                             // the body
+    for(const x of [-.46,-.2,.06,.3]){g.moveTo(x,.36);g.lineTo(x+.14,.36);g.lineTo(x+.14,.6);g.lineTo(x,.6);g.closePath()}   // four short legs
+    g.moveTo(.12,-.3);g.lineTo(.6,-.3);g.quadraticCurveTo(.78,-.3,.78,-.13);g.lineTo(.78,.0);g.quadraticCurveTo(.78,.16,.6,.16);   // the head: long, flat on top, square at the nose
+    g.lineTo(.2,.3);g.lineTo(-.02,.02);g.quadraticCurveTo(-.02,-.3,.12,-.3);g.closePath();
+    g.moveTo(.24,-.32);g.arc(.16,-.32,.08,0,P3_TAU);                                  // a small round ear
+    g.fill();
     g.fillStyle=bg;
-    g.beginPath();g.ellipse(-.56,.04,.035,.05,0,0,P3_TAU);g.fill();
-    g.strokeStyle=bg;g.lineWidth=.05;
-    g.beginPath();g.moveTo(.08,-.02);g.lineTo(.26,-.02);g.stroke();                 // a half-closed eye
-    g.beginPath();g.moveTo(-.66,.26);g.quadraticCurveTo(-.5,.32,-.36,.26);g.stroke(); // the mouth
-    g.fillStyle=P3.BEAK;g.beginPath();g.arc(-.06,-.44,.17,0,P3_TAU);g.fill();
-    g.fillStyle='#7fb069';g.beginPath();g.ellipse(.04,-.62,.09,.04,-.5,0,P3_TAU);g.fill();
+    g.beginPath();g.arc(.7,-.15,.03,0,P3_TAU);g.fill();                               // the nostril
+    g.strokeStyle=bg;g.lineWidth=.045;
+    g.beginPath();g.moveTo(.36,-.13);g.lineTo(.5,-.13);g.stroke();                    // a half-closed eye
+    g.beginPath();g.moveTo(.58,.05);g.lineTo(.76,.03);g.stroke();                     // the mouth
+    g.fillStyle=P3.BEAK;g.beginPath();g.arc(.42,-.45,.15,0,P3_TAU);g.fill();          // the orange
+    g.fillStyle='#7fb069';g.beginPath();g.ellipse(.5,-.61,.08,.035,-.5,0,P3_TAU);g.fill();
   },
   under(f){                                               // the calm: a warm pool of light with a slow dotted edge
     const R=f.s.r||78,t=p3now();

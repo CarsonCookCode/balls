@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 25';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 26';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -20,6 +20,30 @@ const cleanName=s=>String(s||'').replace(/[^A-Za-z0-9 ]/g,'').replace(/\s+/g,' '
 const ready=()=>me.str>=0&&me.size>=0;
 const myBuild=()=>makeBuild(me.key,me.str,me.size,cleanName(me.name)||FIGHTERS[me.key].name,PALETTE[me.color]||FIGHTERS[me.key].color);
 function shuffled(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+// Every upgrade is one of a few kinds, each with a colour and an icon, so a card can be read at a glance.
+const KINDS={
+  sig: {label:'Signature',col:'#8a6a1c',icon:'<path d="M8 1.3l2 4.2 4.6.6-3.4 3.2.9 4.6L8 11.7l-4.1 2.2.9-4.6L1.4 6.1 6 5.5z"/>'},
+  atk: {label:'Attack',   col:'#8f2732',icon:'<path d="M13 1h2v2L8.4 9.6 6.4 7.6zM4.2 6.8l5 5-1.1 1.1-1.9-1.9-2.4 2.4 .4 .4L2.8 15.2 .8 13.2l1.4-1.4.4.4 2.4-2.4L3.1 7.9z"/>'},
+  def: {label:'Defence',  col:'#2f4f7a',icon:'<path d="M8 1l6 2v5c0 3.5-3 6-6 7-3-1-6-3.500-6-7V3z"/>'},
+  heal:{label:'Healing',  col:'#3f7a3a',icon:'<path d="M8 14.2L2.3 8.4a3.4 3.4 0 0 1 5.700-3.9 3.400 3.400 0 0 1 5.700 3.900z"/>'},
+  move:{label:'Speed',    col:'#a8741a',icon:'<path d="M9.600 1L3 9h4.200L6 15l7-8.500H8.600z"/>'},
+  ctl: {label:'Control',  col:'#5b3f8a',icon:'<path d="M8 1.500v13M2.400 4.750l11.200 6.500M13.600 4.750L2.400 11.250" fill="none" stroke="currentColor" stroke-width="1.900" stroke-linecap="round"/>'},
+  size:{label:'Size',     col:'#6b4a2b',icon:'<path d="M2 2h5v2H5.400l2.300 2.300-1.400 1.400L4 5.400V7H2zM14 14H9v-2h1.600L8.300 9.700l1.400-1.400L12 10.600V9h2z"/>'},
+  ally:{label:'Allies',   col:'#1f6f6a',icon:'<circle cx="8" cy="10.600" r="3.200"/><circle cx="3.500" cy="6.700" r="1.600"/><circle cx="6.500" cy="3.700" r="1.600"/><circle cx="9.700" cy="3.700" r="1.600"/><circle cx="12.600" cy="6.700" r="1.600"/>'},
+};
+const UP_KIND={sig:'sig'};
+for(const [kind,ids] of Object.entries({
+  def:'tougher armor shield revive thorns dodge plating brace rebound clutch barrier static partingshot keepaway',
+  heal:'vampire regen mending siphon',move:'faster adrenaline lunge',ctl:'frost concuss nova shoulder icyskin',
+  size:'bulk shrink pocket colossus',ally:'hornet packlead'}))for(const id of ids.split(' '))UP_KIND[id]=kind;
+const kindOf=id=>KINDS[UP_KIND[id]||'atk'];                 // anything not listed is an attack upgrade
+const kindIcon=K=>`<svg viewBox="0 0 16 16" aria-hidden="true">${K.icon}</svg>`;
+// a fighter's upgrades as small coloured tags
+function chips(b){
+  if(!b.ups.length)return '<span class="chip none">no upgrades</span>';
+  const n={};for(const id of b.ups)n[id]=(n[id]||0)+1;
+  return Object.keys(n).map(id=>`<span class="chip" style="--k:${kindOf(id).col}">${upName(b,id)}${n[id]>1?' ×'+n[id]:''}</span>`).join('');
+}
 function summary(b){
   if(!b.ups.length)return 'no upgrades yet';
   const n={};for(const id of b.ups)n[id]=(n[id]||0)+1;
@@ -202,7 +226,7 @@ const HIT_SFX={blade:'slash',twin:'slash',leech:'slash',pirate:'slash',clock:'me
   necro:'wood',painter:'tick',hunter:'wood',beacon:'tick',drum:'thump',wizard:'glass'};
 const HIT_VOL={archer:.7,blaster:.8};
 const SHOT_SFX={blaster:'gun',archer:'loose',wizard:'cast',hunter:'whoosh',pirate:'whoosh'};
-const UI_SFX={weapon:'place',str:'place',size:'place',others:'page',back:'page',col:'click',new:'page',start:'draw',up:'coins',duel:'draw',recduel:'draw',board:'open',closeboard:'page'};
+const UI_SFX={weapon:'place',str:'place',size:'place',others:'page',back:'page',col:'click',new:'page',start:'page',up:'coins',fight:'draw',arm:'latch',duel:'draw',recduel:'draw',board:'open',closeboard:'page'};
 function hitSound(e){
   if(e.ind){sfx('tick',.6);return}
   const own=FIGHTERS[e.by]&&FIGHTERS[e.by].sfx,n=e.by in HIT_SFX?HIT_SFX[e.by]:own?own.hit:undefined;
@@ -361,22 +385,55 @@ function startClimb(){
   log('run',{k:me.key,s:me.str,z:me.size,n:run.build.name,c:run.build.color,best,today:today.cleared});
   nextFight();
 }
-function nextFight(){
-  run.rival=pickRival(run.rung);run.seed=newSeed();
-  fps.n=fps.t=fps.slow=0;
-  mode='fight';
+// Before every fight the two fighters stand in the arena and the scroll shows the matchup; the fight starts on a tap.
+// A climb earns two second chances: a shield on reaching rung SHIELD_RUNG, which the player may raise before one fight
+// of their choosing (lose that fight and the climb goes on), and an extra life after clearing rung LIFE_RUNG, which is
+// spent by itself on the next loss. Either way a saved loss brings a new rival on the same rung, and no boon.
+const SHIELD_RUNG=5,LIFE_RUNG=10;
+function nextFight(note){
+  run.rival=pickRival(run.rung);run.seed=newSeed();run.armed=false;run.note=note||'';
+  if(run.rung>=SHIELD_RUNG&&!run.gotShield){run.gotShield=true;run.shield=1;run.note+=(run.note?' ':'')+'You have earned a shield.'}
+  if(run.rung>LIFE_RUNG&&!run.gotLife){run.gotLife=true;run.life=1;run.note+=(run.note?' ':'')+'You have earned an extra life.'}
+  mode='ready';
   begin(createMatch(run.build,run.rival,run.seed),0,'Rung '+run.rung,true);
   render();
 }
+function startFight(){
+  if(mode!=='ready')return;
+  if(run.armed)run.shield=0;                              // raised for this fight, win or lose
+  fps.n=fps.t=fps.slow=0;overFor=0;acc=0;
+  mode='fight';
+  render();
+}
+const sizeWord=r=>r<21?'Small':r<28?'Medium':r<36?'Big':'Huge';
+function readyBody(){
+  const a=run.build,b=run.rival;
+  const row=(label,x,y,num)=>`<b class="${num&&x>y?'hi':''}">${num?Math.round(x):x}${num===2?'%':''}</b><i>${label}</i><b class="${num&&y>x?'hi':''}">${num?Math.round(y):y}${num===2?'%':''}</b>`;
+  return `<p class="stepn">Rung ${run.rung} · the matchup</p>`+
+    (run.note?`<p class="ps note">${run.note}</p>`:'')+
+    `<div class="mu"><span class="who">You<b>${typeOf(a)}</b></span><i></i><span class="who">${b.owner?esc(b.owner):'House'}<b>${typeOf(b)}</b></span>`+
+      row('Health',FIGHTERS[a.key].hp*a.hp,FIGHTERS[b.key].hp*b.hp,1)+row('Damage',a.dmg*100,b.dmg*100,2)+row('Speed',a.spd*100,b.spd*100,2)+row('Size',sizeWord(a.r),sizeWord(b.r),0)+
+    `</div><div class="mu2"><div class="chips">${chips(a)}</div><div class="chips">${chips(b)}</div></div>`+
+    `<p class="ps what"><b>${FIGHTERS[b.key].name}.</b> ${FIGHTERS[b.key].desc}</p>`+
+    (run.shield>0?`<button type="button" id="btnArm" class="arm" data-act="arm" aria-pressed="${run.armed}">${run.armed?'Shield raised: lose this fight and you climb on':'Raise your shield for this fight'}</button>`:'')+
+    (run.life>0?`<p class="ps keep">You hold an extra life. It is spent the next time you lose.</p>`:'')+
+    `<button type="button" id="btnFight" class="go" data-act="fight">Fight</button>`;
+}
 function fightDone(){
   const left=f=>+Math.max(0,f.hp/f.max).toFixed(2);
-  log('fight',{r:run.rung,win:match.winner===0?1:0,t:+match.t.toFixed(1),hp:[left(match.f[0]),left(match.f[1])],seed:run.seed,sp:speed,
+  const saved=match.winner===0?'':run.armed?'shield':run.life>0?'life':'';
+  log('fight',{r:run.rung,win:match.winner===0?1:0,sh:run.armed?1:0,saved,t:+match.t.toFixed(1),hp:[left(match.f[0]),left(match.f[1])],seed:run.seed,sp:speed,
     fps:fps.t>0?Math.round(fps.n/fps.t):0,slow:fps.slow,me:logBuild(run.build),vs:Object.assign(logBuild(run.rival),{o:run.rival.owner||''})});
   if(match.winner===0){
     choice=offers(run.build,Math.random,3);
     if(!choice.length){run.rung++;nextFight();return}      // nothing left to take: just keep climbing
     mode='pick';
     sfx('bell',.8,1,true);
+  }else if(saved){
+    if(saved==='life')run.life=0;
+    sfx('bell',.9,.8,true);
+    nextFight(saved==='shield'?'Your shield held. A new rival steps up.':'Your extra life is spent. A new rival steps up.');
+    return;
   }else{
     mode='over';
     sfx('door',.9,1,true);
@@ -417,6 +474,8 @@ function duelDone(){
 // ----- panel -----
 const head=(n,title)=>`<p class="stepn">${n}</p><h2 class="ph">${title}</h2>`;
 const card=(id,act,data,title,text,dot,tag)=>`<button type="button" class="card" id="${id}" data-act="${act}" ${data}>${dot?`<i style="background:${dot}"></i>`:''}<span><b>${title}${tag?`<em>${tag}</em>`:''}</b><small>${text}</small></span></button>`;
+// an upgrade card: a stripe and an icon in its kind's colour, and the kind named beside the title
+const upCard=(b,id,n)=>{const K=kindOf(id);return `<button type="button" class="card up" id="up-${id}" data-act="up" data-key="${id}" style="--k:${K.col}"><i class="ic">${kindIcon(K)}</i><span><b>${upName(b,id)}<em class="kd">${K.label}</em>${n?`<em>you have ${n}</em>`:''}</b><small>${upText(b,id)}</small></span></button>`};
 function makeBody(){
   if(step===0&&browse){
     return head(ROSTER.length+' fighters','Choose your champion')+
@@ -471,17 +530,18 @@ function duelBody(){
 function render(){
   const P=$('panel'),B=document.body;
   if(B&&B.dataset)B.dataset.mode=mode;                 // the stylesheet gives the arena more room while a fight is on
-  $('btnSpeed').hidden=!(mode==='fight'||mode==='duel');
+  $('btnSpeed').hidden=!(mode==='fight'||mode==='duel'||mode==='ready');
   $('btnBoard').hidden=!(mode==='make'||mode==='over');
   if(mode==='make'){P.innerHTML=makeBody();if(step===0&&browse)thumbsFill()}
   else if(mode==='board')P.innerHTML=boardBody();
   else if(mode==='duel')P.innerHTML=duelBody();
+  else if(mode==='ready')P.innerHTML=readyBody();
   else if(mode==='fight'){
-    P.innerHTML=`<p class="ps"><b>You, ${typeOf(run.build)}:</b> ${summary(run.build)}</p><p class="ps"><b>${whose(run.rival)}:</b> ${FIGHTERS[run.rival.key].desc}${run.rival.ups.length?' ('+summary(run.rival)+')':''}</p>`;
+    P.innerHTML=(run.armed?`<p class="ps keep">Shield raised: you survive a loss here.</p>`:run.life>0?`<p class="ps keep">You hold an extra life.</p>`:'')+`<p class="ps"><b>You, ${typeOf(run.build)}:</b> ${summary(run.build)}</p><p class="ps"><b>${whose(run.rival)}:</b> ${FIGHTERS[run.rival.key].desc}${run.rival.ups.length?' ('+summary(run.rival)+')':''}</p>`;
   }else if(mode==='pick'){
     const have=id=>{let n=0;for(const x of run.build.ups)if(x===id)n++;return n};
     P.innerHTML=head('Rung '+run.rung+' cleared · you are a '+typeOf(run.build),'Claim a boon')+
-      choice.map(id=>card('up-'+id,'up',`data-key="${id}"`,upName(run.build,id),upText(run.build,id),id==='sig'?run.build.color:null,have(id)?'you have '+have(id):'')).join('');
+      choice.map(id=>upCard(run.build,id,have(id))).join('');
   }else{
     const cleared=run.rung-1;
     P.innerHTML=`<h2 class="ph">${cleared?'Your '+typeOf(run.build)+' climbed '+cleared+' rung'+(cleared>1?'s':''):'Out on the first rung'}</h2>`+
@@ -527,7 +587,7 @@ $('panel').addEventListener('click',e=>{
   if(!b||b.disabled)return;
   const act=b.dataset.act;
   audioOn();sfx(UI_SFX[act]||'click',1,1,true);
-  if(act!=='start'&&act!=='up')log('tap',{a:act,m:mode,v:b.dataset.key||b.dataset.i||''});
+  if(act!=='start'&&act!=='up'&&act!=='fight')log('tap',{a:act,m:mode,v:b.dataset.key||b.dataset.i||''});
   if(act==='weapon'){if(!FIGHTERS[b.dataset.key])return;me.key=b.dataset.key;if(!me.colorSet)me.color=PALETTE.indexOf(FIGHTERS[me.key].color);step=1;save();render();practice()}
   else if(act==='others'){deckAt=(deckAt+3)%deck.length;render()}
   else if(act==='all'){browse=true;render()}
@@ -538,6 +598,8 @@ $('panel').addEventListener('click',e=>{
   else if(act==='col'){me.color=+b.dataset.i;me.colorSet=true;save();render();practice()}
   else if(act==='new'){mode='make';step=0;me.str=-1;me.size=-1;deck=shuffled(ROSTER);deckAt=0;save();render();practice()}
   else if(act==='start')startClimb();
+  else if(act==='fight')startFight();
+  else if(act==='arm'){if(mode==='ready'&&run.shield>0){run.armed=!run.armed;render()}}
   else if(act==='up'){
     if(mode!=='pick'||!choice.includes(b.dataset.key))return;
     log('pick',{r:run.rung,of:choice,got:b.dataset.key});

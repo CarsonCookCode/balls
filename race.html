@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1022">
+<title>Flood Race</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d1022'/%3E%3Ccircle cx='11' cy='12' r='7' fill='%23ff6a4d'/%3E%3Ccircle cx='21' cy='20' r='7' fill='%2338c6ff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap">
+<style>
+/* Layout: one phone screen. Dash pips, clock and survivors on top, the maze, then a panel for colour choice or the result. */
+:root{
+  color-scheme:dark;
+  --bg:#0d1022; --panel:#171a38; --line:#2c3068; --ink:#efedff; --mute:#9a9cc8;
+  --go:#ffd447; --go-ink:#2b2300; --flood:#ff4d5e;
+  --display:'Fredoka',ui-rounded,'Arial Rounded MT Bold',system-ui,sans-serif;
+  --body:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--bg);overscroll-behavior:none}
+html,body{height:100%;margin:0}
+body{
+  height:100dvh;
+  background:var(--bg);color:var(--ink);font:14px var(--body);
+  display:flex;flex-direction:column;gap:8px;
+  padding-top:max(10px,env(safe-area-inset-top,0px));padding-bottom:max(10px,env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  max-width:560px;margin-inline:auto;overflow:hidden;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation;
+}
+.top{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;font-family:var(--display);flex:0 0 auto}
+.stat{display:flex;flex-direction:column;gap:3px;min-width:0}
+.stat.mid{align-items:center}
+.stat.r{align-items:flex-end}
+.lab{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.num{font-size:24px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.pips{display:flex;gap:5px;height:24px;align-items:center}
+.pips i{width:16px;height:16px;border-radius:4px;border:2px solid var(--go);background:transparent}
+.pips i.on{background:var(--go)}
+
+#stage{position:relative;flex:1 1 0;min-height:180px}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+
+button,.btn{font:600 15px var(--display);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:12px;min-height:42px;padding:0 12px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+button:focus-visible,.btn:focus-visible{outline:2px solid var(--go);outline-offset:2px}
+button:active{transform:translateY(1px)}
+button.go{background:var(--go);color:var(--go-ink);border-color:var(--go);font-size:19px;font-weight:700;min-height:48px}
+button[aria-pressed="false"].tog{color:var(--mute);text-decoration:line-through}
+
+#panel{display:flex;flex-direction:column;gap:8px;flex:0 0 auto}
+.ph{margin:0;font:700 20px/1.1 var(--display);text-align:center;text-wrap:balance}
+.ps{margin:0;font-size:13px;line-height:1.35;color:var(--mute);text-align:center;text-wrap:balance}
+.sw{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.sw button{min-height:40px;padding:0}
+.sw button i{width:20px;height:20px;border-radius:5px}
+.sw button.on{border-color:var(--go);box-shadow:inset 0 0 0 1px var(--go)}
+.foot{display:flex;gap:6px;flex:0 0 auto}
+.foot>*{flex:1 1 0;min-height:36px;font-size:13px;padding:0 6px}
+#build{margin:0;font-size:11px;color:var(--mute);text-align:center}
+@media (prefers-reduced-motion:reduce){button:active{transform:none}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="stat"><span class="lab">Dashes</span><div class="pips" id="pips"><i></i><i></i><i></i></div></div>
+  <div class="stat mid"><span class="lab">Time</span><span class="num" id="clock">0:00</span></div>
+  <div class="stat r"><span class="lab">Still racing</span><span class="num" id="left">6</span></div>
+</header>
+
+<main id="stage"><canvas id="cv"></canvas></main>
+
+<section id="panel"></section>
+
+<nav class="foot">
+  <button type="button" id="btnSound" class="tog" aria-pressed="true">Sound</button>
+  <a class="btn" id="lnkGames" href="./">All games</a>
+</nav>
+<p id="build"></p>
+
+<script>
+//<sim>
+// Pure simulation, no DOM. Six squares bounce through a random maze toward the finish while a flood follows the same route.
+const COLS=5,ROWS=7,CELL=64,W=COLS*CELL,H=ROWS*CELL,DT=1/60,HALF=8,SPEED=120,WALL=3;
+const MAX_DASH=3,RECHARGE=2,BOOST=1.45,BOOST_T=.5,GRACE=2.5,FLOOD_A=.18,FLOOD_B=.002;
+const THINK_MIN=6,THINK_VAR=8,AI_NOISE=1.8;
+const COLORS=[{name:'Red',c:'#ff5a4f'},{name:'Orange',c:'#ffa23e'},{name:'Yellow',c:'#ffd447'},{name:'Green',c:'#62d26f'},{name:'Blue',c:'#38a6ff'},{name:'Purple',c:'#b57dff'}];
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+function createRace(seed,you){
+  const rnd=mulberry32(seed),N=COLS*ROWS,start=(ROWS-1)*COLS;
+  const east=new Uint8Array(N),south=new Uint8Array(N);          // 1 = open passage to the east / south neighbour
+  const link=(a,b)=>{if(b===a+1)east[a]=1;else if(b===a-1)east[b]=1;else if(b===a+COLS)south[a]=1;else south[b]=1};
+  const linked=(a,b)=>b===a+1?east[a]:b===a-1?east[b]:b===a+COLS?south[a]:south[b];
+  const around=c=>{const x=c%COLS,y=(c/COLS)|0,o=[];if(x>0)o.push(c-1);if(x<COLS-1)o.push(c+1);if(y>0)o.push(c-COLS);if(y<ROWS-1)o.push(c+COLS);return o};
+  // carve a maze, then knock out two extra walls so there is more than one way round
+  const seen=new Uint8Array(N),stack=[start];seen[start]=1;
+  while(stack.length){
+    const c=stack[stack.length-1],opts=around(c).filter(n=>!seen[n]);
+    if(!opts.length){stack.pop();continue}
+    const n=opts[(rnd()*opts.length)|0];link(c,n);seen[n]=1;stack.push(n);
+  }
+  for(let k=0;k<2;k++){const c=(rnd()*N)|0,o=around(c).filter(n=>!linked(c,n));if(o.length)link(c,o[(rnd()*o.length)|0])}
+  function bfs(from){
+    const d=new Int16Array(N).fill(-1),par=new Int16Array(N).fill(-1),q=[from];d[from]=0;
+    for(let i=0;i<q.length;i++){const c=q[i];for(const n of around(c))if(linked(c,n)&&d[n]<0){d[n]=d[c]+1;par[n]=c;q.push(n)}}
+    return {d,par};
+  }
+  const fromStart=bfs(start);
+  let finish=start;for(let c=0;c<N;c++)if(fromStart.d[c]>fromStart.d[finish])finish=c;
+  const toFinish=bfs(finish).d;
+  const walls=[];
+  for(let c=0;c<N;c++){
+    const x=c%COLS,y=(c/COLS)|0;
+    if(x<COLS-1&&!east[c])walls.push([(x+1)*CELL-WALL,y*CELL-WALL,(x+1)*CELL+WALL,(y+1)*CELL+WALL]);
+    if(y<ROWS-1&&!south[c])walls.push([x*CELL-WALL,(y+1)*CELL-WALL,(x+1)*CELL+WALL,(y+1)*CELL+WALL]);
+  }
+  const sq=[],events=[];
+  for(let i=0;i<6;i++){
+    const a=rnd()*6.283;
+    sq.push({i,x:(i%3)*18+14,y:start/COLS*CELL+18+((i/3)|0)*24,vx:Math.cos(a)*SPEED,vy:Math.sin(a)*SPEED,alive:true,done:false,boost:0,think:1+rnd()*THINK_VAR,trail:[]});
+  }
+  const race={COLS,ROWS,walls,sq,events,start,finish,dist:fromStart.d,parent:fromStart.par,toFinish,t:0,level:0,dashes:MAX_DASH,winner:-1,over:false,you,step,kick,flooded,cellAt};
+
+  function cellAt(x,y){return Math.min(ROWS-1,Math.max(0,(y/CELL)|0))*COLS+Math.min(COLS-1,Math.max(0,(x/CELL)|0))}
+  // the flooded part of a cell as [x0,y0,x1,y1], or null; it pours in from the side the flood arrived by
+  function flooded(c){
+    const f=Math.min(1,race.level-race.dist[c]);
+    if(f<=0)return null;
+    const x0=(c%COLS)*CELL,y0=((c/COLS)|0)*CELL,p=race.parent[c];
+    if(p===c-1)return [x0,y0,x0+f*CELL,y0+CELL];
+    if(p===c+1)return [x0+CELL-f*CELL,y0,x0+CELL,y0+CELL];
+    if(p===c-COLS)return [x0,y0,x0+CELL,y0+f*CELL];
+    return [x0,y0+CELL-f*CELL,x0+CELL,y0+CELL];
+  }
+  function aim(s,tx,ty,noise){
+    const an=Math.atan2(ty-s.y,tx-s.x)+(rnd()-.5)*noise;
+    s.vx=Math.cos(an)*SPEED;s.vy=Math.sin(an)*SPEED;
+  }
+  function kick(x,y){
+    const s=sq[you];
+    if(race.over||!s||!s.alive||s.done||race.dashes<1)return false;
+    race.dashes-=1;aim(s,x,y,0);s.boost=BOOST_T;
+    events.push({k:'dash',x,y});
+    return true;
+  }
+  function jitter(s){
+    let an=Math.atan2(s.vy,s.vx)+(rnd()-.5)*.5;
+    const c=Math.cos(an),sn=Math.sin(an);
+    if(Math.abs(c)<.22||Math.abs(sn)<.22)an+=.3;                 // never slide flat along a wall for long
+    s.vx=Math.cos(an)*SPEED;s.vy=Math.sin(an)*SPEED;
+  }
+  function step(){
+    if(race.over)return;
+    race.t+=DT;
+    const g=race.t-GRACE;
+    race.level=g>0?FLOOD_A*g+FLOOD_B*g*g:0;
+    if(race.dashes<MAX_DASH)race.dashes=Math.min(MAX_DASH,race.dashes+DT/RECHARGE);
+    for(const s of sq){
+      if(!s.alive||s.done)continue;
+      if(s.i!==you){
+        s.think-=DT;
+        if(s.think<=0){
+          s.think=THINK_MIN+rnd()*THINK_VAR;
+          const c=cellAt(s.x,s.y);let best=c;
+          for(const n of around(c))if(linked(c,n)&&toFinish[n]<toFinish[best])best=n;
+          aim(s,(best%COLS+.5)*CELL,(((best/COLS)|0)+.5)*CELL,AI_NOISE);s.boost=BOOST_T;
+        }
+      }
+      const k=s.boost>0?BOOST:1;
+      if(s.boost>0)s.boost-=DT;
+      let hit=false;
+      s.x+=s.vx*k*DT;
+      if(s.x<HALF){s.x=HALF;s.vx=Math.abs(s.vx);hit=true}else if(s.x>W-HALF){s.x=W-HALF;s.vx=-Math.abs(s.vx);hit=true}
+      for(const r of walls)if(s.x+HALF>r[0]&&s.x-HALF<r[2]&&s.y+HALF>r[1]&&s.y-HALF<r[3]){
+        if(s.vx>0)s.x=r[0]-HALF;else s.x=r[2]+HALF;
+        s.vx=-s.vx;hit=true;
+      }
+      s.y+=s.vy*k*DT;
+      if(s.y<HALF){s.y=HALF;s.vy=Math.abs(s.vy);hit=true}else if(s.y>H-HALF){s.y=H-HALF;s.vy=-Math.abs(s.vy);hit=true}
+      for(const r of walls)if(s.x+HALF>r[0]&&s.x-HALF<r[2]&&s.y+HALF>r[1]&&s.y-HALF<r[3]){
+        if(s.vy>0)s.y=r[1]-HALF;else s.y=r[3]+HALF;
+        s.vy=-s.vy;hit=true;
+      }
+      if(hit){jitter(s);events.push({k:'tap',x:s.x,y:s.y,i:s.i})}
+    }
+    // squares knock each other off course
+    for(let i=0;i<6;i++){
+      const a=sq[i];if(!a.alive||a.done)continue;
+      for(let j=i+1;j<6;j++){
+        const b=sq[j];if(!b.alive||b.done)continue;
+        const dx=b.x-a.x,dy=b.y-a.y,ox=2*HALF-Math.abs(dx),oy=2*HALF-Math.abs(dy);
+        if(ox<=0||oy<=0)continue;
+        if(ox<oy){const sg=dx<0?-1:1;a.x-=sg*ox/2;b.x+=sg*ox/2;const t=a.vx;a.vx=b.vx;b.vx=t}
+        else{const sg=dy<0?-1:1;a.y-=sg*oy/2;b.y+=sg*oy/2;const t=a.vy;a.vy=b.vy;b.vy=t}
+        for(const s of [a,b]){const sp=Math.sqrt(s.vx*s.vx+s.vy*s.vy);if(sp<1)jitter(s);else{s.vx*=SPEED/sp;s.vy*=SPEED/sp}}
+      }
+    }
+    let alive=0,last=-1;
+    for(const s of sq){
+      if(!s.alive||s.done)continue;
+      const c=cellAt(s.x,s.y);
+      if(c===finish){s.done=true;race.over=true;race.winner=s.i;events.push({k:'finish',x:s.x,y:s.y,i:s.i});break}
+      const f=flooded(c);
+      if(f&&s.x>f[0]&&s.x<f[2]&&s.y>f[1]&&s.y<f[3]){s.alive=false;s.outAt=race.t;events.push({k:'out',x:s.x,y:s.y,i:s.i});continue}
+      alive++;last=s.i;
+    }
+    if(!race.over&&alive<=1){
+      race.over=true;
+      if(alive===1)race.winner=last;
+      else{let best=-1;for(const s of sq)if(best<0||s.outAt>sq[best].outAt)best=s.i;race.winner=best}   // all caught: last one caught wins
+      events.push({k:'finish',x:sq[race.winner].x,y:sq[race.winner].y,i:race.winner,survivor:true});
+    }
+  }
+  return race;
+}
+//</sim>
+
+// ---------- Page ----------
+const BUILD='Build 5';   // bump on every deploy so the phone shows which version is loaded
+const $=id=>document.getElementById(id);
+const cv=$('cv'),ctx=cv.getContext('2d');
+const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+let race=null,mode='pick',you=2,seed=1,last=0,acc=0,muted=false,shake=0,wins=0,streak=0,told=false,frameNo=0;
+const bits=[],marks=[];
+const newSeed=()=>(Math.random()*2147483647)|0;
+
+// ----- sound -----
+let actx=null,lastNote=0;
+function audioOn(){
+  if(muted)return;
+  try{if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume()}catch(e){actx=null}
+}
+function note(freq,dur,vol,type,delay,force){
+  if(muted||!actx)return;
+  const now=actx.currentTime;
+  if(!force&&!delay&&now-lastNote<.04)return;
+  lastNote=now;
+  try{
+    const t=now+(delay||0),o=actx.createOscillator(),g=actx.createGain();
+    o.type=type;o.frequency.setValueAtTime(freq,t);o.frequency.exponentialRampToValueAtTime(freq*.6,t+dur);
+    g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);
+    o.connect(g);g.connect(actx.destination);o.start(t);o.stop(t+dur);
+  }catch(e){}
+}
+
+function onEvents(ev){
+  for(const e of ev){
+    if(e.k==='tap'){note(300+e.i*70,.05,.03,'triangle')}
+    else if(e.k==='dash'){marks.push({x:e.x,y:e.y,life:.4});note(660,.12,.1,'square',0,true)}
+    else if(e.k==='out'){
+      for(let i=0;i<14;i++){const a=Math.random()*6.283,s=40+Math.random()*130;bits.push({x:e.x,y:e.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.5,c:COLORS[e.i].c})}
+      shake=Math.max(shake,e.i===you?12:5);note(110,.3,.16,'sawtooth',0,true);
+    }else if(e.k==='finish'){
+      for(let i=0;i<30;i++){const a=Math.random()*6.283,s=60+Math.random()*200;bits.push({x:e.x,y:e.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.8,c:COLORS[e.i].c})}
+      if(e.i===you)[0,4,7,12].forEach((st,i)=>note(392*Math.pow(2,st/12),.3,.09,'triangle',i*.1,true));
+      else note(90,.5,.2,'sawtooth',0,true);
+    }
+  }
+  ev.length=0;
+}
+
+// ----- drawing -----
+function fit(){
+  const r=cv.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);
+  const w=Math.max(1,Math.round(r.width*dpr)),h=Math.max(1,Math.round(r.height*dpr));
+  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}
+}
+function view(){const M=6,s=Math.min(cv.width/(W+M*2),cv.height/(H+M*2));return {s,ox:(cv.width-W*s)/2,oy:(cv.height-H*s)/2}}
+function draw(){
+  const {s,ox,oy}=view();
+  ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);
+  const sx=calm?0:(Math.random()-.5)*shake,sy=calm?0:(Math.random()-.5)*shake;
+  ctx.setTransform(s,0,0,s,ox+sx*s,oy+sy*s);
+  ctx.fillStyle='#161a3c';ctx.fillRect(0,0,W,H);
+  if(!race)return;
+  // finish cell: chequered
+  const fx=(race.finish%COLS)*CELL,fy=((race.finish/COLS)|0)*CELL,q=CELL/4;
+  for(let i=0;i<4;i++)for(let j=0;j<4;j++){ctx.fillStyle=(i+j)%2?'#efedff':'#3a3f78';ctx.fillRect(fx+i*q,fy+j*q,q,q)}
+  // flood
+  ctx.fillStyle='#ff4d5e';
+  for(let c=0;c<COLS*ROWS;c++){const f=race.flooded(c);if(f)ctx.fillRect(f[0],f[1],f[2]-f[0],f[3]-f[1])}
+  // walls
+  ctx.fillStyle='#7d85e0';
+  for(const r of race.walls)ctx.fillRect(r[0],r[1],r[2]-r[0],r[3]-r[1]);
+  ctx.strokeStyle='#7d85e0';ctx.lineWidth=WALL*2;ctx.strokeRect(0,0,W,H);
+  // squares with short trails
+  for(const sq of race.sq){
+    if(!sq.alive)continue;
+    const col=COLORS[sq.i].c;
+    ctx.fillStyle=col;
+    for(let k=0;k<sq.trail.length;k++){const t=sq.trail[k],z=HALF*(.35+.5*k/sq.trail.length);ctx.globalAlpha=.08+.3*k/sq.trail.length;ctx.fillRect(t[0]-z,t[1]-z,z*2,z*2)}
+    ctx.globalAlpha=1;
+    ctx.fillRect(sq.x-HALF,sq.y-HALF,HALF*2,HALF*2);
+    ctx.lineWidth=1.5;ctx.strokeStyle='#0d1022';ctx.strokeRect(sq.x-HALF,sq.y-HALF,HALF*2,HALF*2);
+    if(sq.i===you){
+      ctx.lineWidth=2;ctx.strokeStyle='#ffffff';ctx.strokeRect(sq.x-HALF-3,sq.y-HALF-3,HALF*2+6,HALF*2+6);
+      ctx.fillStyle='#ffffff';ctx.beginPath();ctx.moveTo(sq.x,sq.y-HALF-6);ctx.lineTo(sq.x-5,sq.y-HALF-14);ctx.lineTo(sq.x+5,sq.y-HALF-14);ctx.fill();
+    }
+  }
+  for(const m of marks){ctx.globalAlpha=m.life/.4;ctx.strokeStyle='#ffffff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(m.x,m.y,6+(1-m.life/.4)*16,0,6.2832);ctx.stroke()}
+  for(const b of bits){ctx.globalAlpha=Math.min(1,b.life/.3);ctx.fillStyle=b.c;ctx.fillRect(b.x-2.5,b.y-2.5,5,5)}
+  ctx.globalAlpha=1;
+}
+
+// ----- score strip -----
+let sClock='',sLeft=-1,sPips=-1;
+function hud(){
+  if(!race)return;
+  const t=race.t,txt=((t/60)|0)+':'+String((t%60)|0).padStart(2,'0');
+  if(txt!==sClock){sClock=txt;$('clock').textContent=txt}
+  let n=0;for(const s of race.sq)if(s.alive)n++;
+  if(n!==sLeft){sLeft=n;$('left').textContent=n}
+  const p=Math.floor(race.dashes+1e-6);
+  if(p!==sPips){sPips=p;const el=$('pips').children;for(let i=0;i<el.length;i++)el[i].className=i<p?'on':''}
+}
+
+// ----- loop -----
+function frame(ts){
+  const dt=Math.min(.05,(ts-last)/1000||0);last=ts;frameNo++;
+  fit();
+  if(race&&mode!=='pick'){
+    acc+=dt;
+    let n=0;
+    while(acc>=DT&&n<4){race.step();onEvents(race.events);acc-=DT;n++}
+    if(n===4)acc=0;
+    if(frameNo%2===0)for(const s of race.sq)if(s.alive&&!s.done){s.trail.push([s.x,s.y]);if(s.trail.length>9)s.trail.shift()}
+    const me=race.sq[you];
+    if(mode==='race'&&!told&&(race.over||!me.alive))finish();
+  }
+  for(let i=bits.length-1;i>=0;i--){const b=bits[i];b.life-=dt;b.x+=b.vx*dt;b.y+=b.vy*dt;if(b.life<=0)bits.splice(i,1)}
+  for(let i=marks.length-1;i>=0;i--){marks[i].life-=dt;if(marks[i].life<=0)marks.splice(i,1)}
+  shake*=.85;if(shake<.2)shake=0;
+  draw();hud();
+  requestAnimationFrame(frame);
+}
+
+// ----- flow -----
+function setup(){
+  seed=newSeed();race=createRace(seed,you);
+  mode='pick';told=false;bits.length=0;marks.length=0;sPips=-1;sLeft=-1;sClock='';
+  render();
+}
+function go(){audioOn();mode='race';acc=0;render()}
+function finish(){
+  told=true;mode='done';
+  const won=race.over&&race.winner===you;
+  if(won){wins++;streak++}else streak=0;
+  try{localStorage.setItem('floodrace.wins',String(wins))}catch(e){}
+  render();
+}
+function render(){
+  const P=$('panel');
+  if(mode==='pick'){
+    P.innerHTML=`<h2 class="ph">Pick your colour</h2><div class="sw">`+
+      COLORS.map((c,i)=>`<button type="button" id="col-${i}" data-act="col" data-i="${i}" class="${i===you?'on':''}" aria-pressed="${i===you}" aria-label="${c.name}"><i style="background:${c.c}"></i></button>`).join('')+
+      `</div><p class="ps">First to the chequered square wins. Tap the maze to dash your square that way. The flood takes anyone it catches.</p>`+
+      `<button type="button" id="btnGo" class="go" data-act="go">Race</button>`;
+  }else if(mode==='race'){
+    P.innerHTML=`<p class="ps">Tap where you want your square to go. You hold three dashes and they recharge.</p>`;
+  }else{
+    const me=race.sq[you],won=race.over&&race.winner===you;
+    const head=won?(race.sq[you].done?'You got there first':'Last one standing'):!me.alive?'The flood caught you':COLORS[race.winner].name+' got there first';
+    P.innerHTML=`<h2 class="ph">${head}</h2><p class="ps">${won?'Win streak: '+streak+'. ':''}Races won: ${wins}.</p>`+
+      `<button type="button" id="btnNext" class="go" data-act="next">Next race</button>`;
+  }
+}
+$('panel').addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');
+  if(!b)return;
+  const act=b.dataset.act;
+  if(act==='col'){you=+b.dataset.i;try{localStorage.setItem('floodrace.colour',String(you))}catch(e){}race=createRace(seed,you);render()}
+  else if(act==='go')go();
+  else if(act==='next')setup();
+});
+cv.addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  if(mode!=='race'||!race)return;
+  audioOn();
+  const r=cv.getBoundingClientRect(),dpr=cv.width/r.width,{s,ox,oy}=view();
+  const x=((e.clientX-r.left)*dpr-ox)/s,y=((e.clientY-r.top)*dpr-oy)/s;
+  if(!race.kick(Math.min(W,Math.max(0,x)),Math.min(H,Math.max(0,y))))note(90,.08,.06,'sine');
+});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+$('btnSound').addEventListener('click',()=>{muted=!muted;$('btnSound').setAttribute('aria-pressed',String(!muted));if(!muted)audioOn()});
+
+try{const v=parseInt(localStorage.getItem('floodrace.wins'),10);if(Number.isFinite(v)&&v>0)wins=v;const c=parseInt(localStorage.getItem('floodrace.colour'),10);if(c>=0&&c<6)you=c}catch(e){}
+$('build').textContent=BUILD;
+setup();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

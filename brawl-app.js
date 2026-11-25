@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 12';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 13';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -77,24 +77,72 @@ function goalLine(){
 }
 
 // ----- sound -----
-let actx=null,lastNote=0,master=null;
-function audioOut(){if(!master&&actx){master=actx.createGain();master.connect(actx.destination)}return master}
-window.BrawlAudio={ctx:()=>actx,out:audioOut};
+// Every sound is a slice of one recorded file (sfx/brawl.mp3, built by tools/sfx-build.js from public-domain packs;
+// brawl-sfx.js says where each slice is). Several takes per sound and a little pitch drift keep repeats from grating;
+// a minimum gap per sound, a cap on voices and a compressor keep fast fights from turning into noise.
+let actx=null,bus=null,comp=null,sfxRaw=null,sfxBuf=null,sfxBusy=false,voices=0;
+const sfxLast={},sfxPrev={};
+function audioOut(){
+  if(!bus&&actx){
+    bus=actx.createGain();comp=bus;
+    try{
+      bus.gain.value=.9;
+      const c=actx.createDynamicsCompressor();
+      c.threshold.value=-16;c.knee.value=18;c.ratio.value=5;c.attack.value=.004;c.release.value=.18;
+      bus.connect(c);c.connect(actx.destination);comp=c;
+    }catch(err){bus.connect(actx.destination)}
+  }
+  return bus;
+}
+window.BrawlAudio={ctx:()=>actx,out:()=>{audioOut();return comp}};   // the recorder taps the finished mix
 function audioOn(){
   if(muted)return;
   try{if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume()}catch(e){actx=null}
+  sfxDecode();
 }
-function note(freq,dur,vol,type,delay,force){
-  if(muted||!actx||!loud)return;
-  const now=actx.currentTime;
-  if(!force&&!delay&&now-lastNote<.03)return;
-  lastNote=now;
+function sfxFetch(){
+  if(typeof fetch!=='function'||typeof SFX_FILE==='undefined')return;
+  try{fetch(SFX_FILE).then(r=>r&&r.ok?r.arrayBuffer():null).then(b=>{sfxRaw=b;sfxDecode()}).catch(()=>{})}catch(e){}
+}
+function sfxDecode(){
+  if(!actx||!sfxRaw||sfxBuf||sfxBusy||!actx.decodeAudioData)return;
+  sfxBusy=true;
+  const done=b=>{sfxBuf=b;sfxRaw=null;sfxBusy=false},fail=()=>{sfxBusy=false;sfxRaw=null};
+  try{const p=actx.decodeAudioData(sfxRaw,done,fail);if(p&&p.catch)p.catch(()=>{})}catch(e){fail()}
+}
+// vol and rate are multipliers; ui=true lets it play outside a fight (buttons, the scroll)
+function sfx(name,vol,rate,ui){
+  if(muted||!actx||!sfxBuf||(!ui&&!loud)||typeof SFX==='undefined')return;
+  const S=SFX[name];
+  if(!S)return;
+  const now=actx.currentTime,gap=S.gap/(ui?1:Math.max(1,speed*.6));
+  if(now-(sfxLast[name]||-9)<gap||voices>=8)return;
+  sfxLast[name]=now;
+  let k=(Math.random()*S.v.length)|0;
+  if(S.v.length>1&&k===sfxPrev[name])k=(k+1)%S.v.length;      // never the same take twice running
+  sfxPrev[name]=k;
+  const v=S.v[k];
   try{
-    const t=now+(delay||0),o=actx.createOscillator(),g=actx.createGain();
-    o.type=type;o.frequency.setValueAtTime(freq,t);o.frequency.exponentialRampToValueAtTime(freq*.6,t+dur);
-    g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);
-    o.connect(g);g.connect(audioOut());o.start(t);o.stop(t+dur);
+    const src=actx.createBufferSource(),g=actx.createGain();
+    src.buffer=sfxBuf;src.playbackRate.value=(rate||1)*(1+(Math.random()-.5)*(ui?.05:.14));
+    g.gain.value=Math.min(1.2,(vol==null?1:vol)*S.g);
+    src.connect(g);g.connect(audioOut());
+    voices++;src.onended=()=>{voices=Math.max(0,voices-1)};
+    src.start(now,Math.max(0,v[0]-SFX_LEAD),v[1]+SFX_LEAD*2);
   }catch(e){}
+}
+// what a hit sounds like depends on who landed it; mines and eruptions already have their boom
+const HIT_SFX={blade:'slash',twin:'slash',leech:'slash',pirate:'slash',clock:'metal',fury:'chop',mace:'heavy',jugger:'heavy',turtle:'iron',spikes:'punch',jester:'punch',
+  blaster:'plate',archer:'plate',miner:'',volcano:'',comet:'tick',bramble:'twig',bees:'tin',ghost:'thump',snow:'thump',tesla:'',magnet:'',mirror:'glass',spider:'soft',
+  necro:'wood',painter:'tick',hunter:'wood',beacon:'tick',drum:'thump',wizard:'glass'};
+const SHOT_SFX={blaster:'twang',archer:'twang',wizard:'cast',hunter:'whoosh',pirate:'whoosh'};
+const UI_SFX={weapon:'place',str:'place',size:'place',others:'page',back:'page',col:'click',new:'page',start:'draw',up:'coins',duel:'draw',recduel:'draw',board:'open',closeboard:'page'};
+function hitSound(e){
+  if(e.ind){sfx('tick',.6);return}
+  const n=HIT_SFX[e.by];
+  if(n===''){return}
+  sfx(n||'punch',.5+Math.min(.5,e.dmg/45),e.crit?.9:1);
+  if(e.crit)sfx('clang',.7,1.15);
 }
 
 // ----- effects from sim events -----
@@ -107,32 +155,33 @@ function onEvents(ev){
     if(e.k==='hit'){
       say(e.x,e.y,'-'+Math.max(1,Math.round(e.dmg))+(e.crit?'!':''),e.crit?'#ffd447':'#ff5a4f',e.crit);
       shake=Math.max(shake,Math.min(9,2+e.dmg*.4));
-      note(e.crit?320:200+Math.random()*60,.1,.12,'square');
+      hitSound(e);
     }else if(e.k==='heal'){say(e.x,e.y,'+'+Math.max(1,Math.round(e.dmg)),'#7ddc5a')}
-    else if(e.k==='block'){say(e.x,e.y,'Blocked','#bcd4ff');burst(e.x,e.y,8,60,160,.25);note(1200,.08,.07,'triangle',0,true)}
-    else if(e.k==='revive'){say(e.x,e.y,'Second life','#ffd447',true);burst(e.x,e.y,24,60,220,.5);note(523,.3,.12,'triangle',0,true)}
-    else if(e.k==='parry'){burst(e.x,e.y,5,60,180,.25);note(900+Math.random()*300,.05,.05,'triangle')}
-    else if(e.k==='bump'){note(140,.06,.05,'sine')}
-    else if(e.k==='shot'){note(520,.07,.04,'sawtooth')}
-    else if(e.k==='boom'){burst(e.x,e.y,12,80,240,.35);ring(e.x,e.y,6,34,.3,'#ffd447',3);shake=Math.max(shake,9);note(80,.25,.2,'sawtooth',0,true)}
+    else if(e.k==='block'){say(e.x,e.y,'Blocked','#bcd4ff');burst(e.x,e.y,8,60,160,.25);sfx('bell',.8)}
+    else if(e.k==='revive'){say(e.x,e.y,'Second life','#ffd447',true);burst(e.x,e.y,24,60,220,.5);sfx('toll',1)}
+    else if(e.k==='parry'){burst(e.x,e.y,5,60,180,.25);sfx('clang',.55,1.12)}
+    else if(e.k==='bump'){sfx('soft',.4)}
+    else if(e.k==='shot'){sfx((match&&e.i>=0&&SHOT_SFX[match.f[e.i].key])||'twang',.6)}
+    else if(e.k==='mine'){sfx('latch',.6)}
+    else if(e.k==='boom'){burst(e.x,e.y,12,80,240,.35);ring(e.x,e.y,6,34,.3,'#ffd447',3);shake=Math.max(shake,9);sfx('boom',.9)}
     else if(e.k==='zap'){
       const pts=[[e.x,e.y]],n=5;
       for(let k=1;k<n;k++){const t=k/n;pts.push([e.x+(e.x2-e.x)*t+(Math.random()-.5)*18,e.y+(e.y2-e.y)*t+(Math.random()-.5)*18])}
       pts.push([e.x2,e.y2]);bolts.push({pts,life:.13});
-      note(1500+Math.random()*500,.05,.05,'sawtooth');
+      sfx('zap',.55);
     }
-    else if(e.k==='fade'){ring(e.x,e.y,26,6,.35,col);note(300,.25,.05,'sine',0,true)}
-    else if(e.k==='appear'){ring(e.x,e.y,6,40,.3,col,3);burst(e.x,e.y,10,60,200,.3,col);note(700,.15,.08,'triangle',0,true)}
-    else if(e.k==='pull'){ring(e.x,e.y,90,20,1.05,col);note(160,.5,.06,'sine',0,true)}
-    else if(e.k==='blast'){ring(e.x,e.y,10,e.r,.3,col,4);shake=Math.max(shake,7);note(95,.25,.18,'sawtooth',0,true)}
-    else if(e.k==='freeze'){say(e.x,e.y,'Frozen','#9fe0ff',true);ring(e.x,e.y,44,24,.4,'#9fe0ff',3);note(1100,.3,.07,'sine',0,true)}
-    else if(e.k==='spawn'){burst(e.x,e.y,5,30,90,.25,col);note(640,.06,.04,'triangle')}
-    else if(e.k==='pop'){burst(e.x,e.y,4,30,100,.2,col)}
+    else if(e.k==='fade'){ring(e.x,e.y,26,6,.35,col);sfx('fall',.6)}
+    else if(e.k==='appear'){ring(e.x,e.y,6,40,.3,col,3);burst(e.x,e.y,10,60,200,.3,col);sfx('rise',.7)}
+    else if(e.k==='pull'){ring(e.x,e.y,90,20,1.05,col);sfx('hum',.7)}
+    else if(e.k==='blast'){ring(e.x,e.y,10,e.r,.3,col,4);shake=Math.max(shake,7);sfx('thump',1,.8)}
+    else if(e.k==='freeze'){say(e.x,e.y,'Frozen','#9fe0ff',true);ring(e.x,e.y,44,24,.4,'#9fe0ff',3);sfx('shatter',.9)}
+    else if(e.k==='spawn'){burst(e.x,e.y,5,30,90,.25,col);sfx('pop',.6)}
+    else if(e.k==='pop'){burst(e.x,e.y,4,30,100,.2,col);sfx('tick',.5)}
     // generic effects any class can ask for without the page knowing about the class
     else if(e.k==='ring'){ring(e.x,e.y,e.r0||6,e.r||40,e.life||.3,e.col||col,e.w||3)}
     else if(e.k==='text'){say(e.x,e.y,String(e.txt),e.col||col,e.big)}
     else if(e.k==='burst'){burst(e.x,e.y,e.n||10,60,200,.3,e.col||col)}
-    else if(e.k==='ko'){burst(e.x,e.y,26,60,300,.6);shake=14;note(70,.5,.25,'sawtooth',0,true)}
+    else if(e.k==='ko'){burst(e.x,e.y,26,60,300,.6);shake=14;sfx('rumble',1);sfx('iron',1,.8)}
   }
   ev.length=0;
 }
@@ -226,9 +275,10 @@ function fightDone(){
     choice=offers(run.build,Math.random,3);
     if(!choice.length){run.rung++;nextFight();return}      // nothing left to take: just keep climbing
     mode='pick';
-    [0,4,7].forEach((st,i)=>note(392*Math.pow(2,st/12),.2,.08,'triangle',i*.08,true));
+    sfx('bell',.8,1,true);
   }else{
     mode='over';
+    sfx('door',.9,1,true);
     const cleared=run.rung-1;
     run.record=cleared>best;
     if(run.record){best=cleared;try{localStorage.setItem('brawl.best',String(best))}catch(e){}}
@@ -252,7 +302,7 @@ function startDuel(){
 function duelRound(){begin(createMatch(duel.a,duel.b,newSeed()),duel.you,'Today’s duel · round '+duel.round,true);render()}
 function duelDone(){
   duel.score[match.winner]++;
-  if(duel.score[match.winner]>=2){duel.done=true;duel.winner=match.winner;if(window.Broadcast&&Broadcast.finish)Broadcast.finish();[0,4,7,12].forEach((st,i)=>note(392*Math.pow(2,st/12),.3,.09,'triangle',i*.1,true));render()}
+  if(duel.score[match.winner]>=2){duel.done=true;duel.winner=match.winner;if(window.Broadcast&&Broadcast.finish)Broadcast.finish();sfx('toll',1,1,true);sfx('coins',.8,1,true);render()}
   else{duel.round++;duelRound()}
 }
 
@@ -330,6 +380,7 @@ $('panel').addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');
   if(!b||b.disabled)return;
   const act=b.dataset.act;
+  audioOn();sfx(UI_SFX[act]||'click',1,1,true);
   if(act==='weapon'){if(!FIGHTERS[b.dataset.key])return;me.key=b.dataset.key;if(!me.colorSet)me.color=ROSTER.indexOf(me.key);step=1;save();render();practice()}
   else if(act==='others'){deckAt=(deckAt+3)%deck.length;render()}
   else if(act==='str'){me.str=+b.dataset.i;step=2;save();render();practice()}
@@ -367,9 +418,9 @@ document.addEventListener('touchend',e=>{
   if(c&&!c.disabled)c.click();
 },{passive:false});
 for(const ev of ['gesturestart','gesturechange','dblclick'])document.addEventListener(ev,e=>e.preventDefault());
-$('btnBoard').addEventListener('click',()=>{if(mode!=='make'&&mode!=='over')return;backTo=mode;mode='board';render()});
-$('btnSpeed').addEventListener('click',()=>{speed=speed===1?2:speed===2?4:1;$('btnSpeed').textContent='Speed '+speed+'×';try{localStorage.setItem('brawl.speed',String(speed))}catch(e){}});
-$('btnSound').addEventListener('click',()=>{muted=!muted;$('btnSound').setAttribute('aria-pressed',String(!muted));if(!muted)audioOn()});
+$('btnBoard').addEventListener('click',()=>{if(mode!=='make'&&mode!=='over')return;audioOn();sfx('open',1,1,true);backTo=mode;mode='board';render()});
+$('btnSpeed').addEventListener('click',()=>{sfx('click',1,1,true);speed=speed===1?2:speed===2?4:1;$('btnSpeed').textContent='Speed '+speed+'×';try{localStorage.setItem('brawl.speed',String(speed))}catch(e){}});
+$('btnSound').addEventListener('click',()=>{muted=!muted;$('btnSound').setAttribute('aria-pressed',String(!muted));if(!muted){audioOn();sfx('click',1,1,true)}});
 
 board.date=today.date=dayKey();
 try{
@@ -391,5 +442,6 @@ deck=shuffled(ROSTER);
 Net.init();
 if(Net.on()){refreshNet();if(today.cleared>0)Net.push(today.date,today)}
 $('build').textContent=BUILD;
+sfxFetch();
 render();practice();
 requestAnimationFrame(frame);

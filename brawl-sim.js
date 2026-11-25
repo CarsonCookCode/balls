@@ -353,7 +353,7 @@ function createMatch(A,B,seed){
     }
     dmg*=v.armor;
     v.hp-=dmg;v.flash=.12;
-    events.push({k:'hit',x:v.x,y:v.y,dmg,i:v.i,crit});
+    events.push({k:'hit',x:v.x,y:v.y,dmg,i:v.i,crit,by:s.key,ind:!!indirect});
     if(indirect)return;
     if(s.vamp){const h=Math.min(dmg*s.vamp,s.max-s.hp);if(h>.05){s.hp+=h;events.push({k:'heal',x:s.x,y:s.y,dmg:h,i:s.i})}}
     if(s.poison){v.poisonT=3;v.poisonDps=Math.max(v.poisonDps,s.poison)}

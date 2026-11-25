@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 17';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 18';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -452,6 +452,15 @@ $('btnSpeed').addEventListener('click',()=>{sfx('click',1,1,true);speed=speed===
 $('btnSound').addEventListener('click',()=>{muted=!muted;$('btnSound').setAttribute('aria-pressed',String(!muted));if(!muted){audioOn();sfx('click',1,1,true)}});
 
 board.date=today.date=dayKey();
+// Raise LADDER_RESET to wipe the ladder, today's climb and the best record on every device, once, the next time it loads.
+// The player's fighter and speed setting are kept.
+const LADDER_RESET='1';
+try{
+  if(localStorage.getItem('brawl.reset')!==LADDER_RESET){
+    ['brawl.board2','brawl.today2','brawl.best'].forEach(k=>localStorage.removeItem(k));
+    localStorage.setItem('brawl.reset',LADDER_RESET);
+  }
+}catch(e){}
 try{
   const v=parseInt(localStorage.getItem('brawl.best'),10);if(Number.isFinite(v)&&v>0)best=v;
   const sp=parseInt(localStorage.getItem('brawl.speed'),10);if([1,2,4].includes(sp)){speed=sp;$('btnSpeed').textContent='Speed '+speed+'×'}

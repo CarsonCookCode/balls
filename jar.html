@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1022">
+<title>Jar Breaker</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d1022'/%3E%3Ccircle cx='11' cy='12' r='7' fill='%23ff6a4d'/%3E%3Ccircle cx='21' cy='20' r='7' fill='%2338c6ff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap">
+<style>
+/* Layout: one phone screen. Score strip with the pressure gauge, the jar, then a one-line rule and two buttons. */
+:root{
+  color-scheme:dark;
+  --bg:#0d1022; --panel:#171a38; --line:#2c3068; --ink:#efedff; --mute:#9a9cc8;
+  --glass:#bcd4ff; --go:#ffd447; --go-ink:#2b2300; --hot:#ff5a4f;
+  --display:'Fredoka',ui-rounded,'Arial Rounded MT Bold',system-ui,sans-serif;
+  --body:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--bg);overscroll-behavior:none}
+html,body{height:100%;margin:0}
+body{
+  height:100dvh;
+  background:var(--bg);color:var(--ink);font:14px var(--body);
+  display:flex;flex-direction:column;gap:8px;
+  padding-top:max(10px,env(safe-area-inset-top,0px));padding-bottom:max(10px,env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  max-width:560px;margin-inline:auto;overflow:hidden;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation;
+}
+.top{display:grid;grid-template-columns:1fr 1fr 1fr;row-gap:6px;font-family:var(--display);flex:0 0 auto}
+.stat{display:flex;flex-direction:column;gap:1px;min-width:0}
+.stat.mid{align-items:center}
+.stat.r{align-items:flex-end}
+.lab{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.num{font-size:28px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+#strikes{color:var(--go)}
+.gauge{grid-column:1/-1;height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.gauge i{display:block;height:100%;width:0;background:var(--glass);transition:width .12s linear,background-color .2s}
+.gl{grid-column:1/-1;display:flex;justify-content:space-between;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);font-variant-numeric:tabular-nums}
+
+#stage{position:relative;flex:1 1 0;min-height:160px}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#result{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;background:color-mix(in srgb,var(--bg) 62%,transparent)}
+#result h2{margin:0;font:700 38px/1.05 var(--display);text-wrap:balance}
+#result h2 b{color:var(--go)}
+#result p{margin:0 0 8px;color:var(--mute);font-size:14px}
+
+button,.btn{font:600 15px var(--display);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:12px;min-height:42px;padding:0 14px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+button:focus-visible,.btn:focus-visible{outline:2px solid var(--go);outline-offset:2px}
+button:active{transform:translateY(1px)}
+button.go{background:var(--go);color:var(--go-ink);border-color:var(--go);font-size:20px;font-weight:700;min-height:50px;padding:0 26px}
+button[aria-pressed="false"]{color:var(--mute);text-decoration:line-through}
+
+footer{display:flex;flex-direction:column;gap:8px;flex:0 0 auto}
+#hint{margin:0;font-size:13px;line-height:1.35;color:var(--mute);text-align:center;text-wrap:balance}
+.acts{display:flex;gap:6px}
+.acts>*{flex:1 1 0;padding:0 6px}
+#build{margin:0;font-size:11px;color:var(--mute);text-align:center}
+@media (prefers-reduced-motion:reduce){.gauge i{transition:none}button:active{transform:none}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="stat"><span class="lab">Strikes</span><span class="num" id="strikes">0</span></div>
+  <div class="stat mid"><span class="lab">Balls</span><span class="num" id="count">1</span></div>
+  <div class="stat r"><span class="lab">Best</span><span class="num" id="best">–</span></div>
+  <div class="gauge"><i id="gaugeFill"></i></div>
+  <div class="gl"><span>Pressure</span><span id="pct">0%</span></div>
+</header>
+
+<main id="stage">
+  <canvas id="cv"></canvas>
+  <div id="result" hidden>
+    <h2 id="resTitle"></h2>
+    <p id="resSub"></p>
+    <button type="button" id="btnAgain" class="go">Again</button>
+  </div>
+</main>
+
+<footer>
+  <p id="hint">Tap the balls. Every ball caught in the blast splits in two. Break the jar in as few strikes as you can.</p>
+  <div class="acts">
+    <button type="button" id="btnRestart">Restart</button>
+    <button type="button" id="btnSound" aria-pressed="true">Sound</button>
+    <a class="btn" id="lnkGames" href="./">All games</a>
+  </div>
+  <p id="build"></p>
+</footer>
+
+<script>
+//<sim>
+// Pure simulation, no DOM. A jar of balls under gravity; a strike splits every ball inside its radius.
+const W=360,H=520,DT=1/60,G=520,CELL=22;
+const JAR={x0:30,x1:330,y0:60,y1:470};
+const JAR_AREA=(JAR.x1-JAR.x0)*(JAR.y1-JAR.y0);
+const START_R=11,MIN_R=6,SHRINK=.8,STRIKE_R=54,COOLDOWN=.3,CAP=900,FULL=.6,SUB=2,ITER=4,DAMP=.999,VMAX=700;   // FULL: share of the jar the balls must fill to break it
+
+function createJar(rand){
+  const balls=[],events=[];
+  const cols=Math.ceil(W/CELL),rows=Math.ceil(H/CELL),head=new Int32Array(cols*rows),next=new Int32Array(CAP+8);
+  const jar={balls,events,state:'play',strikes:0,pressure:0,cool:0,burstT:0,step,strike};
+  balls.push({x:W/2,y:JAR.y0+70,vx:(rand()<.5?-1:1)*(130+rand()*60),vy:0,r:START_R,gen:0});
+  measure();
+
+  function measure(){let a=0;for(const b of balls)a+=b.r*b.r;jar.pressure=Math.PI*a/JAR_AREA/FULL}
+  function clamp(b){
+    if(b.x<JAR.x0+b.r){b.x=JAR.x0+b.r;b.wx=1}
+    else if(b.x>JAR.x1-b.r){b.x=JAR.x1-b.r;b.wx=1}
+    if(b.y>JAR.y1-b.r){b.y=JAR.y1-b.r;b.wy=1}
+    else if(b.y<JAR.y0+b.r){b.y=JAR.y0+b.r;b.wy=1}
+  }
+  function hit(a,b){
+    const dx=b.x-a.x,dy=b.y-a.y,rr=a.r+b.r,d2=dx*dx+dy*dy;
+    if(d2>=rr*rr)return;
+    const d=Math.sqrt(d2)||.01,nx=dx/d,ny=dy/d,ma=a.r*a.r,mb=b.r*b.r,tm=ma+mb,ov=rr-d;
+    a.x-=nx*ov*mb/tm;a.y-=ny*ov*mb/tm;b.x+=nx*ov*ma/tm;b.y+=ny*ov*ma/tm;
+  }
+  function pass(){
+    const n=balls.length;
+    head.fill(-1);
+    for(let i=0;i<n;i++){
+      const b=balls[i],c=Math.min(rows-1,Math.max(0,(b.y/CELL)|0))*cols+Math.min(cols-1,Math.max(0,(b.x/CELL)|0));
+      next[i]=head[c];head[c]=i;
+    }
+    for(let cy=rows-1;cy>=0;cy--)for(let cx=0;cx<cols;cx++){   // floor upward, so the pile is held up from below
+      const c=cy*cols+cx;
+      for(let i=head[c];i!==-1;i=next[i]){
+        const a=balls[i];
+        for(let j=next[i];j!==-1;j=next[j])hit(a,balls[j]);
+        if(cx+1<cols)for(let j=head[c+1];j!==-1;j=next[j])hit(a,balls[j]);
+        if(cy+1<rows){
+          if(cx>0)for(let j=head[c+cols-1];j!==-1;j=next[j])hit(a,balls[j]);
+          for(let j=head[c+cols];j!==-1;j=next[j])hit(a,balls[j]);
+          if(cx+1<cols)for(let j=head[c+cols+1];j!==-1;j=next[j])hit(a,balls[j]);
+        }
+      }
+    }
+  }
+  // Position-based step: move, push overlaps apart several times, then read velocity back from how far each ball really moved.
+  // That is what lets hundreds of balls rest in a stable pile instead of sinking into each other.
+  function step(){
+    if(jar.cool>0)jar.cool-=DT;
+    if(jar.state!=='play'){
+      for(const b of balls){b.vy+=G*DT;b.x+=b.vx*DT;b.y+=b.vy*DT}
+      jar.burstT+=DT;
+      return;
+    }
+    const h=DT/SUB;
+    for(let s=0;s<SUB;s++){
+      for(const b of balls){b.vy+=G*h;b.px=b.x;b.py=b.y;b.wx=0;b.wy=0;b.x+=b.vx*h;b.y+=b.vy*h}
+      for(let it=0;it<ITER;it++){pass();for(const b of balls)clamp(b)}
+      for(const b of balls){
+        let vx=(b.x-b.px)/h*DAMP,vy=(b.y-b.py)/h*DAMP;
+        if(b.wx&&Math.abs(b.vx)>70)vx=-b.vx*.6;          // lively bounce off the glass, but only at speed
+        if(b.wy&&Math.abs(b.vy)>70)vy=-b.vy*.55;
+        const sp=vx*vx+vy*vy;
+        if(sp>VMAX*VMAX){const k=VMAX/Math.sqrt(sp);vx*=k;vy*=k}
+        b.vx=vx;b.vy=vy;
+      }
+    }
+  }
+  function strike(x,y){
+    if(jar.state!=='play'||jar.cool>0)return false;
+    jar.cool=COOLDOWN;jar.strikes++;
+    let hits=0;
+    const n=balls.length;
+    for(let i=0;i<n;i++){
+      const b=balls[i],dx=b.x-x,dy=b.y-y,d=Math.sqrt(dx*dx+dy*dy);
+      if(d>=STRIKE_R+b.r*.5){
+        if(d<STRIKE_R*2){const k=120*(1-d/(STRIKE_R*2));b.vx+=dx/d*k;b.vy+=dy/d*k}   // near misses get shoved
+        continue;
+      }
+      hits++;
+      const f=1-Math.min(1,d/STRIKE_R),ang=(d>1?Math.atan2(dy,dx):rand()*6.283)+(rand()-.5),ox=Math.cos(ang),oy=Math.sin(ang),sp=150+170*f;
+      if(balls.length>=CAP){b.vx+=ox*sp;b.vy+=oy*sp;continue}
+      const r=Math.max(MIN_R,b.r*SHRINK);
+      balls.push({x:b.x+oy*r*.6,y:b.y-ox*r*.6,vx:b.vx+ox*sp+oy*70,vy:b.vy+oy*sp-ox*70,r,gen:b.gen+1});
+      b.x-=oy*r*.6;b.y+=ox*r*.6;b.vx+=ox*sp-oy*70;b.vy+=oy*sp+ox*70;b.r=r;b.gen++;
+    }
+    events.push({k:hits?'strike':'miss',x,y,hits});
+    measure();
+    if(jar.pressure>=1){
+      jar.state='burst';
+      const cx=(JAR.x0+JAR.x1)/2,cy=(JAR.y0+JAR.y1)/2;
+      for(const b of balls){const dx=b.x-cx,dy=b.y-cy,d=Math.sqrt(dx*dx+dy*dy)||1,sp=220+rand()*380;b.vx+=dx/d*sp;b.vy+=dy/d*sp-160}
+      events.push({k:'burst'});
+    }
+    return true;
+  }
+  return jar;
+}
+//</sim>
+
+// ---------- Page ----------
+const BUILD='Build 3';   // bump on every deploy so the phone shows which version is loaded
+const $=id=>document.getElementById(id);
+const cv=$('cv'),ctx=cv.getContext('2d');
+const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+const PAL=['#38c6ff','#7c8cff','#c77dff','#ff6ac1','#ff6a4d','#ffb23e','#ffd447','#7ddc5a','#2fd6b5'];
+let jar=null,last=0,acc=0,shake=0,muted=false,best=null,shown=false;
+const rings=[],shards=[];
+let cracks=[];
+
+// ----- sound -----
+let actx=null;
+function audioOn(){
+  if(muted)return;
+  try{if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume()}catch(e){actx=null}
+}
+function note(freq,dur,vol,type,delay){
+  if(muted||!actx)return;
+  try{
+    const t=actx.currentTime+(delay||0),o=actx.createOscillator(),g=actx.createGain();
+    o.type=type;o.frequency.setValueAtTime(freq,t);o.frequency.exponentialRampToValueAtTime(freq*.6,t+dur);
+    g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);
+    o.connect(g);g.connect(actx.destination);o.start(t);o.stop(t+dur);
+  }catch(e){}
+}
+function crash(){
+  if(muted||!actx)return;
+  try{
+    const len=actx.sampleRate*.7|0,buf=actx.createBuffer(1,len,actx.sampleRate),d=buf.getChannelData(0);
+    for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.2);
+    const s=actx.createBufferSource(),g=actx.createGain();s.buffer=buf;g.gain.value=.35;s.connect(g);g.connect(actx.destination);s.start();
+  }catch(e){}
+}
+
+// ----- effects from sim events -----
+function onEvents(ev){
+  for(const e of ev){
+    if(e.k==='strike'){
+      rings.push({x:e.x,y:e.y,life:.28,max:.28,color:'#ffffff'});
+      shake=Math.max(shake,Math.min(9,2+e.hits*.25));
+      note(120,.16,.18,'sine');
+      const k=Math.min(5,1+(Math.log2(e.hits+1)|0));
+      for(let i=0;i<k;i++)note(420*Math.pow(2,(i*3+(e.hits%5))/12),.09,.05,'triangle',.03+i*.035);
+    }else if(e.k==='miss'){
+      rings.push({x:e.x,y:e.y,life:.22,max:.22,color:'#9a9cc8'});
+      note(70,.14,.12,'sine');
+    }else if(e.k==='burst'){
+      shake=18;crash();note(60,.6,.3,'sawtooth');
+      for(let i=0;i<70;i++){
+        const side=(Math.random()*4)|0,t=Math.random();
+        const x=side===0?JAR.x0:side===1?JAR.x1:JAR.x0+t*(JAR.x1-JAR.x0),y=side<2?JAR.y0+t*(JAR.y1-JAR.y0):side===2?JAR.y0:JAR.y1;
+        const a=Math.atan2(y-(JAR.y0+JAR.y1)/2,x-W/2)+(Math.random()-.5),s=150+Math.random()*350;
+        shards.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-120,rot:Math.random()*6.28,vr:(Math.random()-.5)*14,len:6+Math.random()*14,life:1.4});
+      }
+    }
+  }
+  ev.length=0;
+}
+
+// ----- drawing -----
+function fit(){
+  const r=cv.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);
+  const w=Math.max(1,Math.round(r.width*dpr)),h=Math.max(1,Math.round(r.height*dpr));
+  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}
+}
+function view(){const s=Math.min(cv.width/W,cv.height/H);return {s,ox:(cv.width-W*s)/2,oy:(cv.height-H*s)/2}}
+function makeCracks(){
+  cracks=[];
+  for(let i=0;i<16;i++){
+    const side=(Math.random()*4)|0,t=.1+Math.random()*.8;
+    let x=side===0?JAR.x0:side===1?JAR.x1:JAR.x0+t*(JAR.x1-JAR.x0),y=side<2?JAR.y0+t*(JAR.y1-JAR.y0):side===2?JAR.y0:JAR.y1;
+    let a=Math.atan2((JAR.y0+JAR.y1)/2-y,W/2-x)+(Math.random()-.5)*1.4;
+    const pts=[[x,y]];
+    for(let k=0;k<4;k++){const l=8+Math.random()*16;a+=(Math.random()-.5)*1.3;x+=Math.cos(a)*l;y+=Math.sin(a)*l;pts.push([x,y])}
+    cracks.push(pts);
+  }
+}
+function draw(){
+  const {s,ox,oy}=view();
+  ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cv.width,cv.height);
+  const sx=calm?0:(Math.random()-.5)*shake,sy=calm?0:(Math.random()-.5)*shake;
+  ctx.setTransform(s,0,0,s,ox+sx*s,oy+sy*s);
+  if(!jar)return;
+  const TAU=6.2832,p=Math.min(1,jar.pressure),intact=jar.state==='play';
+  if(intact){
+    ctx.fillStyle='rgba(188,212,255,.05)';
+    ctx.beginPath();if(ctx.roundRect)ctx.roundRect(JAR.x0-3,JAR.y0-3,JAR.x1-JAR.x0+6,JAR.y1-JAR.y0+6,10);else ctx.rect(JAR.x0-3,JAR.y0-3,JAR.x1-JAR.x0+6,JAR.y1-JAR.y0+6);
+    ctx.fill();
+  }
+  // balls, one path per colour, then one pass of highlights
+  const balls=jar.balls;
+  for(let c=0;c<PAL.length;c++){
+    ctx.fillStyle=PAL[c];ctx.beginPath();
+    let any=false;
+    for(const b of balls){if(b.gen%PAL.length!==c)continue;any=true;ctx.moveTo(b.x+b.r,b.y);ctx.arc(b.x,b.y,b.r,0,TAU)}
+    if(any)ctx.fill();
+  }
+  ctx.fillStyle='rgba(255,255,255,.38)';ctx.beginPath();
+  for(const b of balls){const q=b.r*.3;ctx.moveTo(b.x-q+q,b.y-q);ctx.arc(b.x-q,b.y-q,q,0,TAU)}
+  ctx.fill();
+  if(intact){
+    // glass: turns from cool to hot as pressure climbs, and cracks past 35%
+    const hot=Math.max(0,(p-.5)/.5),wob=p>.8?(Math.random()-.5)*(p-.8)*8:0;
+    ctx.lineWidth=3;ctx.strokeStyle=`rgb(${188+67*hot|0},${212-122*hot|0},${255-176*hot|0})`;
+    ctx.beginPath();if(ctx.roundRect)ctx.roundRect(JAR.x0-3+wob,JAR.y0-3,JAR.x1-JAR.x0+6,JAR.y1-JAR.y0+6,10);else ctx.rect(JAR.x0-3,JAR.y0-3,JAR.x1-JAR.x0+6,JAR.y1-JAR.y0+6);
+    ctx.stroke();
+    const nc=Math.max(0,Math.floor((p-.35)/.65*cracks.length));
+    if(nc>0){
+      ctx.lineWidth=1.3;ctx.strokeStyle='rgba(255,255,255,.75)';ctx.beginPath();
+      for(let i=0;i<nc;i++){const c=cracks[i];ctx.moveTo(c[0][0],c[0][1]);for(let k=1;k<c.length;k++)ctx.lineTo(c[k][0],c[k][1])}
+      ctx.stroke();
+    }
+  }
+  for(const r of rings){
+    const q=1-r.life/r.max;
+    ctx.globalAlpha=(1-q)*.9;ctx.strokeStyle=r.color;ctx.lineWidth=3*(1-q)+1;
+    ctx.beginPath();ctx.arc(r.x,r.y,STRIKE_R*(.35+.65*q),0,TAU);ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+  if(shards.length){
+    ctx.strokeStyle='#dfeaff';ctx.lineWidth=2;ctx.beginPath();
+    for(const h of shards){const c=Math.cos(h.rot)*h.len/2,d=Math.sin(h.rot)*h.len/2;ctx.moveTo(h.x-c,h.y-d);ctx.lineTo(h.x+c,h.y+d)}
+    ctx.globalAlpha=.9;ctx.stroke();ctx.globalAlpha=1;
+  }
+}
+
+// ----- score strip -----
+let sStr=-1,sCnt=-1,sPct=-1;
+function hud(){
+  if(jar.strikes!==sStr){sStr=jar.strikes;$('strikes').textContent=sStr}
+  if(jar.balls.length!==sCnt){sCnt=jar.balls.length;$('count').textContent=sCnt}
+  const pct=Math.min(100,Math.floor(jar.pressure*100));
+  if(pct!==sPct){
+    sPct=pct;$('pct').textContent=pct+'%';
+    const g=$('gaugeFill');g.style.width=pct+'%';
+    g.style.backgroundColor=pct>=80?'var(--hot)':pct>=50?'var(--go)':'var(--glass)';
+  }
+}
+
+// ----- loop -----
+function frame(ts){
+  const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
+  fit();
+  acc+=dt;
+  let n=0;
+  while(acc>=DT&&n<4){if(jar.state==='play'||jar.burstT<5)jar.step();onEvents(jar.events);acc-=DT;n++}
+  if(n===4)acc=0;
+  for(let i=rings.length-1;i>=0;i--){rings[i].life-=dt;if(rings[i].life<=0)rings.splice(i,1)}
+  for(let i=shards.length-1;i>=0;i--){const h=shards[i];h.life-=dt;if(h.life<=0){shards.splice(i,1);continue}h.vy+=G*dt;h.x+=h.vx*dt;h.y+=h.vy*dt;h.rot+=h.vr*dt}
+  shake*=.86;if(shake<.2)shake=0;
+  if(jar.state==='burst'&&jar.burstT>1.3&&!shown)showResult();
+  draw();hud();
+  requestAnimationFrame(frame);
+}
+
+// ----- flow -----
+function showResult(){
+  shown=true;
+  const n=jar.strikes,record=best===null||n<best;
+  if(record){best=n;try{localStorage.setItem('jarbreaker.best',String(n))}catch(e){}}
+  $('best').textContent=best;
+  $('resTitle').innerHTML='Broken in <b>'+n+'</b> strikes';
+  $('resSub').textContent=record?'New best. Can you do it in fewer?':'Your best is '+best+'. Fewer strikes wins.';
+  $('result').hidden=false;
+  if(record)[0,4,7,12].forEach((st,i)=>note(392*Math.pow(2,st/12),.25,.08,'triangle',i*.09));
+}
+function reset(){
+  jar=createJar(Math.random);
+  rings.length=0;shards.length=0;shake=0;shown=false;
+  makeCracks();
+  $('result').hidden=true;
+}
+cv.addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  audioOn();
+  if(!jar||jar.state!=='play')return;
+  const r=cv.getBoundingClientRect(),dpr=cv.width/r.width,{s,ox,oy}=view();
+  const x=((e.clientX-r.left)*dpr-ox)/s,y=((e.clientY-r.top)*dpr-oy)/s;
+  if(x<JAR.x0-12||x>JAR.x1+12||y<JAR.y0-12||y>JAR.y1+12)return;
+  jar.strike(Math.min(JAR.x1,Math.max(JAR.x0,x)),Math.min(JAR.y1,Math.max(JAR.y0,y)));
+});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+$('btnAgain').addEventListener('click',reset);
+$('btnRestart').addEventListener('click',reset);
+$('btnSound').addEventListener('click',()=>{muted=!muted;$('btnSound').setAttribute('aria-pressed',String(!muted));if(!muted)audioOn()});
+
+try{const v=parseInt(localStorage.getItem('jarbreaker.best'),10);if(Number.isFinite(v)&&v>0)best=v}catch(e){}
+if(best!==null)$('best').textContent=best;
+$('build').textContent=BUILD;
+reset();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

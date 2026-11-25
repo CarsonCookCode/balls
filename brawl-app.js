@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 19';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 20';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -26,6 +26,9 @@ function summary(b){
 // Until entries are stored on a server, the ladder is filled with house fighters. Each one really plays a climb,
 // seeded by the date, so the board is the same all day and changes at midnight.
 function dayKey(){const d=new Date();return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0')}
+// the play log (see Net.log): every fight, boon and tap, so play can be reviewed afterwards
+const log=(ev,d)=>{try{Net.log(dayKey(),ev,d)}catch(e){}};
+const logBuild=b=>({k:b.key,s:b.str,z:b.size,u:b.ups,hp:Math.round(b.hp),d:+b.dmg.toFixed(2)});
 function daySeed(s){let h=2166136261;for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619);return h>>>0}
 const boardReady=()=>board.bots.length>=BOTS;
 function addBot(){
@@ -59,14 +62,29 @@ function netLine(){
   const n=Net.others().length+(today.cleared>0?1:0);
   return n?n+' player'+(n>1?'s':'')+' on today\u2019s ladder':'No players on today\u2019s ladder yet. Be the first.';
 }
-// a rival on a rung is sometimes another player's fighter, cut back to what they had at that height
+// A rival on a rung is sometimes another player's fighter, cut back to what they had at that height.
+// Nobody should meet the same fighter over and over: one player's fighter comes back only after FRIEND_GAP other
+// rivals, and a class that was met in the last few fights is not picked again.
+const FRIEND_CHANCE=.3,FRIEND_GAP=6,CLASS_GAP=5;
+let fightNo=0;
+const lastMet={},metKeys=[];
 function pickRival(rung){
-  const pool=Net.others();
-  if(!pool.length||Math.random()<.5)return rival(rung,Math.random);
-  const p=pool[(Math.random()*pool.length)|0],b=makeBuild(p.key,rung>1?p.str:-1,p.size,p.name,p.color);
-  const n=Math.min(p.ups.length,Math.floor((rung-1)*RIVAL_UPS));
-  for(let k=0;k<n;k++)if(canTake(b,p.ups[k]))addUpgrade(b,p.ups[k]);
-  const sc=RIVAL_START+RIVAL_GROW*(rung-1);b.hp*=sc;b.dmg*=sc;b.owner=p.name;
+  fightNo++;
+  const fresh=k=>!metKeys.includes(k);
+  const all=Net.others().filter(p=>!(fightNo-lastMet[p.id]<=FRIEND_GAP)),pool=all.filter(p=>fresh(p.key));
+  let b;
+  if(pool.length&&Math.random()<FRIEND_CHANCE){
+    const p=pool[(Math.random()*pool.length)|0];
+    b=makeBuild(p.key,rung>1?p.str:-1,p.size,p.name,p.color);
+    const n=Math.min(p.ups.length,Math.floor((rung-1)*RIVAL_UPS));
+    for(let k=0;k<n;k++)if(canTake(b,p.ups[k]))addUpgrade(b,p.ups[k]);
+    const sc=RIVAL_START+RIVAL_GROW*(rung-1);b.hp*=sc;b.dmg*=sc;b.owner=p.name;
+    lastMet[p.id]=fightNo;
+  }else{
+    b=rival(rung,Math.random);
+    for(let k=0;k<12&&!fresh(b.key);k++)b=rival(rung,Math.random);
+  }
+  metKeys.push(b.key);if(metKeys.length>CLASS_GAP)metKeys.shift();
   return b;
 }
 const whose=b=>(b.owner?esc(b.owner)+'\u2019s ':'')+typeOf(b);
@@ -243,6 +261,7 @@ function setNames(){
 
 // ----- loop -----
 let netT=0;
+const fps={n:0,t:0,slow:0};   // frames drawn, seconds, and frames slower than 30 a second in the current fight
 function refreshNet(){
   Net.pull(board.date).then(changed=>{
     if(!changed)return;
@@ -252,6 +271,7 @@ function refreshNet(){
 }
 function frame(ts){
   const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
+  if(mode==='fight'&&match&&!match.over){fps.n++;fps.t+=dt;if(dt>.034)fps.slow++}
   fit();
   const playing=mode==='fight'||mode==='duel';
   if(!boardReady()&&!playing)addBot();
@@ -290,16 +310,21 @@ function practice(){begin(createMatch(myBuild(),rival(1,Math.random),newSeed()),
 function startClimb(){
   if(!ready())return;
   audioOn();
-  run={rung:1,build:myBuild(),rival:null};
+  run={rung:1,build:myBuild(),rival:null,t0:Date.now()};
+  log('run',{k:me.key,s:me.str,z:me.size,n:run.build.name,c:run.build.color,best,today:today.cleared});
   nextFight();
 }
 function nextFight(){
-  run.rival=pickRival(run.rung);
+  run.rival=pickRival(run.rung);run.seed=newSeed();
+  fps.n=fps.t=fps.slow=0;
   mode='fight';
-  begin(createMatch(run.build,run.rival,newSeed()),0,'Rung '+run.rung,true);
+  begin(createMatch(run.build,run.rival,run.seed),0,'Rung '+run.rung,true);
   render();
 }
 function fightDone(){
+  const left=f=>+Math.max(0,f.hp/f.max).toFixed(2);
+  log('fight',{r:run.rung,win:match.winner===0?1:0,t:+match.t.toFixed(1),hp:[left(match.f[0]),left(match.f[1])],seed:run.seed,sp:speed,
+    fps:fps.t>0?Math.round(fps.n/fps.t):0,slow:fps.slow,me:logBuild(run.build),vs:Object.assign(logBuild(run.rival),{o:run.rival.owner||''})});
   if(match.winner===0){
     choice=offers(run.build,Math.random,3);
     if(!choice.length){run.rung++;nextFight();return}      // nothing left to take: just keep climbing
@@ -316,6 +341,7 @@ function fightDone(){
       try{localStorage.setItem('brawl.today2',JSON.stringify(today))}catch(e){}
       Net.push(today.date,today);
     }
+    log('end',{cleared,rec:run.record?1:0,best,by:run.rival.key,o:run.rival.owner||'',secs:Math.round((Date.now()-run.t0)/1000),players:Net.others().length});
   }
   render();
 }
@@ -327,11 +353,12 @@ function startDuel(){
   audioOn();
   duel={a:rebuild(r[0].e),b:rebuild(r[1].e),you:r[0].you?0:r[1].you?1:-1,who:[owner(r[0]),owner(r[1])],score:[0,0],round:1,done:false};
   mode='duel';duelRound();
+  log('duel',{a:logBuild(duel.a),b:logBuild(duel.b),who:duel.who,you:duel.you,rec:window.Broadcast&&Broadcast.stats&&Broadcast.stats().state!=='idle'?1:0});
 }
 function duelRound(){begin(createMatch(duel.a,duel.b,newSeed()),duel.you,'Today’s duel · round '+duel.round,true);render()}
 function duelDone(){
   duel.score[match.winner]++;
-  if(duel.score[match.winner]>=2){duel.done=true;duel.winner=match.winner;if(window.Broadcast&&Broadcast.finish)Broadcast.finish();sfx('toll',1,1,true);sfx('coins',.8,1,true);render()}
+  if(duel.score[match.winner]>=2){duel.done=true;duel.winner=match.winner;log('duelend',{score:duel.score,win:duel.winner});if(window.Broadcast&&Broadcast.finish)Broadcast.finish();sfx('toll',1,1,true);sfx('coins',.8,1,true);render()}
   else{duel.round++;duelRound()}
 }
 
@@ -410,6 +437,7 @@ $('panel').addEventListener('click',e=>{
   if(!b||b.disabled)return;
   const act=b.dataset.act;
   audioOn();sfx(UI_SFX[act]||'click',1,1,true);
+  if(act!=='start'&&act!=='up')log('tap',{a:act,m:mode,v:b.dataset.key||b.dataset.i||''});
   if(act==='weapon'){if(!FIGHTERS[b.dataset.key])return;me.key=b.dataset.key;if(!me.colorSet)me.color=ROSTER.indexOf(me.key);step=1;save();render();practice()}
   else if(act==='others'){deckAt=(deckAt+3)%deck.length;render()}
   else if(act==='str'){me.str=+b.dataset.i;step=2;save();render();practice()}
@@ -420,6 +448,7 @@ $('panel').addEventListener('click',e=>{
   else if(act==='start')startClimb();
   else if(act==='up'){
     if(mode!=='pick'||!choice.includes(b.dataset.key))return;
+    log('pick',{r:run.rung,of:choice,got:b.dataset.key});
     addUpgrade(run.build,b.dataset.key);run.rung++;nextFight();
   }
   else if(act==='duel')startDuel();
@@ -447,9 +476,9 @@ document.addEventListener('touchend',e=>{
   if(c&&!c.disabled)c.click();
 },{passive:false});
 for(const ev of ['gesturestart','gesturechange','dblclick'])document.addEventListener(ev,e=>e.preventDefault());
-$('btnBoard').addEventListener('click',()=>{if(mode!=='make'&&mode!=='over')return;audioOn();sfx('open',1,1,true);backTo=mode;mode='board';render()});
-$('btnSpeed').addEventListener('click',()=>{sfx('click',1,1,true);speed=speed===1?2:speed===2?4:1;$('btnSpeed').textContent='Speed '+speed+'×';try{localStorage.setItem('brawl.speed',String(speed))}catch(e){}});
-$('btnSound').addEventListener('click',()=>{muted=!muted;$('btnSound').setAttribute('aria-pressed',String(!muted));if(!muted){audioOn();sfx('click',1,1,true)}});
+$('btnBoard').addEventListener('click',()=>{if(mode!=='make'&&mode!=='over')return;audioOn();sfx('open',1,1,true);log('tap',{a:'ladder',m:mode});backTo=mode;mode='board';render()});
+$('btnSpeed').addEventListener('click',()=>{sfx('click',1,1,true);speed=speed===1?2:speed===2?4:1;$('btnSpeed').textContent='Speed '+speed+'×';try{localStorage.setItem('brawl.speed',String(speed))}catch(e){}log('tap',{a:'speed',v:speed})});
+$('btnSound').addEventListener('click',()=>{muted=!muted;$('btnSound').setAttribute('aria-pressed',String(!muted));if(!muted){audioOn();sfx('click',1,1,true)}log('tap',{a:'sound',v:muted?0:1})});
 
 board.date=today.date=dayKey();
 // Raise LADDER_RESET to wipe the ladder, today's climb and the best record on every device, once, the next time it loads.
@@ -479,6 +508,14 @@ if(!me.colorSet)me.color=ROSTER.indexOf(me.key);
 deck=shuffled(ROSTER);
 Net.init();
 if(Net.on()){refreshNet();if(today.cleared>0)Net.push(today.date,today)}
+// the play log: opening, leaving and coming back, and anything that goes wrong
+const openedAt=Date.now();let errs=0;
+log('open',{b:BUILD,w:window.innerWidth||0,h:window.innerHeight||0,dpr:+(window.devicePixelRatio||1).toFixed(2),touch:'ontouchstart' in window?1:0,back:step===3?1:0,f:me.key,best,today:today.cleared});
+document.addEventListener('visibilitychange',()=>log(document.hidden?'hide':'show',{m:mode,r:run?run.rung:0,secs:Math.round((Date.now()-openedAt)/1000),fights:fightNo}));
+if(window.addEventListener){
+  window.addEventListener('error',ev=>{if(errs++<10)log('err',{m:String(ev.message).slice(0,200),f:String(ev.filename||'').split('/').pop().slice(0,40),l:ev.lineno|0,c:ev.colno|0,mode})});
+  window.addEventListener('unhandledrejection',ev=>{if(errs++<10)log('err',{m:String(ev.reason&&ev.reason.message||ev.reason).slice(0,200),mode})});
+}
 $('build').textContent=BUILD;
 sfxFetch();
 render();practice();

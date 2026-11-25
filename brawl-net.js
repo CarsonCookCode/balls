@@ -1,7 +1,8 @@
 // Shared ladder for Ball Brawl, stored in a Firebase Realtime Database through its plain web address (no library).
 // With NET.url empty the game is offline: the ladder holds house fighters and your own climb only.
 //   ladder/<UTC day>/<player id> = {n:name, k:class, s:strength, z:size, c:colour, u:[upgrade ids], r:rungs cleared, t:server time}
-// The database's rules open only ladder/<day>/<16-character id>, check each entry's shape, and refuse deletes.
+// The database's rules open only ladder/<day>/<16-character id> and log/<day>/<id>/<entry>, check each entry's shape
+// and refuse deletes; log entries can be added but never changed.
 // Everything read back is still checked before use, because anyone may write an entry.
 const NET={url:'https://ball-brawl-9b1bb-default-rtdb.firebaseio.com'};   // no trailing slash; '' turns the shared ladder off
 const Net={
@@ -55,6 +56,21 @@ const Net={
         body:JSON.stringify({n:e.name,k:e.key,s:e.str,z:e.size,c:e.color,u:e.ups,r:e.cleared,t:{'.sv':'timestamp'}})});
       return r.ok;
     }catch(err){return false}
+  },
+  // Play log, so play can be reviewed later: log/<UTC day>/<player id>/<auto id> = {t:server time, e:event, d:details as JSON text}.
+  // It holds this browser's random id, the fighter's name and what happened in the game; nothing else about the person.
+  sid:'',seq:0,
+  log(day,ev,data){
+    if(!Net.on()||!Net.id)return;
+    try{
+      if(!Net.sid)for(let i=0;i<6;i++)Net.sid+='abcdefghijklmnopqrstuvwxyz0123456789'[(Math.random()*36)|0];
+      const i=Net.seq++;
+      let d=JSON.stringify(Object.assign({s:Net.sid,i},data||{}));
+      if(d.length>1500)d=JSON.stringify({s:Net.sid,i,cut:d.length});
+      const p=fetch(NET.url+'/log/'+day+'/'+Net.id+'.json',{method:'POST',keepalive:true,headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({t:{'.sv':'timestamp'},e:String(ev).slice(0,16),d})});
+      if(p&&p.catch)p.catch(()=>{});
+    }catch(e){}
   },
   others(){return Net.rows.filter(p=>p.id!==Net.id)},
 };

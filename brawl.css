@@ -172,3 +172,40 @@ button.chip.on{background:var(--k);color:#fff6df}
 .ps.tipline b{font-family:var(--display);letter-spacing:.04em;margin-right:7px}
 .ps.tipline em{font:700 9.5px/1 var(--display);font-style:normal;letter-spacing:.12em;text-transform:uppercase;color:var(--k);margin-right:8px;vertical-align:1px}
 .ps.tipline.hint{font-style:italic;text-align:center;background:none;border-left:0;color:var(--ink-2)}
+
+/* the matchup takes the whole screen: no arena, the two challengers side by side at the top, nothing to scroll */
+body[data-mode="ready"] #stage,body[data-mode="ready"] header.top{display:none}
+body[data-mode="ready"] #panel{flex:1 1 auto;max-height:none;gap:6px;padding:10px 14px 12px;margin-top:10px}
+body[data-mode="ready"] #btnFight{margin-top:auto}
+.duo{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center}
+.duo .side{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0;text-align:center}
+.duo canvas{width:min(24vw,13vh,104px);aspect-ratio:1;border-radius:50%;border:2px solid var(--gold-lo);box-shadow:0 2px 5px rgba(0,0,0,.4);margin-bottom:3px}
+.duo small{font:italic 500 13.5px/1 var(--text);color:var(--ink-2)}
+.duo b{font:700 13.5px/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--ink);text-wrap:balance}
+.duo .vs{font:900 20px/1 var(--display);font-style:italic;letter-spacing:.04em;color:var(--crimson);text-shadow:0 1px 0 rgba(255,246,223,.6);padding:0 2px 26px}
+body[data-mode="ready"] .mu>b{font-size:15px}
+body[data-mode="ready"] button.chip{min-height:24px;padding:4px 7px 4px 5px}
+body[data-mode="ready"] .ps.what{font-size:15px;line-height:1.15}
+
+/* many upgrades: tags become icon discs */
+button.chip.dot{width:26px;min-width:26px;min-height:26px;height:26px;padding:0;border:1.5px solid var(--gold-lo);border-radius:50%;background:var(--k);color:#fff6df;display:grid;place-items:center;position:relative}
+button.chip.dot svg{width:14px;height:14px;fill:currentColor;display:block}
+button.chip.dot sup{position:absolute;right:-5px;top:-5px;font:700 9px/1 var(--display);background:var(--ink);color:#fff6df;border-radius:7px;padding:2px 3.5px}
+button.chip.dot.on{outline:2.5px solid var(--ink);outline-offset:1px}
+body[data-mode="ready"] #panel{gap:5px}
+.stepn.sub{font-size:9px;letter-spacing:.16em;padding-top:2px}
+body[data-mode="ready"] .ps.note,body[data-mode="ready"] .ps.keep{font-size:14.5px;line-height:1.15}
+body[data-mode="ready"] .ps.tipline,body[data-mode="ready"] .ps.what{min-height:2.300em}
+/* shorter phones: everything on the matchup a little smaller, so it still fits */
+@media (max-height:640px){
+  body[data-mode="ready"] #panel{gap:4px;padding:8px 12px 10px;margin-top:6px}
+  .duo canvas{width:min(21vw,11vh,104px)}
+  .duo b{font-size:12.5px}
+  body[data-mode="ready"] .mu>b{font-size:14px}
+  body[data-mode="ready"] .mu{gap:2px 10px}
+  body[data-mode="ready"] .chips{gap:3px 3px}
+  button.chip.dot{width:24px;min-width:24px;height:24px;min-height:24px}
+  body[data-mode="ready"] button.arm{min-height:32px;font-size:11.5px}
+  body[data-mode="ready"] #btnFight{min-height:42px}
+  body[data-mode="ready"] .ps.note,body[data-mode="ready"] .ps.keep{font-size:13.5px}
+}

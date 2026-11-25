@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 27';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 28';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -40,16 +40,21 @@ const kindOf=id=>KINDS[UP_KIND[id]||'atk'];                 // anything not list
 const kindIcon=K=>`<svg viewBox="0 0 16 16" aria-hidden="true">${K.icon}</svg>`;
 // a fighter's upgrades as small coloured tags; each can be tapped to read what it does (side 0 is you, 1 the rival)
 let tip=null;
-function chips(b,side){
+// With many upgrades the tags shrink to icon discs (compact), so the matchup still fits one screen; the name is a tap away.
+function chips(b,side,compact){
   if(!b.ups.length)return '<span class="chip none">no upgrades</span>';
   const n={};for(const id of b.ups)n[id]=(n[id]||0)+1;
-  return Object.keys(n).map(id=>`<button type="button" class="chip${tip&&tip.side===side&&tip.id===id?' on':''}" id="chip-${side}-${id}" data-act="tip" data-side="${side}" data-key="${id}" style="--k:${kindOf(id).col}">${upName(b,id)}${n[id]>1?' ×'+n[id]:''}</button>`).join('');
+  return Object.keys(n).map(id=>{
+    const K=kindOf(id),on=tip&&tip.side===side&&tip.id===id?' on':'',at=`id="chip-${side}-${id}" data-act="tip" data-side="${side}" data-key="${id}" style="--k:${K.col}"`;
+    return compact?`<button type="button" class="chip dot${on}" ${at} aria-label="${upName(b,id)}">${kindIcon(K)}${n[id]>1?`<sup>${n[id]}</sup>`:''}</button>`
+      :`<button type="button" class="chip${on}" ${at}>${upName(b,id)}${n[id]>1?' ×'+n[id]:''}</button>`;
+  }).join('');
 }
 // the line under the tags: what the tapped upgrade does
+// One line under the tags: what the rival's class does, or, after a tap on a tag, what that upgrade does.
 function tipLine(a,b){
-  if(!a.ups.length&&!b.ups.length)return '';
   const o=tip&&(tip.side?b:a);
-  if(!o||!o.ups.includes(tip.id))return '<p class="ps tipline hint">Tap an upgrade to see what it does.</p>';
+  if(!o||!o.ups.includes(tip.id))return `<p class="ps what"><b>${FIGHTERS[b.key].name}.</b> ${FIGHTERS[b.key].desc}</p>`;
   const K=kindOf(tip.id),n=o.ups.filter(x=>x===tip.id).length;
   return `<p class="ps tipline" id="tipLine" style="--k:${K.col}"><b>${upName(o,tip.id)}${n>1?' ×'+n:''}</b><em>${K.label}</em>${upText(o,tip.id)}${n>1?' (each)':''}</p>`;
 }
@@ -376,7 +381,8 @@ function frame(ts){
   for(let i=rings.length-1;i>=0;i--){rings[i].life-=dt;if(rings[i].life<=0)rings.splice(i,1)}
   for(let i=bolts.length-1;i>=0;i--){bolts[i].life-=dt;if(bolts[i].life<=0)bolts.splice(i,1)}
   shake*=.78;if(shake<.3)shake=0;
-  draw();hud();
+  if(mode!=='ready')draw();                             // the arena is hidden behind the matchup
+  hud();
   if(window.Broadcast&&Broadcast.onFrame)Broadcast.onFrame(dt);
   requestAnimationFrame(frame);
 }
@@ -414,18 +420,40 @@ function startFight(){
   mode='fight';
   render();
 }
+// The matchup fills the screen in place of the arena: the two fighters are drawn side by side at the top of the scroll,
+// each cut out of the real match that is about to start, so size, colour and extra weapons all show.
+const FACE=176;
+function faces(){
+  const P=$('panel');
+  if(!P.querySelectorAll||!match)return;
+  for(const el of P.querySelectorAll('canvas[data-face]')){
+    const f=match.f[+el.dataset.face];
+    if(!f)continue;
+    const lab=f.label;
+    try{
+      const c=el.getContext('2d'),span=Math.max(62,f.r*2.7),z=el.width/span;
+      f.label='';
+      c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,el.width,el.height);
+      c.setTransform(z,0,0,z,el.width/2-f.x*z,el.height/2-(f.y+2)*z);
+      drawArena(c,match,-1,{floats:[],sparks:[],rings:[],bolts:[]});
+    }catch(e){}
+    f.label=lab;
+  }
+}
 const sizeWord=r=>r<21?'Small':r<28?'Medium':r<36?'Big':'Huge';
 function readyBody(){
-  const a=run.build,b=run.rival;
+  const a=run.build,b=run.rival,compact=new Set(a.ups).size>4||new Set(b.ups).size>4;
   const row=(label,x,y,num)=>`<b class="${num&&x>y?'hi':''}">${num?Math.round(x):x}${num===2?'%':''}</b><i>${label}</i><b class="${num&&y>x?'hi':''}">${num?Math.round(y):y}${num===2?'%':''}</b>`;
   return `<p class="stepn">Rung ${run.rung} · the matchup</p>`+
     (run.note?`<p class="ps note">${run.note}</p>`:'')+
-    `<div class="mu"><span class="who">You<b>${typeOf(a)}</b></span><i></i><span class="who">${b.owner?esc(b.owner):'House'}<b>${typeOf(b)}</b></span>`+
+    `<div class="duo"><div class="side"><canvas data-face="0" width="${FACE}" height="${FACE}"></canvas><small>You</small><b>${typeOf(a)}</b></div><span class="vs">vs</span>`+
+      `<div class="side"><canvas data-face="1" width="${FACE}" height="${FACE}"></canvas><small>${b.owner?esc(b.owner):'House'}</small><b>${typeOf(b)}</b></div></div>`+
+    `<div class="mu">`+
       row('Health',FIGHTERS[a.key].hp*a.hp,FIGHTERS[b.key].hp*b.hp,1)+row('Damage',a.dmg*100,b.dmg*100,2)+row('Speed',a.spd*100,b.spd*100,2)+row('Size',sizeWord(a.r),sizeWord(b.r),0)+
-    `</div><div class="mu2"><div class="chips">${chips(a,0)}</div><div class="chips">${chips(b,1)}</div></div>`+tipLine(a,b)+
-    `<p class="ps what"><b>${FIGHTERS[b.key].name}.</b> ${FIGHTERS[b.key].desc}</p>`+
+    `</div>`+(a.ups.length||b.ups.length?`<p class="stepn sub">Upgrades · tap one to read it</p>`:'')+
+    `<div class="mu2"><div class="chips">${chips(a,0,compact)}</div><div class="chips">${chips(b,1,compact)}</div></div>`+tipLine(a,b)+
     (run.shield>0?`<button type="button" id="btnArm" class="arm" data-act="arm" aria-pressed="${run.armed}">${run.armed?'Shield raised: lose this fight and you climb on':'Raise your shield for this fight'}</button>`:'')+
-    (run.life>0?`<p class="ps keep">You hold an extra life. It is spent the next time you lose.</p>`:'')+
+    (run.life>0?`<p class="ps keep">Extra life held: spent the next time you lose.</p>`:'')+
     `<button type="button" id="btnFight" class="go" data-act="fight">Fight</button>`;
 }
 function fightDone(){
@@ -544,7 +572,7 @@ function render(){
   if(mode==='make'){P.innerHTML=makeBody();if(step===0&&browse)thumbsFill()}
   else if(mode==='board')P.innerHTML=boardBody();
   else if(mode==='duel')P.innerHTML=duelBody();
-  else if(mode==='ready')P.innerHTML=readyBody();
+  else if(mode==='ready'){P.innerHTML=readyBody();faces()}
   else if(mode==='fight'){
     P.innerHTML=(run.armed?`<p class="ps keep">Shield raised: you survive a loss here.</p>`:run.life>0?`<p class="ps keep">You hold an extra life.</p>`:'')+`<p class="ps"><b>You, ${typeOf(run.build)}:</b> ${summary(run.build)}</p><p class="ps"><b>${whose(run.rival)}:</b> ${FIGHTERS[run.rival.key].desc}${run.rival.ups.length?' ('+summary(run.rival)+')':''}</p>`;
   }else if(mode==='pick'){

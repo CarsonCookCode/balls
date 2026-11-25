@@ -67,6 +67,21 @@ input:focus-visible{outline:2px solid var(--go);outline-offset:1px}
 .sw button{min-height:36px;padding:0}
 .sw i{width:18px;height:18px;border-radius:50%}
 .sw button.on{border-color:var(--go);box-shadow:inset 0 0 0 1px var(--go)}
+.lb{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-family:var(--display)}
+.lb li{display:grid;grid-template-columns:22px 14px 1fr auto;gap:8px;align-items:center;padding:6px 10px;border:1px solid var(--line);border-radius:10px}
+.lb li.in{border-color:var(--go)}
+.lb li.me{background:var(--panel)}
+.lb .rk{font-size:13px;color:var(--mute);text-align:right;font-variant-numeric:tabular-nums}
+.lb i{width:14px;height:14px;border-radius:50%}
+.lb .nm{display:flex;flex-direction:column;min-width:0}
+.lb .nm b{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lb .nm small{font:400 11.5px var(--body);color:var(--mute)}
+.lb .rg{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.vsh{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:26px}
+.vsh small{font:600 11px var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+.score{margin:0;display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:baseline;font-family:var(--display);color:var(--mute);font-size:13px}
+.score b{color:var(--ink);font-size:24px;font-variant-numeric:tabular-nums}
+.score span:last-child{text-align:right}
 .foot{display:flex;gap:6px;flex:0 0 auto}
 .foot>*{flex:1 1 0;min-height:36px;font-size:13px;padding:0 6px}
 #build{margin:0;font-size:11px;color:var(--mute);text-align:center}
@@ -86,6 +101,7 @@ input:focus-visible{outline:2px solid var(--go);outline-offset:1px}
 <section id="panel"></section>
 
 <nav class="foot">
+  <button type="button" id="btnBoard">Ladder</button>
   <button type="button" id="btnSpeed">Speed 1×</button>
   <button type="button" id="btnSound" class="tog" aria-pressed="true">Sound</button>
   <a class="btn" id="lnkGames" href="./">All games</a>
@@ -97,14 +113,14 @@ input:focus-visible{outline:2px solid var(--go);outline-offset:1px}
 // Pure simulation, no DOM. Two balls bounce around a square arena at constant speed; their weapons and upgrades do the fighting.
 const AW=260,DT=1/60,R=24,SUDDEN=30,TIMEOUT=70;
 const FIGHTERS={
-  blade:  {name:'Blade',  color:'#ff6a4d',hp:100,speed:170,spin:5.0,dmg:21,  cd:.35,arms:[{a:0,l:36}],desc:'A long sword that never stops spinning.'},
-  mace:   {name:'Mace',   color:'#ffb23e',hp:100,speed:150,spin:3.2,dmg:21,  cd:.6, arms:[{a:0,l:34,head:9}],desc:'Slow and heavy. One hit really hurts.'},
-  spikes: {name:'Spikes', color:'#7ddc5a',hp:100,speed:215,spin:0,  dmg:12,  cd:.3, arms:[],desc:'No weapon. Its whole body hurts to touch.'},
-  blaster:{name:'Blaster',color:'#38c6ff',hp:100,speed:160,spin:0,  dmg:8.5, cd:1,  arms:[],desc:'Fires a shot at its rival, again and again.'},
-  leech:  {name:'Leech',  color:'#c77dff',hp:100,speed:180,spin:6.5,dmg:19,  cd:.3, arms:[{a:0,l:20}],heal:.7,desc:'Short fangs. Heals with every bite.'},
-  miner:  {name:'Miner',  color:'#ffd447',hp:100,speed:175,spin:0,  dmg:12.5,cd:2,  arms:[],desc:'Leaves mines behind for rivals to hit.'},
-  twin:   {name:'Twin',   color:'#ff6ac1',hp:100,speed:170,spin:6.0,dmg:10.5,cd:.22,arms:[{a:0,l:24},{a:Math.PI,l:24}],desc:'Two short blades, twice the spin.'},
-  fury:   {name:'Fury',   color:'#2fd6b5',hp:100,speed:170,spin:4.5,dmg:12,  cd:.35,arms:[{a:0,l:30}],rage:17,desc:'Hits harder the closer it is to losing.'},
+  blade:  {name:'Knight',  color:'#ff6a4d',hp:100,speed:170,spin:5.0,dmg:21,  cd:.35,arms:[{a:0,l:36}],desc:'A long sword that never stops spinning.'},
+  mace:   {name:'Ogre',   color:'#ffb23e',hp:100,speed:150,spin:3.2,dmg:21,  cd:.6, arms:[{a:0,l:34,head:9}],desc:'Slow and heavy. One hit really hurts.'},
+  spikes: {name:'Urchin', color:'#7ddc5a',hp:100,speed:215,spin:0,  dmg:12,  cd:.3, arms:[],desc:'No weapon. Its whole body hurts to touch.'},
+  blaster:{name:'Gunner',color:'#38c6ff',hp:100,speed:160,spin:0,  dmg:8.5, cd:1,  arms:[],desc:'Fires a shot at its rival, again and again.'},
+  leech:  {name:'Vampire',  color:'#c77dff',hp:100,speed:180,spin:6.5,dmg:19,  cd:.3, arms:[{a:0,l:20}],heal:.7,desc:'Short fangs. Heals with every bite.'},
+  miner:  {name:'Sapper',  color:'#ffd447',hp:100,speed:175,spin:0,  dmg:12.5,cd:2,  arms:[],desc:'Leaves mines behind for rivals to hit.'},
+  twin:   {name:'Ninja',   color:'#ff6ac1',hp:100,speed:170,spin:6.0,dmg:10.5,cd:.22,arms:[{a:0,l:24},{a:Math.PI,l:24}],desc:'Two short blades, twice the spin.'},
+  fury:   {name:'Berserker',   color:'#2fd6b5',hp:100,speed:170,spin:4.5,dmg:12,  cd:.35,arms:[{a:0,l:30}],rage:17,desc:'Hits harder the closer it is to losing.'},
 };
 const ROSTER=Object.keys(FIGHTERS);
 const STRENGTHS=[
@@ -140,12 +156,21 @@ const UPGRADES={
   revive:   {name:'Second life',text:'Come back once with 35% health',max:1},
 };
 const UP_IDS=Object.keys(UPGRADES);
+// The upgrade a fighter has stacked most gives it the first half of its type: a Knight with Frost is a Frost Knight.
+const PREFIX={tougher:'Stout',sharper:'Savage',faster:'Swift',bulk:'Giant',shrink:'Tiny',blade:'Whirling',reach:'Long-arm',sidearm:'Armed',vampire:'Blood',
+  regen:'Undying',armor:'Iron',thorns:'Thorned',poison:'Plague',frost:'Frost',crit:'Lucky',ambush:'Shadow',laststand:'Defiant',shield:'Shielded',revive:'Twice-born'};
+function typeOf(b){
+  let top=null,n=0;const c={};
+  for(const id of b.ups){c[id]=(c[id]||0)+1;if(c[id]>n){n=c[id];top=id}}
+  const pre=top?PREFIX[top]:b.str>=0?STRENGTHS[b.str].label:'';
+  return (pre?pre+' ':'')+FIGHTERS[b.key].name;
+}
 const RIVAL_START=.65,RIVAL_GROW=.12,RIVAL_UPS=.5;   // how the ladder gets harder; see rival()
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
 // A build is everything a match needs to know about one fighter.
 function makeBuild(key,str,size,name,color){
-  const z=SIZES[size>=0?size:1],b={key,hp:z.hp,dmg:1,spd:1,r:z.r,p:{},ups:[],name:name||FIGHTERS[key].name,color:color||FIGHTERS[key].color};
+  const z=SIZES[size>=0?size:1],b={key,str:str>=0?str:-1,size:size>=0?size:1,hp:z.hp,dmg:1,spd:1,r:z.r,p:{},ups:[],name:name||FIGHTERS[key].name,color:color||FIGHTERS[key].color};
   if(str>=0)b[STRENGTHS[str].k]*=STRENGTHS[str].mul;
   return b;
 }
@@ -345,14 +370,16 @@ function quickMatch(A,B,seed){
 //</sim>
 
 // ---------- Page ----------
-const BUILD='Build 8';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 9';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 const PALETTE=ROSTER.map(k=>FIGHTERS[k].color);
-// mode: 'make' (three taps, then a name), 'fight', 'pick' (choose an upgrade), 'over'
+const BOTS=14;           // house fighters on each day's ladder until real players fill it
+// mode: 'make' (three taps, then a name), 'fight', 'pick' (choose an upgrade), 'over', 'board' (today's ladder), 'duel'
 let mode='make',step=0,me={key:'blade',str:-1,size:-1,name:'',color:0,colorSet:false},deck=[],deckAt=0;
-let run=null,match=null,live=false,choice=[],best=0,speed=1,muted=false,last=0,acc=0,overFor=0,shake=0;
+let run=null,match=null,you=-1,loud=false,choice=[],best=0,speed=1,muted=false,last=0,acc=0,overFor=0,shake=0;
+let board={date:'',bots:[]},today={date:'',cleared:0},duel=null,backTo='make';
 const floats=[],sparks=[];
 const newSeed=()=>(Math.random()*2147483647)|0;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -366,6 +393,41 @@ function summary(b){
   return Object.keys(n).map(id=>UPGRADES[id].name+(n[id]>1?' ×'+n[id]:'')).join(', ');
 }
 
+// ----- today's ladder -----
+// Until entries are stored on a server, the ladder is filled with house fighters. Each one really plays a climb,
+// seeded by the date, so the board is the same all day and changes at midnight.
+function dayKey(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function daySeed(s){let h=2166136261;for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619);return h>>>0}
+const boardReady=()=>board.bots.length>=BOTS;
+function addBot(){
+  const i=board.bots.length,rnd=mulberry32(daySeed(board.date)+i*7919),b=makeBuild(ROSTER[(rnd()*ROSTER.length)|0],(rnd()*3)|0,(rnd()*3)|0);
+  let rung=1;
+  while(rung<40&&quickMatch(b,rival(rung,rnd),(rnd()*2147483647)|0)===0){const o=offers(b,rnd,3);if(o.length)addUpgrade(b,o[(rnd()*o.length)|0]);rung++}
+  board.bots.push({key:b.key,str:b.str,size:b.size,ups:b.ups,cleared:rung-1});
+  if(boardReady()){
+    try{localStorage.setItem('brawl.board',JSON.stringify(board))}catch(e){}
+    if(mode==='make'||mode==='over'||mode==='board')render();
+  }
+}
+function rebuild(e){
+  const b=makeBuild(e.key,e.str,e.size,e.name,e.color);
+  for(const id of e.ups)if(UPGRADES[id]&&canTake(b,id))addUpgrade(b,id);
+  return b;
+}
+function standings(){
+  const rows=board.bots.map((b,i)=>({house:true,cleared:b.cleared,e:b,order:i}));
+  if(today.cleared>0)rows.push({you:true,cleared:today.cleared,e:today,order:99});
+  rows.sort((a,b)=>b.cleared-a.cleared||a.order-b.order);       // ties go to whoever was there first
+  return rows;
+}
+function target(){const r=standings().filter(x=>!x.you);return r.length>1?r[1].cleared+1:1}
+const inDuel=()=>standings().slice(0,2).some(x=>x.you);
+function goalLine(){
+  if(!boardReady())return 'Setting up today’s ladder…';
+  if(inDuel())return 'You are in today’s duel. Climb higher to make it safe.';
+  return 'Today’s duel is between the top two. Clear <b>'+target()+'</b> rungs to get in.';
+}
+
 // ----- sound -----
 let actx=null,lastNote=0;
 function audioOn(){
@@ -373,7 +435,7 @@ function audioOn(){
   try{if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume()}catch(e){actx=null}
 }
 function note(freq,dur,vol,type,delay,force){
-  if(muted||!actx||!live)return;
+  if(muted||!actx||!loud)return;
   const now=actx.currentTime;
   if(!force&&!delay&&now-lastNote<.03)return;
   lastNote=now;
@@ -465,7 +527,7 @@ function draw(){
     ctx.fillStyle=armed?col:'#5a5f8a';ctx.beginPath();ctx.arc(q.x,q.y,7,0,TAU);ctx.fill();
     ctx.fillStyle='#10122a';ctx.beginPath();ctx.arc(q.x,q.y,3,0,TAU);ctx.fill();
   }
-  drawFighter(match.f[0],live);drawFighter(match.f[1],false);
+  drawFighter(match.f[0],you===0);drawFighter(match.f[1],you===1);
   ctx.fillStyle='#e9f6ff';ctx.beginPath();
   for(const q of match.bullets){ctx.moveTo(q.x+4,q.y);ctx.arc(q.x,q.y,4,0,TAU)}
   ctx.fill();
@@ -487,7 +549,7 @@ function hud(){
   }
 }
 function setNames(){
-  $('nameA').textContent=(live?'You · ':'')+match.f[0].label;$('nameB').textContent=match.f[1].label;
+  $('nameA').textContent=(you===0?'You · ':'')+match.f[0].label;$('nameB').textContent=(you===1?'You · ':'')+match.f[1].label;
   $('nameA').style.color=match.f[0].col;$('nameB').style.color=match.f[1].col;
 }
 
@@ -495,8 +557,10 @@ function setNames(){
 function frame(ts){
   const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
   fit();
-  if(match&&(mode==='make'||mode==='fight')){
-    acc+=dt*(mode==='fight'?speed:1);
+  const playing=mode==='fight'||mode==='duel';
+  if(!boardReady()&&!playing)addBot();                 // one house climb per frame, never during a fight
+  if(match&&(mode==='make'||playing)){
+    acc+=dt*(playing?speed:1);
     let n=0;
     while(acc>=DT&&n<10){match.step();onEvents(match.events);acc-=DT;n++}
     if(n===10)acc=0;
@@ -504,6 +568,7 @@ function frame(ts){
       overFor+=dt;
       if(mode==='make'&&overFor>1.2)practice();
       else if(mode==='fight'&&overFor>1)fightDone();
+      else if(mode==='duel'&&!duel.done&&overFor>1.2)duelDone();
     }
   }
   for(let i=floats.length-1;i>=0;i--){const f=floats[i];f.life-=dt;f.y-=28*dt;if(f.life<=0)floats.splice(i,1)}
@@ -514,11 +579,11 @@ function frame(ts){
 }
 
 // ----- the climb -----
-function begin(m,isLive,label){
-  match=m;live=isLive;overFor=0;acc=0;floats.length=0;sparks.length=0;
+function begin(m,youSide,label,isLoud){
+  match=m;you=youSide;loud=isLoud;overFor=0;acc=0;floats.length=0;sparks.length=0;
   $('round').textContent=label;setNames();
 }
-function practice(){begin(createMatch(myBuild(),rival(1,Math.random),newSeed()),false,'Practice')}
+function practice(){begin(createMatch(myBuild(),rival(1,Math.random),newSeed()),-1,'Practice',false)}
 function startClimb(){
   if(!ready())return;
   audioOn();
@@ -528,7 +593,7 @@ function startClimb(){
 function nextFight(){
   run.rival=rival(run.rung,Math.random);
   mode='fight';
-  begin(createMatch(run.build,run.rival,newSeed()),true,'Rung '+run.rung);
+  begin(createMatch(run.build,run.rival,newSeed()),0,'Rung '+run.rung,true);
   render();
 }
 function fightDone(){
@@ -542,8 +607,27 @@ function fightDone(){
     const cleared=run.rung-1;
     run.record=cleared>best;
     if(run.record){best=cleared;try{localStorage.setItem('brawl.best',String(best))}catch(e){}}
+    if(cleared>today.cleared){
+      today={date:dayKey(),cleared,key:me.key,str:me.str,size:me.size,name:run.build.name,color:run.build.color,ups:run.build.ups.slice()};
+      try{localStorage.setItem('brawl.today',JSON.stringify(today))}catch(e){}
+    }
   }
   render();
+}
+
+// ----- today's duel: the top two on the ladder, best of three -----
+function startDuel(){
+  const r=standings().slice(0,2);
+  if(!boardReady()||r.length<2)return;
+  audioOn();
+  duel={a:rebuild(r[0].e),b:rebuild(r[1].e),you:r[0].you?0:r[1].you?1:-1,score:[0,0],round:1,done:false};
+  mode='duel';duelRound();
+}
+function duelRound(){begin(createMatch(duel.a,duel.b,newSeed()),duel.you,'Today’s duel · round '+duel.round,true);render()}
+function duelDone(){
+  duel.score[match.winner]++;
+  if(duel.score[match.winner]>=2){duel.done=true;duel.winner=match.winner;[0,4,7,12].forEach((st,i)=>note(392*Math.pow(2,st/12),.3,.09,'triangle',i*.1,true));render()}
+  else{duel.round++;duelRound()}
 }
 
 // ----- panel -----
@@ -552,7 +636,7 @@ const card=(id,act,data,title,text,dot,tag)=>`<button type="button" class="card"
 function makeBody(){
   if(step===0){
     const offer=[0,1,2].map(i=>deck[(deckAt+i)%deck.length]);
-    return head('Step 1 of 3','Pick a weapon')+
+    return head('Step 1 of 3','Pick a fighter')+
       offer.map(k=>card('wp-'+k,'weapon',`data-key="${k}"`,FIGHTERS[k].name,FIGHTERS[k].desc,FIGHTERS[k].color)).join('')+
       `<button type="button" id="btnOthers" class="quiet" data-act="others">Show three others</button>`;
   }
@@ -562,29 +646,53 @@ function makeBody(){
   if(step===2)return head('Step 3 of 3','Pick a size')+
     SIZES.map((s,i)=>card('size-'+i,'size',`data-i="${i}"`,s.label,s.text)).join('')+
     `<button type="button" id="btnBack" class="quiet" data-act="back">Back</button>`;
-  return `<h2 class="ph">Name your fighter</h2>`+
-    `<p class="ps">${FIGHTERS[me.key].name} · ${STRENGTHS[me.str].label} · ${SIZES[me.size].label}</p>`+
+  return `<h2 class="ph">Name your ${typeOf(myBuild())}</h2>`+
     `<input id="inName" type="text" maxlength="12" autocomplete="off" autocapitalize="words" spellcheck="false" aria-label="Fighter name" placeholder="${FIGHTERS[me.key].name}" value="${esc(me.name)}">`+
     `<div class="sw">`+PALETTE.map((c,i)=>`<button type="button" id="col-${i}" data-act="col" data-i="${i}" class="${i===me.color?'on':''}" aria-pressed="${i===me.color}" aria-label="Colour ${i+1}"><i style="background:${c}"></i></button>`).join('')+`</div>`+
     `<button type="button" id="btnStart" class="go" data-act="start">Start the climb</button>`+
-    `<p class="ps">Beat a rival, pick an upgrade, climb a rung. One loss ends the run.${best?' Your best: <b>'+best+'</b> rungs.':''}</p>`+
+    `<p class="ps">Beat a rival, pick an upgrade, climb a rung. One loss ends the run.</p>`+
+    `<p class="ps" id="goal">${goalLine()}</p>`+
     `<button type="button" id="btnNew" class="quiet" data-act="new">Make a different fighter</button>`;
+}
+function boardBody(){
+  const rows=standings(),mine=rows.findIndex(r=>r.you);
+  const row=(r,i)=>{
+    const b=rebuild(r.e);
+    return `<li class="${r.you?'me':''}${i<2?' in':''}"><span class="rk">${i+1}</span><i style="background:${b.color}"></i>`+
+      `<span class="nm"><b>${typeOf(b)}</b><small>${r.you?esc(b.name)+' · you':'house fighter'}</small></span><span class="rg">${r.cleared}</span></li>`;
+  };
+  return `<h2 class="ph">Today’s ladder</h2><p class="ps">${goalLine()}</p>`+
+    (boardReady()?`<ol class="lb">`+rows.slice(0,6).map(row).join('')+(mine>=6?row(rows[mine],mine):'')+`</ol>`+
+      `<button type="button" id="btnDuel" class="go" data-act="duel">Watch today’s duel</button>`:'')+
+    `<button type="button" id="btnClose" class="quiet" data-act="closeboard">Back</button>`;
+}
+function duelBody(){
+  const who=i=>duel.you===i?'You':'House',t=[typeOf(duel.a),typeOf(duel.b)],c=[duel.a.color,duel.b.color];
+  return `<p class="stepn">Today’s duel · best of three</p>`+
+    `<h2 class="ph vsh"><span style="color:${c[0]}">${t[0]}</span><small>vs</small><span style="color:${c[1]}">${t[1]}</span></h2>`+
+    `<p class="score"><span>${who(0)}</span><b>${duel.score[0]} – ${duel.score[1]}</b><span>${who(1)}</span></p>`+
+    (duel.done?`<h2 class="ph" style="color:${c[duel.winner]}">${t[duel.winner]} wins today’s duel</h2>`+
+      `<button type="button" id="btnToBoard" class="go" data-act="board">Back to the ladder</button>`
+      :`<p class="ps">${summary(duel.a)}</p><p class="ps">${summary(duel.b)}</p>`);
 }
 function render(){
   const P=$('panel');
-  $('btnSpeed').hidden=mode!=='fight';
+  $('btnSpeed').hidden=!(mode==='fight'||mode==='duel');
+  $('btnBoard').hidden=!(mode==='make'||mode==='over');
   if(mode==='make')P.innerHTML=makeBody();
+  else if(mode==='board')P.innerHTML=boardBody();
+  else if(mode==='duel')P.innerHTML=duelBody();
   else if(mode==='fight'){
-    P.innerHTML=`<p class="ps"><b>You:</b> ${summary(run.build)}</p><p class="ps"><b>${esc(run.rival.name)}:</b> ${summary(run.rival)}</p>`;
+    P.innerHTML=`<p class="ps"><b>You, ${typeOf(run.build)}:</b> ${summary(run.build)}</p><p class="ps"><b>${typeOf(run.rival)}:</b> ${summary(run.rival)}</p>`;
   }else if(mode==='pick'){
     const have=id=>{let n=0;for(const x of run.build.ups)if(x===id)n++;return n};
-    P.innerHTML=head('Rung '+run.rung+' cleared','Pick an upgrade')+
+    P.innerHTML=head('Rung '+run.rung+' cleared · you are a '+typeOf(run.build),'Pick an upgrade')+
       choice.map(id=>card('up-'+id,'up',`data-key="${id}"`,UPGRADES[id].name,UPGRADES[id].text,null,have(id)?'you have '+have(id):'')).join('');
   }else{
     const cleared=run.rung-1;
-    P.innerHTML=`<h2 class="ph">${cleared?'You climbed '+cleared+' rung'+(cleared>1?'s':''):'Out on the first rung'}</h2>`+
-      `<p class="ps">${run.record?'New best. ':'Your best is '+best+'. '}Beaten by ${esc(run.rival.name)}${run.rival.ups.length?' ('+summary(run.rival)+')':''}.</p>`+
-      (run.build.ups.length?`<p class="ps"><b>Your build:</b> ${summary(run.build)}</p>`:'')+
+    P.innerHTML=`<h2 class="ph">${cleared?'Your '+typeOf(run.build)+' climbed '+cleared+' rung'+(cleared>1?'s':''):'Out on the first rung'}</h2>`+
+      `<p class="ps">${run.record?'New best. ':'Your best is '+best+'. '}Beaten by a ${typeOf(run.rival)}.</p>`+
+      `<p class="ps" id="goal">${goalLine()}</p>`+
       `<button type="button" id="btnAgain" class="go" data-act="start">Climb again</button>`+
       `<button type="button" id="btnNew" class="quiet" data-act="new">Make a different fighter</button>`;
   }
@@ -606,6 +714,9 @@ $('panel').addEventListener('click',e=>{
     if(mode!=='pick'||!choice.includes(b.dataset.key))return;
     addUpgrade(run.build,b.dataset.key);run.rung++;nextFight();
   }
+  else if(act==='duel')startDuel();
+  else if(act==='board'){mode='board';render()}
+  else if(act==='closeboard'){mode=backTo;render();if(mode==='make')practice()}
 });
 $('panel').addEventListener('input',e=>{
   // typing must not rebuild the panel, or the keyboard would close on every letter
@@ -615,9 +726,11 @@ $('panel').addEventListener('input',e=>{
   save();
 });
 document.addEventListener('contextmenu',e=>{if(!e.target.closest('input'))e.preventDefault()});
+$('btnBoard').addEventListener('click',()=>{if(mode!=='make'&&mode!=='over')return;backTo=mode;mode='board';render()});
 $('btnSpeed').addEventListener('click',()=>{speed=speed===1?2:speed===2?4:1;$('btnSpeed').textContent='Speed '+speed+'×';try{localStorage.setItem('brawl.speed',String(speed))}catch(e){}});
 $('btnSound').addEventListener('click',()=>{muted=!muted;$('btnSound').setAttribute('aria-pressed',String(!muted));if(!muted)audioOn()});
 
+board.date=today.date=dayKey();
 try{
   const v=parseInt(localStorage.getItem('brawl.best'),10);if(Number.isFinite(v)&&v>0)best=v;
   const sp=parseInt(localStorage.getItem('brawl.speed'),10);if([1,2,4].includes(sp)){speed=sp;$('btnSpeed').textContent='Speed '+speed+'×'}
@@ -626,6 +739,11 @@ try{
     me={key:s.key,str:s.str,size:s.size,name:cleanName(s.name),color:s.color|0,colorSet:!!s.colorSet};
     step=3;                                   // a returning player goes straight to their fighter
   }
+  const okEntry=x=>x&&FIGHTERS[x.key]&&[0,1,2].includes(x.str)&&[0,1,2].includes(x.size)&&Array.isArray(x.ups)&&x.ups.length<80&&Number.isInteger(x.cleared)&&x.cleared>=0;
+  const bd=JSON.parse(localStorage.getItem('brawl.board'));
+  if(bd&&bd.date===board.date&&Array.isArray(bd.bots)&&bd.bots.length===BOTS&&bd.bots.every(okEntry))board=bd;
+  const td=JSON.parse(localStorage.getItem('brawl.today'));
+  if(td&&td.date===today.date&&okEntry(td))today={date:td.date,cleared:td.cleared,key:td.key,str:td.str,size:td.size,name:cleanName(td.name),color:PALETTE.includes(td.color)?td.color:PALETTE[0],ups:td.ups};
 }catch(e){}
 if(!me.colorSet)me.color=ROSTER.indexOf(me.key);
 deck=shuffled(ROSTER);

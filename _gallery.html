@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ball Brawl art review</title>
+<!-- A review page, not part of the game: every fighter drawn large and in a fight, so their art can be checked at a glance.
+     _gallery.html?from=30&n=12 shows twelve fighters starting at the thirtieth; &sig=3 gives them their signature upgrade
+     three times; &t=6 runs each fight six seconds before drawing; &vs=blade picks the rival. -->
+<style>
+  body{margin:0;background:#11161b;color:#e9dfc6;font:13px/1.3 Georgia,serif}
+  #grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:6px}
+  .c{background:#1a2128;border:1px solid #3a3222;padding:4px;text-align:center}
+  .c b{display:block;color:#e6c66a;letter-spacing:.06em;font-size:12px;text-transform:uppercase}
+  .c small{display:block;color:#b9ad90;font-size:10px;min-height:2.4em}
+  canvas{display:block;width:100%;aspect-ratio:1;background:#000}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:3px}
+</style></head><body>
+<div id="grid"></div>
+<script>
+(async()=>{
+  const q=new URLSearchParams(location.search),from=+q.get('from')||0,n=+q.get('n')||12,sig=+q.get('sig')||0,T=q.get('t')===null?5:+q.get('t'),vs=q.get('vs')||'';
+  const html=await (await fetch('duel.html',{cache:'no-store'})).text();
+  let list=[...html.matchAll(/<script src="([^"?]+)[^"]*"><\/script>/g)].map(m=>m[1]).filter(f=>/^brawl-(sim|looks|pack\d*|boons\d*)\.js$/.test(f));
+  for(const f of (q.get('with')||'').split(',').filter(Boolean))if(!list.includes(f))list.push(f);
+  // one shared scope, as on the real page
+  let src='';for(const f of list)src+=await (await fetch(f+'?t='+Date.now(),{cache:'no-store'})).text()+'\n;\n';
+  const S=new Function(src+';return {FIGHTERS,ROSTER,makeBuild,addUpgrade,canTake,createMatch,drawArena,AW}')();
+  window.S=S;
+  const keys=S.ROSTER.slice(from,from+n),grid=document.getElementById('grid');
+  const fx={floats:[],sparks:[],rings:[],bolts:[]};
+  window.report=[];
+  keys.forEach((key,i)=>{
+    const F=S.FIGHTERS[key],card=document.createElement('div');card.className='c';
+    card.innerHTML='<b>'+(from+i)+' · '+F.name+'</b><div class="row"><canvas width="360" height="360"></canvas><canvas width="360" height="360"></canvas></div><small>'+F.desc+'</small>';
+    grid.appendChild(card);
+    const [close,wide]=card.querySelectorAll('canvas');
+    let err='';
+    try{
+      const a=S.makeBuild(key,-1,1),other=vs||S.ROSTER[(S.ROSTER.indexOf(key)*7+3)%30],b=S.makeBuild(other===key?'blade':other,-1,1);
+      for(let k=0;k<sig;k++)if(S.canTake(a,'sig'))S.addUpgrade(a,'sig');
+      const m=S.createMatch(a,b,1234+i);
+      for(let s=0;s<T*60&&!m.over;s++){m.step();m.events.length=0}
+      const f=m.f[0];
+      // close-up: the fighter fills the frame
+      let c=close.getContext('2d'),z=360/96;
+      c.setTransform(z,0,0,z,180-f.x*z,180-f.y*z);S.drawArena(c,m,-1,fx);
+      // the whole arena
+      c=wide.getContext('2d');z=360/S.AW;c.setTransform(z,0,0,z,0,0);S.drawArena(c,m,-1,fx);
+    }catch(e){err=String(e&&e.message||e);card.querySelector('small').textContent='ERROR '+err;card.style.borderColor='#f33'}
+    window.report.push({key,err});
+  });
+  document.title='gallery ready';
+})().catch(e=>{document.body.insertAdjacentHTML('afterbegin','<pre style="color:#f66">'+e+'</pre>');document.title='gallery failed'});
+</script></body></html>

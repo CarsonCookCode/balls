@@ -6,6 +6,7 @@ const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').mat
 const PALETTE=ROSTER.map(k=>FIGHTERS[k].color);
 const BOTS=14;           // house fighters on each day's ladder until real players fill it
 // mode: 'make' (three taps, then a name), 'fight', 'pick' (choose an upgrade), 'over', 'board' (today's ladder), 'duel'
+let browse=false;          // the fighter picker is showing every fighter instead of three
 let mode='make',step=0,me={key:'blade',str:-1,size:-1,name:'',color:0,colorSet:false},deck=[],deckAt=0;
 let myBest={date:'',f:{}};   // this player's best climb today with each class: {class: rungs}
 let run=null,match=null,you=-1,loud=false,choice=[],best=0,speed=1,muted=false,last=0,acc=0,overFor=0,shake=0;
@@ -401,16 +402,23 @@ function duelDone(){
 const head=(n,title)=>`<p class="stepn">${n}</p><h2 class="ph">${title}</h2>`;
 const card=(id,act,data,title,text,dot,tag)=>`<button type="button" class="card" id="${id}" data-act="${act}" ${data}>${dot?`<i style="background:${dot}"></i>`:''}<span><b>${title}${tag?`<em>${tag}</em>`:''}</b><small>${text}</small></span></button>`;
 function makeBody(){
+  if(step===0&&browse){
+    return head(ROSTER.length+' fighters','Choose your champion')+
+      `<div class="roster">`+ROSTER.map(k=>`<button type="button" class="pick" id="pk-${k}" data-act="weapon" data-key="${k}"><canvas width="${THUMB}" height="${THUMB}" data-thumb="${k}"></canvas><span>${FIGHTERS[k].name}</span></button>`).join('')+`</div>`+
+      `<button type="button" id="btnFew" class="quiet" data-act="few">Show three at a time</button>`;
+  }
   if(step===0){
     const offer=[0,1,2].map(i=>deck[(deckAt+i)%deck.length]);
     return head('Step 1 of 3 · '+ROSTER.length+' fighters','Choose your champion')+
       offer.map(k=>card('wp-'+k,'weapon',`data-key="${k}"`,FIGHTERS[k].name,FIGHTERS[k].desc,FIGHTERS[k].color)).join('')+
-      `<button type="button" id="btnOthers" class="quiet" data-act="others">Show three others</button>`;
+      `<button type="button" id="btnOthers" class="quiet" data-act="others">Show three others</button>`+
+      `<button type="button" id="btnAll" class="quiet" data-act="all">See all ${ROSTER.length} fighters</button>`;
   }
-  if(step===1)return head('Step 2 of 3','Pick a strength')+
+  const what=`<p class="ps what"><b>${FIGHTERS[me.key].name}.</b> ${FIGHTERS[me.key].desc}</p>`;
+  if(step===1)return head('Step 2 of 3','Pick a strength')+what+
     STRENGTHS.map((s,i)=>card('str-'+i,'str',`data-i="${i}"`,s.label,s.text)).join('')+
     `<button type="button" id="btnBack" class="quiet" data-act="back">Back</button>`;
-  if(step===2)return head('Step 3 of 3','Pick a size')+
+  if(step===2)return head('Step 3 of 3','Pick a size')+what+
     SIZES.map((s,i)=>card('size-'+i,'size',`data-i="${i}"`,s.label,s.text)).join('')+
     `<button type="button" id="btnBack" class="quiet" data-act="back">Back</button>`;
   return `<h2 class="ph">Name your ${typeOf(myBuild())}</h2>`+
@@ -448,7 +456,7 @@ function render(){
   if(B&&B.dataset)B.dataset.mode=mode;                 // the stylesheet gives the arena more room while a fight is on
   $('btnSpeed').hidden=!(mode==='fight'||mode==='duel');
   $('btnBoard').hidden=!(mode==='make'||mode==='over');
-  if(mode==='make')P.innerHTML=makeBody();
+  if(mode==='make'){P.innerHTML=makeBody();if(step===0&&browse)thumbsFill()}
   else if(mode==='board')P.innerHTML=boardBody();
   else if(mode==='duel')P.innerHTML=duelBody();
   else if(mode==='fight'){
@@ -466,6 +474,36 @@ function render(){
       `<button type="button" id="btnNew" class="quiet" data-act="new">Make a different fighter</button>`;
   }
 }
+// Small portraits for the grid of every fighter: each is drawn once, from a real fighter standing in the arena, and kept.
+const THUMB=132,thumbs={};
+let thumbBusy=false;
+function thumbMake(key){
+  const cv2=document.createElement('canvas');cv2.width=cv2.height=THUMB;
+  try{
+    const c=cv2.getContext('2d'),m=createMatch(makeBuild(key,-1,1),makeBuild(key,-1,1),7),f=m.f[0],z=THUMB/66;
+    f.x=80;f.y=AW/2;f.ang=-.6;f.label='';m.f[1].x=AW-40;m.f[1].y=30;
+    c.setTransform(z,0,0,z,THUMB/2-f.x*z,THUMB/2-(f.y+3)*z);
+    drawArena(c,m,-1,{floats:[],sparks:[],rings:[],bolts:[]});
+  }catch(e){}
+  return cv2;
+}
+function thumbsFill(){
+  if(thumbBusy)return;
+  thumbBusy=true;
+  const go=()=>{
+    const list=$('panel').querySelectorAll?$('panel').querySelectorAll('canvas[data-thumb]'):[];
+    let made=0,left=0;
+    for(const el of list){
+      const k=el.dataset.thumb;
+      if(el.dataset.done)continue;
+      if(!thumbs[k]){if(made>=6){left++;continue}thumbs[k]=thumbMake(k);made++}
+      try{el.getContext('2d').drawImage(thumbs[k],0,0)}catch(e){}
+      el.dataset.done='1';
+    }
+    if(left&&mode==='make'&&step===0&&browse)requestAnimationFrame(go);else thumbBusy=false;
+  };
+  go();
+}
 function save(){try{localStorage.setItem('brawl.fighter',JSON.stringify(me))}catch(e){}}
 $('panel').addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');
@@ -475,6 +513,8 @@ $('panel').addEventListener('click',e=>{
   if(act!=='start'&&act!=='up')log('tap',{a:act,m:mode,v:b.dataset.key||b.dataset.i||''});
   if(act==='weapon'){if(!FIGHTERS[b.dataset.key])return;me.key=b.dataset.key;if(!me.colorSet)me.color=ROSTER.indexOf(me.key);step=1;save();render();practice()}
   else if(act==='others'){deckAt=(deckAt+3)%deck.length;render()}
+  else if(act==='all'){browse=true;render()}
+  else if(act==='few'){browse=false;render()}
   else if(act==='str'){me.str=+b.dataset.i;step=2;save();render();practice()}
   else if(act==='size'){me.size=+b.dataset.i;step=3;save();render();practice()}
   else if(act==='back'){step=Math.max(0,step-1);render()}

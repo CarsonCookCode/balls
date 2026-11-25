@@ -130,3 +130,12 @@ body[data-mode="fight"] #panel,body[data-mode="duel"] #panel{max-height:32%;padd
 .foot>*{flex:1 1 0;min-height:38px;font-size:12px;padding:0 6px}
 #build{margin:0;font:500 10px/1 var(--display);letter-spacing:.18em;text-transform:uppercase;color:var(--gold-lo);text-align:center}
 @media (prefers-reduced-motion:reduce){.hp i{transition:none}button:active,.btn:active{transform:none}}
+
+/* the grid of every fighter */
+.roster{display:grid;grid-template-columns:repeat(4,1fr);gap:8px 4px;padding:2px 0 4px}
+button.pick{min-height:0;padding:0;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:0;box-shadow:none;text-shadow:none;color:var(--ink)}
+button.pick:active{transform:none;box-shadow:none;background:rgba(143,39,50,.12)}
+button.pick canvas{width:100%;max-width:78px;aspect-ratio:1;border-radius:50%;border:2px solid var(--gold-lo);box-shadow:0 2px 4px rgba(0,0,0,.35)}
+button.pick span{font:700 10.5px/1.1 var(--display);letter-spacing:.05em;text-transform:uppercase;text-align:center}
+.ps.what{font-style:normal}
+.ps.what b{font-family:var(--display);letter-spacing:.05em}

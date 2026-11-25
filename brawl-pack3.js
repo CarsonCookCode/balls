@@ -1,0 +1,664 @@
+// Third pack of fighter classes for Ball Brawl: creatures. Each class adds a row to FIGHTERS, a block to BEHAVE and its art to LOOKS.
+// The first half is pure simulation (it loads in Node with only brawl-sim.js before it); the second half is drawing and
+// only runs when the page asks for it. Every top-level name here starts with p3/P3 so it cannot clash with the other files.
+
+// ---------- simulation ----------
+// As in brawl-sim.js, dmg is each class's single damage dial and f.sig (0-3) is the level of its signature upgrade.
+FIGHTERS.duck    ={name:'Duck',    color:'#e3b23c',hp:100,speed:165,spin:0,dmg:11.8,   cd:.8, arms:[],desc:'Leads a line of ducklings that peck. Its quack shoves rivals away.',sig:['Bigger brood','One more duckling in the line'],sfx:{hit:'tick'}};
+FIGHTERS.cat     ={name:'Cat',     color:'#f0895a',hp:100,speed:175,spin:0,dmg:18.2,  cd:.5, arms:[],desc:'Crouches, then pounces. A blow that would finish it costs a spare life instead.',sig:['Nine lives','One more spare life, and it pounces sooner'],sfx:{hit:'slash'}};
+FIGHTERS.frog    ={name:'Frog',    color:'#6cc24a',hp:100,speed:170,spin:0,dmg:15.3,  cd:1.6,arms:[],desc:'Hops about, then snaps out its tongue and yanks the rival in for a bite.',sig:['Longer tongue','The tongue reaches further and is ready sooner'],sfx:{hit:'thump',shot:'loose'}};
+FIGHTERS.crab    ={name:'Crab',    color:'#e0563f',hp:100,speed:175,spin:0,dmg:9.19,  cd:.55,arms:[{a:-.5,l:15,head:7},{a:.5,l:15,head:7}],desc:'Scuttles in straight lines. Heavy pincers in front, a hard shell behind.',sig:['Bigger claws','Larger pincers that pinch harder'],sfx:{hit:'chop'}};
+FIGHTERS.bull    ={name:'Bull',    color:'#a5482f',hp:100,speed:160,spin:0,dmg:20.2,  cd:.5, arms:[],desc:'Charges whenever the rival is dead ahead. Hitting it only makes it angrier.',sig:['Sharper horns','Gores harder and shakes off a crash sooner'],sfx:{hit:'heavy'}};
+FIGHTERS.snail   ={name:'Snail',   color:'#b08a5a',hp:100,speed:115,spin:0,dmg:18.5,  cd:.45,arms:[],desc:'Slow, on a trail of slowing slime. Hit it and it becomes a spinning shell.',sig:['Harder shell','Spins for longer and hits harder'],sfx:{hit:'thump'}};
+FIGHTERS.moth    ={name:'Moth',    color:'#b9a6d9',hp:100,speed:185,spin:0,dmg:8.7,  cd:.6, arms:[],desc:'Flutters after its rival and sheds dust that makes their hits miss.',sig:['Thicker dust','The dust blinds for longer'],sfx:{hit:'soft'}};
+FIGHTERS.octopus ={name:'Octopus', color:'#d0679d',hp:100,speed:165,spin:3.4,dmg:11.65,cd:.3, arms:[{a:.7854,l:15},{a:2.3562,l:15},{a:3.927,l:15},{a:5.4978,l:15}],desc:'A whirl of short arms. Hit it and it hides in a cloud of ink.',sig:['More ink','A bigger cloud, more often, that hides it for longer'],sfx:{hit:'punch'}};
+FIGHTERS.penguin ={name:'Penguin', color:'#3b4a6b',hp:100,speed:150,spin:0,dmg:7.72,  cd:.5, arms:[],desc:'Slides faster with every wall it bounces off, and slams harder the faster it goes.',sig:['Waxed belly','Builds speed faster, to a higher top speed'],sfx:{hit:'thump'}};
+FIGHTERS.capybara={name:'Capybara',color:'#c08a4f',hp:100,speed:130,spin:0,dmg:18.74,  cd:1.2,arms:[],desc:'Unbothered. Everything near it slows down, and it shrugs off hits while it stays calm.',sig:['Hot spring','A wider calm that soothes: rivals inside it hit more softly'],sfx:{hit:'thump'}};
+ROSTER.push('duck','cat','frog','crab','bull','snail','moth','octopus','penguin','capybara');
+
+const p3clamp=(v,r)=>Math.min(AW-r,Math.max(r,v));
+// signed difference between two angles, in -PI..PI
+function p3turn(a,b){let d=(a-b)%6.2832;if(d>Math.PI)d-=6.2832;else if(d<-Math.PI)d+=6.2832;return d}
+function p3head(f,e,sp){const d=gap(e,f)||1;f.vx=(e.x-f.x)/d*sp;f.vy=(e.y-f.y)/d*sp}
+
+// Duck: ducklings walk the path the duck walked, a few steps apart, and peck whatever they touch. The quack is a shove.
+const P3_DUCK_GAP=7;       // simulation steps between one duckling and the next
+BEHAVE.duck={
+  init(f){f.s.path=[];f.s.kids=[];for(let k=0;k<3+f.sig;k++)f.s.kids.push({x:f.x,y:f.y,a:0,cd:0});f.s.q=2.2;f.s.quack=0},
+  tick(f,e,m,rage){
+    const D=FIGHTERS.duck,S=f.s,P=S.path,K=S.kids;
+    P.push(f.x,f.y);
+    if(P.length>2*P3_DUCK_GAP*(K.length+1))P.splice(0,2);
+    for(let k=0;k<K.length;k++){
+      const q=K[k],i=Math.max(0,P.length-2-2*P3_DUCK_GAP*(k+1)),dx=P[i]-q.x,dy=P[i+1]-q.y;
+      if(dx*dx+dy*dy>.05)q.a=Math.atan2(dy,dx);
+      q.x+=dx*.4;q.y+=dy*.4;
+      if(q.cd>0)q.cd-=DT;
+      else if(!e.gone&&Math.hypot(q.x-e.x,q.y-e.y)<e.r+5){q.cd=D.cd/f.spdMul;m.hurt(e,D.dmg*f.dmgMul*rage,f)}
+    }
+    if(S.quack>0)S.quack-=DT;
+    S.q-=DT;
+    if(S.q<=0&&!e.gone&&gap(e,f)<62+e.r){
+      S.q=3/f.spdMul;S.quack=.45;
+      m.events.push({k:'blast',x:f.x,y:f.y,r:62,i:f.i});m.events.push({k:'text',x:f.x,y:f.y-f.r,txt:'Quack!',i:f.i});
+      m.hurt(e,D.dmg*1.5*f.dmgMul*rage,f);m.knock(e,f);
+    }
+  }};
+
+// Cat: roam, crouch, pounce. Spare lives: a direct hit that would finish it is dodged instead, and it is out of reach for a moment.
+// (Poison and other damage that is not a hit can still finish it.)
+function p3life(f,src,m){
+  const S=f.s;
+  S.lives--;S.safe=.9;S.leap=0;S.crouch=0;f.gone=true;
+  if(f.hp<1)f.hp=1;
+  const d=gap(src,f)||1;f.vx=(f.x-src.x)/d*f.speed;f.vy=(f.y-src.y)/d*f.speed;
+  m.events.push({k:'burst',x:f.x,y:f.y,n:12,i:f.i});
+  m.events.push({k:'text',x:f.x,y:f.y-f.r,txt:S.lives?S.lives+(S.lives>1?' lives left':' life left'):'Last life',big:true,i:f.i});
+}
+BEHAVE.cat={
+  init(f){f.s.t=1.5;f.s.leap=0;f.s.crouch=0;f.s.lives=1+f.sig;f.s.safe=0},
+  tick(f,e,m){
+    const S=f.s;
+    if(S.safe>0){S.safe-=DT;if(S.safe<=0)f.gone=false}
+    if(S.leap>0){S.leap-=DT;return}
+    if(S.crouch>0){
+      S.crouch-=DT;
+      if(S.crouch<=0&&!e.gone){
+        S.leap=.42;f.cd=0;
+        const d=gap(e,f)||1,lead=d/(f.speed*3.1)*.5,tx=e.x+e.vx*lead-f.x,ty=e.y+e.vy*lead-f.y,l=Math.hypot(tx,ty)||1;
+        f.vx=tx/l*f.speed;f.vy=ty/l*f.speed;
+      }
+      return;
+    }
+    S.t-=DT;
+    if(S.t<=0&&!e.gone&&!f.gone){S.t=Math.max(1.1,2.3-.3*f.sig)/f.spdMul;S.crouch=.28}
+  },
+  fast:f=>f.s.crouch>0?.08:f.s.leap>0?3.1:1,
+  touch:f=>f.s.leap>0?FIGHTERS.cat.dmg:FIGHTERS.cat.dmg*.2,
+  dealt(f,v,dmg,m){if(f.s.leap>0){f.s.leap=0;m.knock(v,f)}},
+  guard(f,src,dmg,m){
+    if(f.s.lives>0&&dmg*f.armor>=f.hp){p3life(f,src,m);return 0}
+    return 1;
+  },
+  hurt(f,src,dmg,m){if(f.hp<=0&&f.s.lives>0)p3life(f,src,m)}};
+
+// Frog: sits, then leaps. While sitting it can shoot its tongue; a rival it touches is dragged in and bitten.
+BEHAVE.frog={
+  init(f){f.s.air=0;f.s.hop=.3;f.s.t=1.1;f.s.tongue=null;f.s.pull=0},
+  tick(f,e,m,rage){
+    const D=FIGHTERS.frog,S=f.s,T=S.tongue;
+    S.hop-=DT;
+    if(S.hop<=0){if(S.air){S.air=0;S.hop=.42/f.spdMul}else if(!T){S.air=1;S.hop=.3}}
+    if(S.pull>0){
+      S.pull-=DT;
+      const d=gap(e,f)||1,reach=f.r+e.r+2;
+      if(e.gone){S.pull=0;S.tongue=null;return}
+      if(d>reach){const st=Math.min(d-reach,470*DT);e.x=p3clamp(e.x+(f.x-e.x)/d*st,e.r);e.y=p3clamp(e.y+(f.y-e.y)/d*st,e.r)}
+      if(T){T.x=e.x;T.y=e.y}
+      if(d<=reach+3||S.pull<=0){
+        S.pull=0;S.tongue=null;
+        if(d<=reach+12){m.hurt(e,D.dmg*f.dmgMul*rage,f);e.slowT=Math.max(e.slowT,.7)}
+      }
+      return;
+    }
+    if(!T){
+      S.t-=DT;
+      const range=105+22*f.sig;
+      if(S.t<=0&&!S.air&&!e.gone&&gap(e,f)<range+e.r){
+        S.t=Math.max(.9,D.cd-.25*f.sig)/f.spdMul;
+        const d=gap(e,f)||1,lead=d/620*.6;
+        S.tongue={x:f.x,y:f.y,an:Math.atan2(e.y+e.vy*lead-f.y,e.x+e.vx*lead-f.x),out:1,range};
+        m.events.push({k:'shot',x:f.x,y:f.y,i:f.i});
+      }
+      return;
+    }
+    if(T.out){
+      T.x+=Math.cos(T.an)*620*DT;T.y+=Math.sin(T.an)*620*DT;
+      if(!e.gone&&Math.hypot(T.x-e.x,T.y-e.y)<e.r+5){T.out=0;S.pull=.7}
+      else if(Math.hypot(T.x-f.x,T.y-f.y)>T.range||T.x<0||T.x>AW||T.y<0||T.y>AW)T.out=0;
+    }else{
+      const d=Math.hypot(f.x-T.x,f.y-T.y)||1;
+      T.x+=(f.x-T.x)/d*Math.min(d,700*DT);T.y+=(f.y-T.y)/d*Math.min(d,700*DT);
+      if(d<f.r+10)S.tongue=null;
+    }
+  },
+  fast:f=>f.s.air?2.3:.12,
+  touch:f=>f.s.air?FIGHTERS.frog.dmg*.35:0};
+
+// Crab: it only ever travels along one axis at a time, switching every second or two. Its pincers turn (slowly) to face
+// the rival; hits that do not come from the front land on the shell.
+BEHAVE.crab={
+  init(f){
+    for(const o of f.arms)if(!o.extra){o.head+=1.6*f.sig;o.dmg*=1+.18*f.sig}
+    f.s.face=Math.atan2(AW/2-f.y,AW/2-f.x);f.s.ax=0;f.s.turn=.8;f.s.clang=0;f.ang=f.s.face;f.spin=0;      // the pincers face where it looks; they do not whirl
+  },
+  tick(f,e,m){
+    const S=f.s,rate=3*DT*f.spdMul;
+    S.face+=Math.max(-rate,Math.min(rate,p3turn(f.aim,S.face)));f.ang=S.face;
+    if(S.clang>0)S.clang-=DT;
+    S.turn-=DT;
+    if(S.turn<=0){
+      S.turn=(.8+m.rnd()*1.1)/f.spdMul;S.ax=1-S.ax;
+      if(S.ax){f.vx=0;f.vy=(e.y>f.y?1:-1)*f.speed}else{f.vy=0;f.vx=(e.x>f.x?1:-1)*f.speed}
+    }else if(S.ax){f.vy=(f.vy>=0?1:-1)*f.speed;f.vx=0}
+    else{f.vx=(f.vx>=0?1:-1)*f.speed;f.vy=0}
+  },
+  guard(f,src){
+    if(Math.abs(p3turn(Math.atan2(src.y-f.y,src.x-f.x),f.s.face))>1.1){f.s.clang=.18;return .55}
+    return 1;
+  },
+  dealt(f,v){v.slowT=Math.max(v.slowT,.5)}};          // a pinch holds on for a moment
+
+// Bull: no wind-up. The moment the rival is in front of where it is already heading, it charges (mode 2) and keeps going
+// until it gores or meets a wall (mode 3, dazed). Every hit it takes makes the next gore worse.
+BEHAVE.bull={
+  init(f){f.s.mode=0;f.s.t=.9;f.s.anger=0;f.s.gore=0},
+  tick(f,e,m){
+    const S=f.s;
+    S.t-=DT;
+    if(S.mode===0){
+      if(S.t<=0&&!e.gone&&Math.abs(p3turn(Math.atan2(f.vy,f.vx),f.aim))<.34){S.mode=2;S.t=1.5;f.cd=0;p3head(f,e,f.speed)}
+    }else if(S.t<=0){S.t=(S.mode===2?.5:.6)/f.spdMul;S.mode=0}
+  },
+  fast:f=>f.s.mode===2?2.9:f.s.mode===3?.03:1,
+  bounce(f,m,x,y){
+    if(f.s.mode!==2)return;
+    f.s.mode=3;f.s.t=Math.max(.35,.85-.15*f.sig);
+    m.events.push({k:'burst',x,y,n:12,i:f.i});
+  },
+  touch(f){
+    const D=FIGHTERS.bull,S=f.s;
+    if(S.mode===3)return 0;
+    if(S.mode!==2)return D.dmg*.15;
+    S.gore=1;return D.dmg*(1+.2*f.sig)*(1+.3*S.anger);
+  },
+  dealt(f,v,dmg,m){if(f.s.gore){f.s.gore=0;f.s.mode=0;f.s.t=.9/f.spdMul;f.s.anger=0;m.knock(v,f)}},
+  guard:f=>f.s.mode===3?1.3:1,                          // dazed against the wall, it is wide open
+  hurt(f){f.s.anger=Math.min(3,f.s.anger+1)}};
+
+// Snail: the trail slows the rival. A hit (or simply enough time) sends it into its shell: a few moments as a fast,
+// hard, ricocheting shell that is the only way it does real damage.
+function p3shell(f,e,m){
+  const S=f.s;
+  S.shell=1.3+.25*f.sig;S.auto=4.2;f.cd=0;
+  if(!e.gone)p3head(f,e,f.speed);
+  m.events.push({k:'burst',x:f.x,y:f.y,n:8,i:f.i});
+}
+BEHAVE.snail={
+  init(f){f.s.trail=[];f.s.acc=0;f.s.shell=0;f.s.cd=0;f.s.auto=3},
+  tick(f,e,m){
+    const S=f.s,T=S.trail;
+    S.acc+=DT;
+    if(S.acc>=.08&&S.shell<=0){S.acc=0;T.push({x:f.x,y:f.y,t:m.t})}
+    while(T.length&&m.t-T[0].t>4.5)T.shift();
+    if(!e.gone)for(const p of T)if(m.t-p.t>.2&&Math.hypot(e.x-p.x,e.y-p.y)<e.r+4){e.slowT=Math.max(e.slowT,.35);break}
+    if(S.cd>0)S.cd-=DT;
+    if(S.shell>0){S.shell-=DT;if(S.shell<=0)S.cd=2.2/f.spdMul}
+    else{S.auto-=DT;if(S.auto<=0&&S.cd<=0)p3shell(f,e,m)}
+  },
+  fast:f=>f.s.shell>0?3.4:1,
+  guard:f=>f.s.shell>0?.3:1,
+  hurt(f,src,dmg,m){if(f.s.shell<=0&&f.s.cd<=0&&f.hp>0)p3shell(f,src,m)},
+  touch:f=>f.s.shell>0?FIGHTERS.snail.dmg*(1+.15*f.sig):0,
+  dealt(f,v,dmg,m){if(f.s.shell>0)m.knock(v,f)}};
+
+// Moth: always steering at the rival, wobbling as it goes. A touch (not more than once every few seconds) dusts the
+// rival: for a moment every direct hit the rival tries to land on the moth misses.
+BEHAVE.moth={
+  init(f,m){f.s.ph=m.rnd()*6.2832;f.s.dust=0;f.s.cd=0;f.s.miss=0},
+  tick(f,e,m){
+    const S=f.s;
+    S.ph+=DT*11;
+    if(S.dust>0)S.dust-=DT;
+    if(S.cd>0)S.cd-=DT;
+    if(S.miss>0)S.miss-=DT;
+    if(!e.gone){
+      const d=gap(e,f)||1,ux=(e.x-f.x)/d,uy=(e.y-f.y)/d,w=Math.cos(S.ph)*1.15;
+      f.vx+=(ux-uy*w)*f.speed*5*DT;f.vy+=(uy+ux*w)*f.speed*5*DT;m.renorm(f);
+    }
+  },
+  touch:()=>FIGHTERS.moth.dmg,
+  dealt(f,v,dmg,m){
+    const S=f.s;
+    if(S.cd>0)return;
+    S.cd=3.6/f.spdMul;S.dust=1.1+.25*f.sig;
+    m.events.push({k:'burst',x:v.x,y:v.y,n:10,i:f.i});m.events.push({k:'text',x:v.x,y:v.y-v.r,txt:'Dusted',i:f.i});
+  },
+  guard(f,src,dmg,m){
+    if(f.s.dust<=0)return 1;
+    if(f.s.miss<=0){f.s.miss=.45;m.events.push({k:'text',x:f.x,y:f.y-f.r,txt:'Miss',i:f.i})}
+    return 0;
+  }};
+
+// Octopus: four whirling arms. A hit makes it squirt ink: it jets away inside a cloud that hides it (anything that
+// strikes from a distance misses, and close hits land weaker), and the blot it leaves behind slows the rival.
+BEHAVE.octopus={
+  init(f){f.s.ink=null;f.s.cd=1.2;f.s.jet=0;f.s.hid=0;f.s.hidMax=1},
+  tick(f,e){
+    const S=f.s,I=S.ink;
+    if(S.cd>0)S.cd-=DT;
+    if(S.jet>0)S.jet-=DT;
+    if(S.hid>0)S.hid-=DT;
+    if(I){
+      I.t+=DT;
+      if(I.t>I.life)S.ink=null;
+      else if(!e.gone&&Math.hypot(e.x-I.x,e.y-I.y)<I.r+e.r*.5)e.slowT=Math.max(e.slowT,.3);
+    }
+  },
+  hurt(f,src,dmg,m){
+    const S=f.s;
+    if(S.cd>0||f.hp<=0)return;
+    S.cd=Math.max(2.4,4.4-.6*f.sig)/f.spdMul;S.hidMax=S.hid=1.5+.5*f.sig;S.jet=.35;
+    S.ink={x:f.x,y:f.y,r:42+9*f.sig,t:0,life:2.6+.5*f.sig};
+    const d=gap(src,f)||1;f.vx=(f.x-src.x)/d*f.speed;f.vy=(f.y-src.y)/d*f.speed;
+    m.events.push({k:'fade',x:f.x,y:f.y,i:f.i});
+  },
+  fast:f=>f.s.jet>0?2.2:1,
+  guard(f,src){
+    if(f.s.hid<=0)return 1;
+    return gap(src,f)>src.r+f.r+34?0:.6;
+  }};
+
+// Penguin: every wall adds speed, and the slam scales with it. Landing the slam spends all of it.
+BEHAVE.penguin={
+  init(f){f.s.n=0;f.s.slam=0},
+  bounce(f,m){
+    const S=f.s;
+    S.n=Math.min(5+f.sig,S.n+1+.34*f.sig);
+    f.speed=f.base*(1+.16*S.n);m.renorm(f);
+  },
+  touch(f){f.s.slam=1;return FIGHTERS.penguin.dmg*(1+.45*f.s.n)},
+  dealt(f,v,dmg,m){
+    const S=f.s;
+    if(!S.slam)return;
+    S.slam=0;
+    if(S.n>0){m.knock(v,f);S.n=0;f.speed=f.base;m.renorm(f)}
+  }};
+
+// Capybara: the rival, its shots and its minions all slow down inside the calm. While it has not attacked for a couple
+// of seconds it takes much less from hits. Its signature widens the calm, softens the hits of a rival standing in it,
+// and lets it mend a little while calm. Its own attack is a slow headbutt.
+BEHAVE.capybara={
+  init(f){f.s.busy=0;f.s.r=78+14*f.sig},
+  tick(f,e,m){
+    const S=f.s,R=S.r;
+    if(S.busy>0)S.busy-=DT;
+    if(!e.gone&&gap(e,f)<R+e.r)e.slowT=Math.max(e.slowT,.15);
+    for(const q of m.bullets)if(q.own!==f.i){
+      const near=Math.hypot(q.x-f.x,q.y-f.y)<R;
+      if(near&&!q.p3c){q.p3c=1;q.vx*=.4;q.vy*=.4}else if(!near&&q.p3c){q.p3c=0;q.vx*=2.5;q.vy*=2.5}
+    }
+    for(const q of m.minions)if(q.own!==f.i){
+      const near=Math.hypot(q.x-f.x,q.y-f.y)<R+q.r;
+      if(near&&!q.p3c){q.p3c=q.sp;q.sp*=.45}else if(!near&&q.p3c){q.sp=q.p3c;q.p3c=0}else continue;
+      const sp=Math.hypot(q.vx,q.vy)||1;q.vx*=q.sp/sp;q.vy*=q.sp/sp;
+    }
+    if(S.busy<=0&&f.sig&&f.hp>0)f.hp=Math.min(f.max,f.hp+f.max*.008*f.sig*DT);
+  },
+  touch:()=>FIGHTERS.capybara.dmg,
+  dealt(f,v,dmg,m){f.s.busy=2;m.knock(v,f)},
+  guard(f,src){return (f.s.busy>0?1:.68)*(f.sig&&gap(src,f)<f.s.r+src.r?1-.12*f.sig:1)}};
+
+// ---------- art ----------
+// "Gilded": every fighter is a medallion drawn by the shared drawFighter in brawl-looks.js. These blocks add each class's
+// crest (origin at the medallion centre, enamel field at radius 1) and whatever else makes it its own. All of it draws
+// with g, the current context, in arena units.
+const P3={
+  GOLD:typeof GOLD!=='undefined'?GOLD:'#c9a45c',GOLD_HI:typeof GOLD_HI!=='undefined'?GOLD_HI:'#f0dca4',
+  IVORY:typeof IVORY!=='undefined'?IVORY:'#f3ead6',EDGE:typeof EDGE!=='undefined'?EDGE:'#090b0d',
+  BEAK:'#f0a23a',       // beaks, feet and the capybara's orange
+  DOWN:'#f4d35e',       // duckling yellow
+  TONGUE:'#e86a8a',
+};
+const P3_TAU=6.2832;
+const p3now=()=>typeof NOW!=='undefined'?NOW:0;
+const p3disc=(x,y,r)=>{g.beginPath();g.arc(x,y,Math.max(0,r),0,P3_TAU)};
+function p3tone(hex,k){
+  const m=/^#([0-9a-f]{6})$/i.exec(hex);if(!m)return hex;
+  const n=parseInt(m[1],16),f=v=>Math.round(k>=0?v+(255-v)*k:v*(1+k));
+  return 'rgb('+f(n>>16)+','+f((n>>8)&255)+','+f(n&255)+')';
+}
+function p3glow(x,y,r,rgb,a){
+  if(!(r>0))return;
+  const q=g.createRadialGradient(x,y,0,x,y,r);q.addColorStop(0,'rgba('+rgb+','+a+')');q.addColorStop(1,'rgba('+rgb+',0)');
+  g.fillStyle=q;p3disc(x,y,r);g.fill();
+}
+// stroke the current path as a solid rod: dark edge underneath, the material on top
+function p3rod(col,w){g.lineCap='round';g.lineJoin='round';g.strokeStyle=P3.EDGE;g.lineWidth=w+1.6;g.stroke();g.strokeStyle=col;g.lineWidth=w;g.stroke()}
+// fill the current path and give it the thin dark edge everything solid has
+function p3solid(col){g.fillStyle=col;g.fill();g.strokeStyle=P3.EDGE;g.lineWidth=.9;g.lineJoin='round';g.stroke()}
+const p3col=f=>f.col||FIGHTERS[f.key].color;
+function p3star(x,y,r,col){
+  g.beginPath();for(let k=0;k<8;k++){const a=k/8*P3_TAU-1.5708,q=k%2?r*.38:r;g.lineTo(x+Math.cos(a)*q,y+Math.sin(a)*q)}
+  g.closePath();g.fillStyle=col;g.fill();
+}
+// a duckling walking along angle a
+function p3duckling(x,y,a,peck){
+  const c=Math.cos(a),s=Math.sin(a),hx=x+c*(4+peck*2),hy=y+s*(4+peck*2);
+  g.fillStyle='rgba(0,0,0,.35)';g.beginPath();g.ellipse(x+.4,y+1.6,4.6,3.8,0,0,P3_TAU);g.fill();
+  p3disc(x,y,4.3);p3solid(P3.DOWN);
+  g.beginPath();g.moveTo(hx+c*4.6,hy+s*4.6);g.lineTo(hx+c*1.6-s*1.7,hy+s*1.6+c*1.7);g.lineTo(hx+c*1.6+s*1.7,hy+s*1.6-c*1.7);g.closePath();p3solid(P3.BEAK);
+  p3disc(hx,hy,2.7);p3solid('#f8e08a');
+  g.fillStyle=P3.EDGE;p3disc(hx+c*.8-s*1.1,hy+s*.8+c*1.1,.55);g.fill();p3disc(hx+c*.8+s*1.1,hy+s*.8-c*1.1,.55);g.fill();
+}
+
+LOOKS.duck={
+  crest(fg,bg){                                           // the duck from the style sheet
+    g.fillStyle=fg;
+    g.beginPath();g.ellipse(-.06,.22,.5,.32,0,0,P3_TAU);g.fill();
+    g.beginPath();g.moveTo(-.5,.1);g.lineTo(-.72,-.1);g.lineTo(-.38,0);g.closePath();g.fill();
+    g.beginPath();g.arc(.26,-.24,.27,0,P3_TAU);g.fill();
+    g.fillStyle=P3.BEAK;g.beginPath();g.moveTo(.46,-.3);g.lineTo(.8,-.2);g.lineTo(.46,-.1);g.closePath();g.fill();
+    g.fillStyle=bg;g.beginPath();g.arc(.32,-.3,.05,0,P3_TAU);g.fill();
+    g.strokeStyle=bg;g.lineWidth=.05;g.lineCap='round';g.beginPath();g.moveTo(-.28,.2);g.quadraticCurveTo(-.05,.36,.2,.2);g.stroke();
+  },
+  back(f){                                                // the brood, last in line first
+    const K=f.s.kids,cd=FIGHTERS.duck.cd/f.spdMul;
+    for(let k=K.length-1;k>=0;k--){const q=K[k];p3duckling(q.x,q.y,q.a,q.cd>cd*.7?1:0)}
+  },
+  over(f){                                                // the quack, as three arcs leaving its bill
+    if(!(f.s.quack>0))return;
+    const p=1-f.s.quack/.45,a=f.aim;
+    g.lineCap='round';g.strokeStyle='rgba(243,234,214,'+(.9*(1-p)).toFixed(3)+')';g.lineWidth=1.6;
+    for(let k=0;k<3;k++){g.beginPath();g.arc(f.x,f.y,f.r+6+k*7+p*14,a-.55,a+.55);g.stroke()}
+  }};
+
+LOOKS.cat={
+  crest(fg,bg){                                           // a cat's face
+    g.lineJoin='round';g.lineCap='round';g.fillStyle=fg;
+    for(const s of [-1,1]){g.beginPath();g.moveTo(s*.52,-.7);g.lineTo(s*.56,-.08);g.lineTo(s*.1,-.34);g.closePath();g.fill()}
+    g.beginPath();g.ellipse(0,.1,.58,.48,0,0,P3_TAU);g.fill();
+    g.fillStyle=bg;
+    for(const s of [-1,1]){g.beginPath();g.ellipse(s*.24,.02,.07,.15,s*.25,0,P3_TAU);g.fill()}
+    g.beginPath();g.moveTo(-.07,.22);g.lineTo(.07,.22);g.lineTo(0,.31);g.closePath();g.fill();
+    g.strokeStyle=fg;g.lineWidth=.04;g.beginPath();
+    for(const s of [-1,1]){g.moveTo(s*.5,.2);g.lineTo(s*.86,.1);g.moveTo(s*.5,.3);g.lineTo(s*.86,.36)}
+    g.stroke();
+  },
+  back(f){
+    const S=f.s,sp=Math.hypot(f.vx,f.vy)||1,ux=f.vx/sp,uy=f.vy/sp,r=f.r,a=Math.atan2(-uy,-ux),sw=Math.sin(p3now()*5+f.i)*.55;
+    if(S.leap>0){                                         // mid-pounce: three thin streaks behind it
+      g.strokeStyle='rgba(243,234,214,.5)';g.lineWidth=1.1;g.lineCap='round';g.beginPath();
+      for(let k=-1;k<=1;k++){const ox=-uy*k*r*.6,oy=ux*k*r*.6;g.moveTo(f.x+ox-ux*(r+3),f.y+oy-uy*(r+3));g.lineTo(f.x+ox-ux*(r+26-Math.abs(k)*8),f.y+oy-uy*(r+26-Math.abs(k)*8))}
+      g.stroke();
+    }
+    g.beginPath();g.moveTo(f.x+Math.cos(a)*(r-1),f.y+Math.sin(a)*(r-1));    // the tail, swishing
+    g.quadraticCurveTo(f.x+Math.cos(a+sw*.4)*(r+9),f.y+Math.sin(a+sw*.4)*(r+9),f.x+Math.cos(a+sw)*(r+15),f.y+Math.sin(a+sw)*(r+15));
+    p3rod(p3tone(p3col(f),-.15),2.8);
+  },
+  over(f){                                                // spare lives, as gold studs on the left of the rim
+    const n=f.s.lives|0;
+    for(let k=0;k<n;k++){const a=2.55+k*.3;p3disc(f.x+Math.cos(a)*(f.r+3.5),f.y+Math.sin(a)*(f.r+3.5),1.7);p3solid(P3.GOLD_HI)}
+    if(f.s.crouch>0){                                     // crouched: its haunches tremble
+      const w=Math.sin(f.s.crouch*50)*1.3;
+      g.strokeStyle='rgba(240,220,164,.75)';g.lineWidth=1.1;g.lineCap='round';
+      g.beginPath();g.arc(f.x+w,f.y,f.r+5,.6,2.5);g.stroke();
+    }
+  }};
+
+LOOKS.frog={
+  crest(fg,bg){                                           // a frog, seen from the front
+    g.lineCap='round';g.fillStyle=fg;
+    g.beginPath();g.ellipse(0,.2,.64,.42,0,0,P3_TAU);g.fill();
+    for(const s of [-1,1]){g.beginPath();g.arc(s*.34,-.3,.23,0,P3_TAU);g.fill()}
+    g.fillStyle=bg;for(const s of [-1,1]){g.beginPath();g.arc(s*.34,-.32,.1,0,P3_TAU);g.fill()}
+    g.strokeStyle=bg;g.lineWidth=.055;g.beginPath();g.moveTo(-.42,.2);g.quadraticCurveTo(0,.44,.42,.2);g.stroke();
+    g.beginPath();g.arc(-.08,.02,.025,0,P3_TAU);g.arc(.08,.02,.025,0,P3_TAU);g.fill();
+  },
+  back(f){                                                // hind legs: folded while it sits, flung out in a leap
+    const a=Math.atan2(f.vy,f.vx)+Math.PI,air=f.s.air?1:0,col=p3tone(p3col(f),-.2);
+    for(const s of [-1,1]){
+      const an=a+s*.8,d=f.r+1+air*6;
+      g.beginPath();g.ellipse(f.x+Math.cos(an)*d,f.y+Math.sin(an)*d,5+air*4,3.2,an,0,P3_TAU);p3solid(col);
+    }
+  },
+  over(f){                                                // the tongue
+    const T=f.s.tongue;
+    if(!T)return;
+    const dx=T.x-f.x,dy=T.y-f.y,d=Math.hypot(dx,dy)||1;
+    if(d>f.r){g.beginPath();g.moveTo(f.x+dx/d*f.r,f.y+dy/d*f.r);g.lineTo(T.x,T.y);p3rod(P3.TONGUE,2.2)}
+    p3disc(T.x,T.y,3.3);p3solid(P3.TONGUE);
+  }};
+
+LOOKS.crab={
+  crest(fg,bg){                                           // a crab, claws raised
+    g.lineCap='round';g.lineJoin='round';g.fillStyle=fg;g.strokeStyle=fg;
+    g.beginPath();g.ellipse(0,.16,.5,.32,0,0,P3_TAU);g.fill();
+    g.lineWidth=.09;g.beginPath();
+    for(const s of [-1,1]){
+      g.moveTo(s*.4,.02);g.lineTo(s*.62,-.3);                              // arms
+      for(let k=0;k<3;k++){g.moveTo(s*(.38-k*.12),.36+k*.04);g.lineTo(s*(.66-k*.14),.58+k*.05)}   // legs
+      g.moveTo(s*.14,-.1);g.lineTo(s*.14,-.3);                             // eye stalks
+    }
+    g.stroke();
+    for(const s of [-1,1]){
+      g.beginPath();g.arc(s*.6,-.46,.2,0,P3_TAU);g.fill();
+      g.beginPath();g.arc(s*.14,-.34,.06,0,P3_TAU);g.fill();
+    }
+    g.fillStyle=bg;for(const s of [-1,1]){g.beginPath();g.moveTo(s*.6,-.44);g.lineTo(s*.5,-.72);g.lineTo(s*.72,-.7);g.closePath();g.fill()}
+  },
+  arm(f,A,x1,y1,x2,y2,an){                                // a pincer: it snaps shut just after a pinch
+    const col=p3tone(p3col(f),-.12),h=Math.max(3,A.head),open=f.cd>0?.1:.42;
+    g.beginPath();g.moveTo(x1,y1);g.lineTo(x2,y2);p3rod(col,3.2);
+    p3disc(x2,y2,h);p3solid(col);
+    g.beginPath();g.moveTo(x2-Math.cos(an)*h*.2,y2-Math.sin(an)*h*.2);
+    g.lineTo(x2+Math.cos(an-open)*h*1.08,y2+Math.sin(an-open)*h*1.08);g.lineTo(x2+Math.cos(an+open)*h*1.08,y2+Math.sin(an+open)*h*1.08);
+    g.closePath();g.fillStyle='#1a0d0a';g.fill();
+    g.fillStyle='rgba(255,255,255,.35)';p3disc(x2-Math.sin(an)*h*.45,y2+Math.cos(an)*h*.45,h*.18);g.fill();
+  },
+  back(f){                                                // legs down both flanks, and the shell flashing when it takes a hit
+    const a=f.s.face,r=f.r,col=p3tone(p3col(f),-.3),t=p3now();
+    for(const s of [-1,1])for(let k=0;k<3;k++){
+      const an=a+s*(1.35+k*.42),l=6+Math.sin(t*18+k*2+s)*1.4;
+      g.beginPath();g.moveTo(f.x+Math.cos(an)*(r-1),f.y+Math.sin(an)*(r-1));
+      g.lineTo(f.x+Math.cos(an)*(r+l),f.y+Math.sin(an)*(r+l));g.lineTo(f.x+Math.cos(an+s*.35)*(r+l+4),f.y+Math.sin(an+s*.35)*(r+l+4));
+      p3rod(col,1.5);
+    }
+    if(f.s.clang>0){g.strokeStyle='rgba(255,255,255,.8)';g.lineWidth=2;g.lineCap='round';g.beginPath();g.arc(f.x,f.y,r+2.5,a+1.1,a+5.18);g.stroke()}
+  }};
+
+LOOKS.bull={
+  crest(fg){                                              // horns over a ring: the sign of the bull
+    g.lineCap='round';g.strokeStyle=fg;g.lineWidth=.17;
+    g.beginPath();g.arc(0,.3,.3,0,P3_TAU);g.stroke();
+    g.beginPath();g.moveTo(-.6,-.62);g.quadraticCurveTo(-.5,-.02,0,0);g.quadraticCurveTo(.5,-.02,.6,-.62);g.stroke();
+  },
+  back(f){
+    const S=f.s,sp=Math.hypot(f.vx,f.vy)||1,ux=f.vx/sp,uy=f.vy/sp,r=f.r,a=Math.atan2(uy,ux),x=f.x,y=f.y;
+    if(S.mode===2){                                       // charging: chevrons of dust behind it
+      g.strokeStyle='rgba(222,206,172,.55)';g.lineWidth=1.6;g.lineCap='round';g.lineJoin='round';
+      for(let k=1;k<=3;k++){
+        const d=r+4+k*8,w=r*(.9-k*.18);
+        g.globalAlpha=1-k*.25;g.beginPath();g.moveTo(x-ux*(d+5)-uy*w,y-uy*(d+5)+ux*w);g.lineTo(x-ux*d,y-uy*d);g.lineTo(x-ux*(d+5)+uy*w,y-uy*(d+5)-ux*w);g.stroke();
+      }
+      g.globalAlpha=1;
+    }
+    for(const s of [-1,1]){                               // the horns, on the side it is heading
+      const P=(an,rad)=>[x+Math.cos(a+s*an)*rad,y+Math.sin(a+s*an)*rad],b1=P(.82,r-1),c1=P(.95,r+11),tip=P(.22,r+12),c2=P(.5,r+5),b2=P(.42,r-1);
+      g.beginPath();g.moveTo(b1[0],b1[1]);g.quadraticCurveTo(c1[0],c1[1],tip[0],tip[1]);g.quadraticCurveTo(c2[0],c2[1],b2[0],b2[1]);g.closePath();p3solid(P3.IVORY);
+    }
+  },
+  over(f){
+    const S=f.s,r=f.r;
+    if(S.mode===3){for(let k=0;k<3;k++){const a=S.t*9+k*2.094;p3star(f.x+Math.cos(a)*r*.75,f.y-r-7+Math.sin(a)*3.5,3.4,P3.GOLD_HI)}}
+    g.lineCap='round';g.strokeStyle='#e8493a';g.lineWidth=1.8;      // anger: red marks along the top of the rim
+    for(let k=0;k<S.anger;k++){const a=-2.4+k*.5;g.beginPath();g.arc(f.x,f.y,r+3.4,a,a+.32);g.stroke()}
+  }};
+
+LOOKS.snail={
+  crest(fg,bg){                                           // a snail
+    g.lineCap='round';g.lineJoin='round';g.fillStyle=fg;g.strokeStyle=fg;
+    g.beginPath();g.ellipse(-.02,.5,.66,.12,0,0,P3_TAU);g.fill();
+    g.lineWidth=.2;g.beginPath();g.moveTo(-.4,.46);g.quadraticCurveTo(-.6,.36,-.56,.06);g.stroke();
+    g.lineWidth=.05;g.beginPath();g.moveTo(-.6,0);g.lineTo(-.72,-.3);g.moveTo(-.52,0);g.lineTo(-.44,-.32);g.stroke();
+    g.beginPath();g.arc(-.72,-.32,.055,0,P3_TAU);g.fill();g.beginPath();g.arc(-.44,-.34,.055,0,P3_TAU);g.fill();
+    g.beginPath();g.arc(.14,.04,.43,0,P3_TAU);g.fill();
+    g.strokeStyle=bg;g.lineWidth=.06;
+    g.beginPath();g.arc(.14,.04,.27,.6,5.4);g.stroke();
+    g.beginPath();g.arc(.17,.06,.12,2.2,7.2);g.stroke();
+  },
+  under(f){                                               // slime
+    const T=f.s.trail,t=typeof MATCH!=='undefined'&&MATCH?MATCH.t:p3now();
+    if(T.length<2)return;
+    g.lineCap='round';g.lineJoin='round';
+    for(let pass=0;pass<2;pass++){
+      g.strokeStyle=pass?'rgba(226,246,190,.3)':'rgba(170,214,130,.2)';g.lineWidth=pass?3:8.5;
+      g.beginPath();
+      for(let i=0;i<T.length;i++){const p=T[i],q=T[i-1];if(!i||Math.hypot(p.x-q.x,p.y-q.y)>14)g.moveTo(p.x,p.y);else g.lineTo(p.x,p.y)}
+      g.stroke();
+    }
+    const p=T[0],age=Math.max(0,Math.min(1,(t-p.t)/4.5));
+    g.fillStyle='rgba(226,246,190,'+(.3*(1-age)).toFixed(3)+')';p3disc(p.x,p.y,2.2);g.fill();
+  },
+  back(f){
+    const r=f.r,a=Math.atan2(f.vy,f.vx);
+    if(f.s.shell>0){                                      // spinning: arcs whipping round it
+      const ph=p3now()*24;
+      g.lineCap='round';g.strokeStyle='rgba(243,234,214,.65)';g.lineWidth=1.5;
+      for(let k=0;k<3;k++){g.beginPath();g.arc(f.x,f.y,r+3.5,ph+k*2.094,ph+k*2.094+1.1);g.stroke()}
+      return;
+    }
+    for(const s of [-1,1]){                               // eye stalks, out in front
+      const bx=f.x+Math.cos(a+s*.3)*(r-1),by=f.y+Math.sin(a+s*.3)*(r-1),tx=f.x+Math.cos(a+s*.36)*(r+7),ty=f.y+Math.sin(a+s*.36)*(r+7);
+      g.beginPath();g.moveTo(bx,by);g.lineTo(tx,ty);p3rod(p3tone(p3col(f),.25),1.5);
+      p3disc(tx,ty,2);p3solid(P3.IVORY);g.fillStyle=P3.EDGE;p3disc(tx+Math.cos(a)*.6,ty+Math.sin(a)*.6,.8);g.fill();
+    }
+  },
+  over(f){                                                // withdrawn: the shell's lip closes over the rim
+    if(!(f.s.shell>0))return;
+    const ph=p3now()*24;
+    g.strokeStyle='rgba(226,200,150,.9)';g.lineWidth=2.2;p3disc(f.x,f.y,f.r*.93);g.stroke();
+    g.lineCap='round';g.strokeStyle='rgba(60,40,20,.55)';g.lineWidth=1.3;
+    for(let k=0;k<2;k++){g.beginPath();g.arc(f.x,f.y,f.r*.55,ph+k*3.1416,ph+k*3.1416+1.6);g.stroke()}
+  }};
+
+LOOKS.moth={
+  crest(fg,bg){                                           // a moth, wings spread
+    g.lineJoin='round';g.lineCap='round';g.fillStyle=fg;
+    for(const s of [-1,1]){
+      g.beginPath();g.moveTo(0,-.12);g.quadraticCurveTo(s*.5,-.8,s*.76,-.4);g.quadraticCurveTo(s*.62,0,0,.08);g.closePath();g.fill();
+      g.beginPath();g.moveTo(0,.06);g.quadraticCurveTo(s*.64,.1,s*.5,.58);g.quadraticCurveTo(s*.2,.52,0,.24);g.closePath();g.fill();
+    }
+    g.fillStyle=bg;
+    for(const s of [-1,1]){g.beginPath();g.arc(s*.44,-.34,.1,0,P3_TAU);g.fill();g.beginPath();g.arc(s*.34,.32,.06,0,P3_TAU);g.fill()}
+    g.beginPath();g.ellipse(0,.06,.12,.44,0,0,P3_TAU);g.fill();
+    g.fillStyle=fg;g.beginPath();g.ellipse(0,.06,.065,.39,0,0,P3_TAU);g.fill();
+    g.strokeStyle=fg;g.lineWidth=.04;g.beginPath();g.moveTo(-.03,-.32);g.quadraticCurveTo(-.1,-.56,-.26,-.7);g.moveTo(.03,-.32);g.quadraticCurveTo(.1,-.56,.26,-.7);g.stroke();
+  },
+  back(f){                                                // wings beating either side of its path
+    const a=Math.atan2(f.vy,f.vx),r=f.r,flap=.5+.5*Math.abs(Math.sin(f.s.ph*1.7)),col=p3col(f);
+    for(const s of [-1,1]){
+      const P=(an,rad)=>[f.x+Math.cos(a+s*an)*rad,f.y+Math.sin(a+s*an)*rad],p1=P(1.1,r-2),c=P(1.85,r+10+16*flap),p2=P(2.6,r-2),eye=P(1.85,r+3+5*flap);
+      g.beginPath();g.moveTo(p1[0],p1[1]);g.quadraticCurveTo(c[0],c[1],p2[0],p2[1]);g.closePath();
+      g.fillStyle='rgba(236,226,250,.6)';g.fill();g.strokeStyle='rgba(9,11,13,.6)';g.lineWidth=.7;g.lineJoin='round';g.stroke();
+      p3disc(eye[0],eye[1],1.8);g.fillStyle=p3tone(col,-.35);g.fill();
+    }
+  },
+  over(f,m){                                              // dust hanging round the rival it has blinded
+    if(!(f.s.dust>0)||!m)return;
+    const e=m.f[1-f.i],t=p3now();
+    if(!e||e.hp<=0)return;
+    g.fillStyle='rgba(244,230,170,.9)';
+    for(let k=0;k<9;k++){const a=k*.7+t*2.6,rr=e.r+2+(k*37%8);p3disc(e.x+Math.cos(a)*rr,e.y+Math.sin(a)*rr*.85-(t*9+k*3)%5,1.1+(k%3)*.35);g.fill()}
+    g.strokeStyle='rgba(244,230,170,.5)';g.lineWidth=.9;g.setLineDash([1.5,3.5]);p3disc(e.x,e.y,e.r+4.5);g.stroke();g.setLineDash([]);
+  }};
+
+LOOKS.octopus={
+  crest(fg,bg){                                           // an octopus
+    g.lineCap='round';g.lineJoin='round';g.fillStyle=fg;g.strokeStyle=fg;
+    g.beginPath();g.ellipse(0,-.2,.46,.44,0,0,P3_TAU);g.fill();
+    g.lineWidth=.12;g.beginPath();
+    for(let k=-2;k<=2;k++){g.moveTo(k*.17,.12);g.quadraticCurveTo(k*.3-.12,.42,k*.34,.56);g.quadraticCurveTo(k*.36+.1,.7,k*.36+.16,.56)}
+    g.stroke();
+    g.fillStyle=bg;for(const s of [-1,1]){g.beginPath();g.ellipse(s*.18,-.14,.07,.11,0,0,P3_TAU);g.fill()}
+  },
+  arm(f,A,x1,y1,x2,y2,an){                                // a tentacle, curling as it whirls
+    const col=p3tone(p3col(f),-.1),w=Math.sin(p3now()*7+A.a*2)*5,mx=(x1+x2)/2-Math.sin(an)*w,my=(y1+y2)/2+Math.cos(an)*w;
+    g.beginPath();g.moveTo(x1,y1);g.quadraticCurveTo(mx,my,x2,y2);p3rod(col,3.8);
+    p3disc(x2,y2,2.3);p3solid(p3tone(p3col(f),.3));
+    g.fillStyle='rgba(243,234,214,.8)';p3disc((x1+mx)/2,(y1+my)/2,.8);g.fill();p3disc((x2+mx)/2,(y2+my)/2,.8);g.fill();
+  },
+  under(f){                                               // the blot it left on the floor
+    const I=f.s.ink;
+    if(!I)return;
+    const p=Math.max(0,1-I.t/I.life),a=Math.min(1,p*2.2);
+    p3glow(I.x,I.y,I.r*1.15,'10,9,22',.85*a);
+    g.fillStyle='rgba(10,9,22,'+(.5*a).toFixed(3)+')';
+    for(let k=0;k<6;k++){const an=k*1.047+I.x*.1;p3disc(I.x+Math.cos(an)*I.r*.5,I.y+Math.sin(an)*I.r*.5,I.r*.3);g.fill()}
+  },
+  over(f){                                                // the ink it is hiding in
+    const S=f.s;
+    if(!(S.hid>0))return;
+    const a=Math.min(1,S.hid/(S.hidMax||1)*1.6),t=p3now();
+    for(let k=0;k<6;k++){const an=k*1.047+t*1.3;p3glow(f.x+Math.cos(an)*f.r*.7,f.y+Math.sin(an)*f.r*.7,f.r*.95,'12,10,26',.6*a)}
+  }};
+
+LOOKS.penguin={
+  crest(fg,bg){                                           // a penguin
+    g.lineJoin='round';g.fillStyle=fg;
+    for(const s of [-1,1]){g.beginPath();g.ellipse(s*.5,.12,.1,.34,-s*.3,0,P3_TAU);g.fill()}
+    g.beginPath();g.ellipse(0,.04,.42,.62,0,0,P3_TAU);g.fill();
+    g.fillStyle=bg;
+    g.beginPath();g.moveTo(-.42,-.02);g.quadraticCurveTo(-.4,-.66,0,-.66);g.quadraticCurveTo(.4,-.66,.42,-.02);     // the dark hood, dipping to a widow's peak
+    g.quadraticCurveTo(.3,-.36,.14,-.34);g.quadraticCurveTo(.04,-.34,0,-.2);g.quadraticCurveTo(-.04,-.34,-.14,-.34);g.quadraticCurveTo(-.3,-.36,-.42,-.02);g.fill();
+    g.strokeStyle=fg;g.lineWidth=.07;g.beginPath();g.ellipse(0,.04,.42,.62,0,Math.PI,P3_TAU);g.stroke();
+    g.fillStyle=fg;for(const s of [-1,1]){g.beginPath();g.arc(s*.17,-.42,.055,0,P3_TAU);g.fill()}
+    g.fillStyle=P3.BEAK;
+    g.beginPath();g.moveTo(-.09,-.2);g.lineTo(.09,-.2);g.lineTo(0,-.04);g.closePath();g.fill();
+    for(const s of [-1,1]){g.beginPath();g.ellipse(s*.2,.68,.15,.06,0,0,P3_TAU);g.fill()}
+  },
+  back(f){                                                // the faster it slides, the longer the spray behind it
+    const n=f.s.n;
+    if(!(n>0))return;
+    const sp=Math.hypot(f.vx,f.vy)||1,ux=f.vx/sp,uy=f.vy/sp,r=f.r,L=r+6+n*7;
+    const q=g.createLinearGradient(f.x,f.y,f.x-ux*L,f.y-uy*L);q.addColorStop(0,'rgba(200,232,255,'+Math.min(.6,.18+n*.08).toFixed(3)+')');q.addColorStop(1,'rgba(200,232,255,0)');
+    g.fillStyle=q;g.beginPath();g.moveTo(f.x-uy*r*.8,f.y+ux*r*.8);g.lineTo(f.x-ux*L,f.y-uy*L);g.lineTo(f.x+uy*r*.8,f.y-ux*r*.8);g.closePath();g.fill();
+    g.strokeStyle='rgba(235,247,255,.7)';g.lineWidth=1;g.lineCap='round';g.beginPath();
+    for(let k=-1;k<=1;k+=2){const ox=-uy*k*r*.55,oy=ux*k*r*.55;g.moveTo(f.x+ox-ux*(r+3),f.y+oy-uy*(r+3));g.lineTo(f.x+ox-ux*(r+5+n*4),f.y+oy-uy*(r+5+n*4))}
+    g.stroke();
+  },
+  over(f){                                                // near top speed: frost glints on the rim
+    const n=f.s.n;
+    if(n<4)return;
+    const t=p3now();
+    for(let k=0;k<3;k++){const a=t*3+k*2.094;p3star(f.x+Math.cos(a)*(f.r+3),f.y+Math.sin(a)*(f.r+3),2.4,'#eaf7ff')}
+  }};
+
+LOOKS.capybara={
+  crest(fg,bg){                                           // a capybara's head, an orange balanced on top
+    g.lineJoin='round';g.lineCap='round';g.fillStyle=fg;
+    g.beginPath();g.arc(.36,-.26,.13,0,P3_TAU);g.fill();
+    g.beginPath();
+    g.moveTo(-.4,-.24);g.lineTo(.3,-.24);g.quadraticCurveTo(.6,-.24,.6,.06);g.lineTo(.6,.2);g.quadraticCurveTo(.6,.46,.34,.46);
+    g.lineTo(-.4,.46);g.quadraticCurveTo(-.68,.46,-.68,.18);g.lineTo(-.68,.04);g.quadraticCurveTo(-.68,-.24,-.4,-.24);g.fill();
+    g.fillStyle=bg;
+    g.beginPath();g.ellipse(-.56,.04,.035,.05,0,0,P3_TAU);g.fill();
+    g.strokeStyle=bg;g.lineWidth=.05;
+    g.beginPath();g.moveTo(.08,-.02);g.lineTo(.26,-.02);g.stroke();                 // a half-closed eye
+    g.beginPath();g.moveTo(-.66,.26);g.quadraticCurveTo(-.5,.32,-.36,.26);g.stroke(); // the mouth
+    g.fillStyle=P3.BEAK;g.beginPath();g.arc(-.06,-.44,.17,0,P3_TAU);g.fill();
+    g.fillStyle='#7fb069';g.beginPath();g.ellipse(.04,-.62,.09,.04,-.5,0,P3_TAU);g.fill();
+  },
+  under(f){                                               // the calm: a warm pool of light with a slow dotted edge
+    const R=f.s.r||78,t=p3now();
+    p3glow(f.x,f.y,R,'255,232,186',f.s.busy>0?.06:.13);
+    g.strokeStyle='rgba(240,220,164,'+(f.s.busy>0?.22:.42)+')';g.lineWidth=1;g.setLineDash([2,6]);g.lineDashOffset=-t*5;
+    p3disc(f.x,f.y,R);g.stroke();g.setLineDash([]);g.lineDashOffset=0;
+  },
+  over(f){
+    const r=f.r,t=p3now(),x=f.x+Math.cos(-.85)*(r+2.5),y=f.y+Math.sin(-.85)*(r+2.5);
+    if(f.s.busy>0){                                       // bothered: a bead of sweat, and the bird has flown
+      g.beginPath();g.moveTo(x,y-4);g.quadraticCurveTo(x+2.6,y,x,y+1.6);g.quadraticCurveTo(x-2.6,y,x,y-4);p3solid('#9fd8ff');
+      return;
+    }
+    const bob=Math.sin(t*3)*.5;                           // calm: a small bird rides along
+    p3disc(x,y+bob,3);p3solid(P3.DOWN);
+    g.beginPath();g.moveTo(x+2.6,y+bob-.9);g.lineTo(x+5.4,y+bob);g.lineTo(x+2.6,y+bob+.9);g.closePath();p3solid(P3.BEAK);
+    g.fillStyle=P3.EDGE;p3disc(x+1,y+bob-.9,.55);g.fill();
+    g.strokeStyle='rgba(243,234,214,.5)';g.lineWidth=.9;g.lineCap='round';   // steam
+    for(let k=0;k<2;k++){
+      const sx=f.x-r*.5+k*r*.45,u=(t*.5+k*.5)%1,sy=f.y-r-2-u*8;
+      g.globalAlpha=1-u;g.beginPath();g.moveTo(sx,sy);g.quadraticCurveTo(sx+2,sy-2.5,sx,sy-5);g.stroke();
+    }
+    g.globalAlpha=1;
+  }};

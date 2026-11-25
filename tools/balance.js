@@ -138,7 +138,9 @@ async function main() {
     const list = [], idx = [];
     for (let i = 0; i < K.length; i++) for (let j = i + 1; j < K.length; j++) {
       if (focus && !focus.includes(K[i]) && !focus.includes(K[j])) continue;
-      for (let s = 0; s < n; s++) { const first = s % 2 === 0; list.push([{ k: first ? K[i] : K[j] }, { k: first ? K[j] : K[i] }, hash(i, j, s)]); idx.push([i, j, first]); }
+      // each fight uses a different mix of strength and size on both sides, as real fights do; identical 100-health fighters
+      // make win rates jump whenever a damage dial crosses 'one hit fewer to win'
+      for (let s = 0; s < n; s++) { const first = s % 2 === 0, h = hash(i, j, s, 5), A = { k: K[i], s: h % 3, z: (h >>> 3) % 3 }, B = { k: K[j], s: (h >>> 6) % 3, z: (h >>> 9) % 3 }; list.push([first ? A : B, first ? B : A, hash(i, j, s)]); idx.push([i, j, first]); }
     }
     const r = await matches(list), win = {}, games = {}, table = {};
     for (const k of K) { win[k] = 0; games[k] = 0; table[k] = {}; }
@@ -310,7 +312,10 @@ async function main() {
     for (const x of out.slice(-6).reverse()) console.log('  ' + pad(uname(x.a) + ' + ' + uname(x.b), 34) + lpad(pp(x.da), 5) + lpad(pp(x.db), 5) + ' -> ' + lpad(pp(x.dab), 4) + '   extra ' + pp(x.syn));
     const top = out.slice().sort((x, y) => y.wr - x.wr);
     console.log('  highest win rate of any pair: ' + top.slice(0, 6).map(x => uname(x.a) + ' + ' + uname(x.b) + ' ' + pct(x.wr)).join('; '));
-    for (const x of out) if (x.syn > .2 && x.dab > .5) flag('combination', uname(x.a) + ' + ' + uname(x.b) + ' together add ' + pp(x.dab) + ' points (' + pp(x.da) + ' and ' + pp(x.db) + ' alone)');
+    // a combination is a problem when it stands far above the other pairs, not merely when six good picks add up
+    const p90 = top[Math.floor(top.length * .1)].wr;
+    console.log('  nine pairs in ten win ' + pct(p90) + ' or less');
+    for (const x of out) if (x.syn > .2 && x.wr > p90 + .3) flag('combination', uname(x.a) + ' + ' + uname(x.b) + ' win ' + pct(x.wr) + ' together (' + pp(x.da) + ' and ' + pp(x.db) + ' points alone); nine pairs in ten win ' + pct(p90) + ' or less');
     for (const x of top.slice(0, 3)) if (x.wr > .92) flag('combination', uname(x.a) + ' + ' + uname(x.b) + ' win ' + pct(x.wr) + ' against rivals that otherwise win ' + pct(1 - base));
     report.pairs = out.slice(0, 40).map(x => ({ a: x.a, b: x.b, alone: [+x.da.toFixed(3), +x.db.toFixed(3)], together: +x.dab.toFixed(3) }));
   }

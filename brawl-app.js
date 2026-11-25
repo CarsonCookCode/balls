@@ -1,9 +1,11 @@
 // ---------- Page ----------
-const BUILD='Build 24';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 25';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
-const PALETTE=ROSTER.map(k=>FIGHTERS[k].color);
+// thirty colours to choose from; a fighter that has not been given one wears its class colour (me.color = -1)
+const PALETTE=ROSTER.slice(0,30).map(k=>FIGHTERS[k].color);
+const okColor=c=>/^#[0-9a-fA-F]{6}$/.test(c||"");
 const BOTS=14;           // house fighters on each day's ladder until real players fill it
 // mode: 'make' (three taps, then a name), 'fight', 'pick' (choose an upgrade), 'over', 'board' (today's ladder), 'duel'
 let browse=false;          // the fighter picker is showing every fighter instead of three
@@ -16,7 +18,7 @@ const newSeed=()=>(Math.random()*2147483647)|0;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cleanName=s=>String(s||'').replace(/[^A-Za-z0-9 ]/g,'').replace(/\s+/g,' ').trim().slice(0,12);
 const ready=()=>me.str>=0&&me.size>=0;
-const myBuild=()=>makeBuild(me.key,me.str,me.size,cleanName(me.name)||FIGHTERS[me.key].name,PALETTE[me.color]);
+const myBuild=()=>makeBuild(me.key,me.str,me.size,cleanName(me.name)||FIGHTERS[me.key].name,PALETTE[me.color]||FIGHTERS[me.key].color);
 function shuffled(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]]}return a}
 function summary(b){
   if(!b.ups.length)return 'no upgrades yet';
@@ -95,7 +97,7 @@ function pickRival(rung){
     b=makeBuild(p.key,rung>1?p.str:-1,p.size,p.name,p.color);
     const n=Math.min(p.ups.length,Math.floor((rung-1)*RIVAL_UPS));
     for(let k=0;k<n;k++)if(canTake(b,p.ups[k]))addUpgrade(b,p.ups[k]);
-    const sc=RIVAL_START+RIVAL_GROW*(rung-1);b.hp*=sc;b.dmg*=sc;b.owner=p.name;
+    const sc=rivalScale(rung);b.hp*=sc;b.dmg*=sc;b.owner=p.name;
     lastMet[p.id+':'+p.key]=fightNo;
   }else{
     b=rival(rung,Math.random);
@@ -526,7 +528,7 @@ $('panel').addEventListener('click',e=>{
   const act=b.dataset.act;
   audioOn();sfx(UI_SFX[act]||'click',1,1,true);
   if(act!=='start'&&act!=='up')log('tap',{a:act,m:mode,v:b.dataset.key||b.dataset.i||''});
-  if(act==='weapon'){if(!FIGHTERS[b.dataset.key])return;me.key=b.dataset.key;if(!me.colorSet)me.color=ROSTER.indexOf(me.key);step=1;save();render();practice()}
+  if(act==='weapon'){if(!FIGHTERS[b.dataset.key])return;me.key=b.dataset.key;if(!me.colorSet)me.color=PALETTE.indexOf(FIGHTERS[me.key].color);step=1;save();render();practice()}
   else if(act==='others'){deckAt=(deckAt+3)%deck.length;render()}
   else if(act==='all'){browse=true;render()}
   else if(act==='few'){browse=false;render()}
@@ -584,7 +586,7 @@ try{
   const v=parseInt(localStorage.getItem('brawl.best'),10);if(Number.isFinite(v)&&v>0)best=v;
   const sp=parseInt(localStorage.getItem('brawl.speed'),10);if([1,2,4].includes(sp)){speed=sp;$('btnSpeed').textContent='Speed '+speed+'×'}
   const s=JSON.parse(localStorage.getItem('brawl.fighter'));
-  if(s&&FIGHTERS[s.key]&&[0,1,2].includes(s.str)&&[0,1,2].includes(s.size)&&s.color>=0&&s.color<PALETTE.length){
+  if(s&&FIGHTERS[s.key]&&[0,1,2].includes(s.str)&&[0,1,2].includes(s.size)&&s.color>=-1&&s.color<PALETTE.length){
     me={key:s.key,str:s.str,size:s.size,name:cleanName(s.name),color:s.color|0,colorSet:!!s.colorSet};
     step=3;                                   // a returning player goes straight to their fighter
   }
@@ -592,14 +594,14 @@ try{
   const bd=JSON.parse(localStorage.getItem('brawl.board2'));
   if(bd&&bd.date===board.date&&Array.isArray(bd.bots)&&bd.bots.length===BOTS&&bd.bots.every(okEntry))board=bd;
   const td=JSON.parse(localStorage.getItem('brawl.today2'));
-  if(td&&td.date===today.date&&okEntry(td))today={date:td.date,cleared:td.cleared,key:td.key,str:td.str,size:td.size,name:cleanName(td.name),color:PALETTE.includes(td.color)?td.color:PALETTE[0],ups:td.ups};
+  if(td&&td.date===today.date&&okEntry(td))today={date:td.date,cleared:td.cleared,key:td.key,str:td.str,size:td.size,name:cleanName(td.name),color:okColor(td.color)?td.color:FIGHTERS[td.key].color,ups:td.ups};
   const mn=JSON.parse(localStorage.getItem('brawl.mine'));
   if(mn&&mn.date===myBest.date&&mn.f&&typeof mn.f==='object')for(const k of Object.keys(mn.f).slice(0,200)){
     const x=mn.f[k];
-    if(okEntry(x)&&x.key===k&&x.cleared>0)myBest.f[k]={cleared:x.cleared,key:k,str:x.str,size:x.size,name:cleanName(x.name),color:PALETTE.includes(x.color)?x.color:FIGHTERS[k].color,ups:x.ups};
+    if(okEntry(x)&&x.key===k&&x.cleared>0)myBest.f[k]={cleared:x.cleared,key:k,str:x.str,size:x.size,name:cleanName(x.name),color:okColor(x.color)?x.color:FIGHTERS[k].color,ups:x.ups};
   }
 }catch(e){}
-if(!me.colorSet)me.color=ROSTER.indexOf(me.key);
+if(!me.colorSet)me.color=PALETTE.indexOf(FIGHTERS[me.key].color);
 deck=shuffled(ROSTER);
 Net.init();
 if(Net.on()){

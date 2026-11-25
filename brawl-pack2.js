@@ -4,15 +4,15 @@
 
 // ---------- simulation ----------
 // As in brawl-sim.js, dmg is each class's single damage dial and f.sig (0-3) is the level of its signature upgrade.
-FIGHTERS.archer ={name:'Archer',    color:'#a3b86c',hp:100,speed:165,spin:0,  dmg:7.66,cd:1.1,arms:[],desc:'Arrows that miss stay stuck in the wall as spikes.',sig:['Full quiver','Shoots faster; stuck arrows last longer']};
-FIGHTERS.hunter ={name:'Hunter',    color:'#c98b4b',hp:100,speed:175,spin:0,  dmg:12.83, cd:.7, arms:[],desc:'Throws a boomerang that hits on the way out and on the way back.',sig:['Heavy boomerang','A bigger boomerang that flies further']};
+FIGHTERS.archer ={name:'Archer',    color:'#a3b86c',hp:100,speed:165,spin:0,  dmg:8.22,cd:1.1,arms:[],desc:'Arrows that miss stay stuck in the wall as spikes.',sig:['Full quiver','Shoots faster; stuck arrows last longer']};
+FIGHTERS.hunter ={name:'Hunter',    color:'#c98b4b',hp:100,speed:175,spin:0,  dmg:14.01, cd:.7, arms:[],desc:'Throws a boomerang that hits on the way out and on the way back.',sig:['Heavy boomerang','Bigger, flies further, hits harder']};
 FIGHTERS.beacon ={name:'Lighthouse',color:'#ffe08a',hp:100,speed:150,spin:1.9,dmg:6.83,  cd:.2, arms:[],desc:'Sweeps beams of light around the arena.',sig:['Brighter lamp','One more beam']};
-FIGHTERS.jugger ={name:'Juggernaut',color:'#b5453c',hp:100,speed:150,spin:0,  dmg:23.89, cd:.5, arms:[],desc:'Winds up, then charges in a straight line. Walls stop it cold.',sig:['Restless','Charges again sooner']};
+FIGHTERS.jugger ={name:'Juggernaut',color:'#b5453c',hp:100,speed:150,spin:0,  dmg:26.2, cd:.5, arms:[],desc:'Winds up, then charges in a straight line. Walls stop it cold.',sig:['Unstoppable','Charges again sooner, and hits harder']};
 FIGHTERS.drum   ={name:'Drummer',   color:'#9a8cff',hp:100,speed:160,spin:0,  dmg:10.23, cd:1,  arms:[],desc:'Beats out shockwaves that hurt as the ring passes.',sig:['Bass drum','Shockwaves travel further']};
-FIGHTERS.volcano={name:'Volcano',   color:'#e8703a',hp:100,speed:155,spin:0,  dmg:9.37, cd:.9, arms:[],desc:'The floor rumbles, then erupts under the rival.',sig:['Bigger eruptions','Wider craters']};
-FIGHTERS.jester ={name:'Jester',    color:'#f04f9a',hp:100,speed:185,spin:5.5,dmg:10.91, cd:.4, arms:[{a:0,l:15,head:5,d:.6},{a:Math.PI,l:15,head:5,d:.6}],desc:'Swaps places with the rival and leaves a surprise behind.',sig:['More tricks','Swaps places more often']};
+FIGHTERS.volcano={name:'Volcano',   color:'#e8703a',hp:100,speed:155,spin:0,  dmg:11.33, cd:.9, arms:[],desc:'The floor rumbles, then erupts under the rival.',sig:['Bigger eruptions','Wider craters']};
+FIGHTERS.jester ={name:'Jester',    color:'#f04f9a',hp:100,speed:185,spin:5.5,dmg:11.44, cd:.4, arms:[{a:0,l:15,head:5,d:.6},{a:Math.PI,l:15,head:5,d:.6}],desc:'Swaps places with the rival and leaves a surprise behind.',sig:['More tricks','Swaps places more often']};
 FIGHTERS.turtle ={name:'Turtle',    color:'#3fa57a',hp:100,speed:150,spin:0,  dmg:13.2, cd:.45,arms:[],desc:'A shell that halves hits from the front while it rams.',sig:['Thicker shell','The shell covers more of it']};
-FIGHTERS.pirate ={name:'Pirate',    color:'#4a7fd1',hp:100,speed:165,spin:5.2,dmg:17.84, cd:.4, arms:[{a:0,l:24,d:.6}],desc:'Hooks the rival from across the arena and reels itself in.',sig:['Longer chain','The hook reaches further and comes round sooner']};
+FIGHTERS.pirate ={name:'Pirate',    color:'#4a7fd1',hp:100,speed:165,spin:5.2,dmg:19.41, cd:.4, arms:[{a:0,l:24,d:.6}],desc:'Hooks the rival from across the arena and reels itself in.',sig:['Longer chain','The hook reaches further and comes round sooner']};
 FIGHTERS.wizard ={name:'Wizard',    color:'#6f5bd6',hp:100,speed:160,spin:0,  dmg:14.69, cd:1.1,arms:[],desc:'Casts a different spell every time: fire, frost or a vanishing act.',sig:['Quick hands','Casts faster']};
 ROSTER.push('archer','hunter','beacon','jugger','drum','volcano','jester','turtle','pirate','wizard');
 
@@ -80,7 +80,7 @@ BEHAVE.hunter={
       b.x+=(f.x-b.x)/d*400*DT;b.y+=(f.y-b.y)/d*400*DT;
       if(d<f.r+8||b.t>5){S.b=null;S.t=D.cd/f.spdMul;return}
     }
-    if(!b.hit&&!e.gone&&Math.hypot(b.x-e.x,b.y-e.y)<e.r+size){b.hit=1;m.hurt(e,D.dmg*f.dmgMul*rage,f)}
+    if(!b.hit&&!e.gone&&Math.hypot(b.x-e.x,b.y-e.y)<e.r+size){b.hit=1;m.hurt(e,D.dmg*(1+.22*f.sig)*f.dmgMul*rage,f)}
   }};
 
 // Lighthouse: beams from its body to the walls, turning slowly. Every wall it bounces off reverses the sweep.
@@ -118,7 +118,7 @@ BEHAVE.jugger={
     f.s.mode=3;f.s.t=.7;
     m.events.push({k:'burst',x,y,n:12,i:f.i});
   },
-  touch:f=>f.s.mode===2?FIGHTERS.jugger.dmg:f.s.mode===3?0:FIGHTERS.jugger.dmg*.2,
+  touch:f=>f.s.mode===2?FIGHTERS.jugger.dmg*(1+.2*f.sig):f.s.mode===3?0:FIGHTERS.jugger.dmg*.2,
   dealt(f,v,dmg,m){if(f.s.mode===2){f.s.mode=0;f.s.t=p2rest(f);m.knock(v,f)}}};
 
 // Drummer: every beat sends out a ring. It hurts once, at the moment its edge crosses the rival.

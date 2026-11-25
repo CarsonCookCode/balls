@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 26';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 27';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -38,11 +38,20 @@ for(const [kind,ids] of Object.entries({
   size:'bulk shrink pocket colossus',ally:'hornet packlead'}))for(const id of ids.split(' '))UP_KIND[id]=kind;
 const kindOf=id=>KINDS[UP_KIND[id]||'atk'];                 // anything not listed is an attack upgrade
 const kindIcon=K=>`<svg viewBox="0 0 16 16" aria-hidden="true">${K.icon}</svg>`;
-// a fighter's upgrades as small coloured tags
-function chips(b){
+// a fighter's upgrades as small coloured tags; each can be tapped to read what it does (side 0 is you, 1 the rival)
+let tip=null;
+function chips(b,side){
   if(!b.ups.length)return '<span class="chip none">no upgrades</span>';
   const n={};for(const id of b.ups)n[id]=(n[id]||0)+1;
-  return Object.keys(n).map(id=>`<span class="chip" style="--k:${kindOf(id).col}">${upName(b,id)}${n[id]>1?' ×'+n[id]:''}</span>`).join('');
+  return Object.keys(n).map(id=>`<button type="button" class="chip${tip&&tip.side===side&&tip.id===id?' on':''}" id="chip-${side}-${id}" data-act="tip" data-side="${side}" data-key="${id}" style="--k:${kindOf(id).col}">${upName(b,id)}${n[id]>1?' ×'+n[id]:''}</button>`).join('');
+}
+// the line under the tags: what the tapped upgrade does
+function tipLine(a,b){
+  if(!a.ups.length&&!b.ups.length)return '';
+  const o=tip&&(tip.side?b:a);
+  if(!o||!o.ups.includes(tip.id))return '<p class="ps tipline hint">Tap an upgrade to see what it does.</p>';
+  const K=kindOf(tip.id),n=o.ups.filter(x=>x===tip.id).length;
+  return `<p class="ps tipline" id="tipLine" style="--k:${K.col}"><b>${upName(o,tip.id)}${n>1?' ×'+n:''}</b><em>${K.label}</em>${upText(o,tip.id)}${n>1?' (each)':''}</p>`;
 }
 function summary(b){
   if(!b.ups.length)return 'no upgrades yet';
@@ -226,7 +235,7 @@ const HIT_SFX={blade:'slash',twin:'slash',leech:'slash',pirate:'slash',clock:'me
   necro:'wood',painter:'tick',hunter:'wood',beacon:'tick',drum:'thump',wizard:'glass'};
 const HIT_VOL={archer:.7,blaster:.8};
 const SHOT_SFX={blaster:'gun',archer:'loose',wizard:'cast',hunter:'whoosh',pirate:'whoosh'};
-const UI_SFX={weapon:'place',str:'place',size:'place',others:'page',back:'page',col:'click',new:'page',start:'page',up:'coins',fight:'draw',arm:'latch',duel:'draw',recduel:'draw',board:'open',closeboard:'page'};
+const UI_SFX={weapon:'place',str:'place',size:'place',others:'page',back:'page',col:'click',new:'page',start:'page',up:'coins',fight:'draw',arm:'latch',tip:'page',duel:'draw',recduel:'draw',board:'open',closeboard:'page'};
 function hitSound(e){
   if(e.ind){sfx('tick',.6);return}
   const own=FIGHTERS[e.by]&&FIGHTERS[e.by].sfx,n=e.by in HIT_SFX?HIT_SFX[e.by]:own?own.hit:undefined;
@@ -391,7 +400,7 @@ function startClimb(){
 // spent by itself on the next loss. Either way a saved loss brings a new rival on the same rung, and no boon.
 const SHIELD_RUNG=5,LIFE_RUNG=10;
 function nextFight(note){
-  run.rival=pickRival(run.rung);run.seed=newSeed();run.armed=false;run.note=note||'';
+  run.rival=pickRival(run.rung);run.seed=newSeed();run.armed=false;run.note=note||'';tip=null;
   if(run.rung>=SHIELD_RUNG&&!run.gotShield){run.gotShield=true;run.shield=1;run.note+=(run.note?' ':'')+'You have earned a shield.'}
   if(run.rung>LIFE_RUNG&&!run.gotLife){run.gotLife=true;run.life=1;run.note+=(run.note?' ':'')+'You have earned an extra life.'}
   mode='ready';
@@ -413,7 +422,7 @@ function readyBody(){
     (run.note?`<p class="ps note">${run.note}</p>`:'')+
     `<div class="mu"><span class="who">You<b>${typeOf(a)}</b></span><i></i><span class="who">${b.owner?esc(b.owner):'House'}<b>${typeOf(b)}</b></span>`+
       row('Health',FIGHTERS[a.key].hp*a.hp,FIGHTERS[b.key].hp*b.hp,1)+row('Damage',a.dmg*100,b.dmg*100,2)+row('Speed',a.spd*100,b.spd*100,2)+row('Size',sizeWord(a.r),sizeWord(b.r),0)+
-    `</div><div class="mu2"><div class="chips">${chips(a)}</div><div class="chips">${chips(b)}</div></div>`+
+    `</div><div class="mu2"><div class="chips">${chips(a,0)}</div><div class="chips">${chips(b,1)}</div></div>`+tipLine(a,b)+
     `<p class="ps what"><b>${FIGHTERS[b.key].name}.</b> ${FIGHTERS[b.key].desc}</p>`+
     (run.shield>0?`<button type="button" id="btnArm" class="arm" data-act="arm" aria-pressed="${run.armed}">${run.armed?'Shield raised: lose this fight and you climb on':'Raise your shield for this fight'}</button>`:'')+
     (run.life>0?`<p class="ps keep">You hold an extra life. It is spent the next time you lose.</p>`:'')+
@@ -587,7 +596,7 @@ $('panel').addEventListener('click',e=>{
   if(!b||b.disabled)return;
   const act=b.dataset.act;
   audioOn();sfx(UI_SFX[act]||'click',1,1,true);
-  if(act!=='start'&&act!=='up'&&act!=='fight')log('tap',{a:act,m:mode,v:b.dataset.key||b.dataset.i||''});
+  if(act!=='start'&&act!=='up'&&act!=='fight'&&act!=='tip')log('tap',{a:act,m:mode,v:b.dataset.key||b.dataset.i||''});
   if(act==='weapon'){if(!FIGHTERS[b.dataset.key])return;me.key=b.dataset.key;if(!me.colorSet)me.color=PALETTE.indexOf(FIGHTERS[me.key].color);step=1;save();render();practice()}
   else if(act==='others'){deckAt=(deckAt+3)%deck.length;render()}
   else if(act==='all'){browse=true;render()}
@@ -599,6 +608,7 @@ $('panel').addEventListener('click',e=>{
   else if(act==='new'){mode='make';step=0;me.str=-1;me.size=-1;deck=shuffled(ROSTER);deckAt=0;save();render();practice()}
   else if(act==='start')startClimb();
   else if(act==='fight')startFight();
+  else if(act==='tip'){const side=+b.dataset.side,id=b.dataset.key;tip=tip&&tip.side===side&&tip.id===id?null:{side,id};if(mode==='ready')render()}
   else if(act==='arm'){if(mode==='ready'&&run.shield>0){run.armed=!run.armed;render()}}
   else if(act==='up'){
     if(mode!=='pick'||!choice.includes(b.dataset.key))return;

@@ -163,3 +163,12 @@ button.pick span{font:700 10.5px/1.1 var(--display);letter-spacing:.05em;text-tr
 button.arm{min-height:38px;font:700 12.5px/1.1 var(--display);letter-spacing:.06em;text-transform:uppercase;color:#2f4f7a;background:rgba(47,79,122,.1);border:2px solid #2f4f7a;border-radius:3px;box-shadow:none;text-shadow:none}
 button.arm[aria-pressed="true"]{background:#2f4f7a;color:#fff6df}
 button.arm:active{transform:none}
+
+/* upgrade tags that can be tapped, and the line that explains the tapped one */
+button.chip{min-height:26px;padding:5px 8px 5px 6px;border:0;border-left:4px solid var(--k,#8a7a5a);border-radius:3px;background:rgba(60,40,15,.1);box-shadow:none;text-shadow:none;text-transform:none;font:700 10.5px/1 var(--display);letter-spacing:.03em;color:var(--ink)}
+button.chip:active{transform:none;box-shadow:none}
+button.chip.on{background:var(--k);color:#fff6df}
+.ps.tipline{font-style:normal;text-align:left;padding:5px 8px;border-left:4px solid var(--k,transparent);background:rgba(60,40,15,.08);border-radius:3px}
+.ps.tipline b{font-family:var(--display);letter-spacing:.04em;margin-right:7px}
+.ps.tipline em{font:700 9.5px/1 var(--display);font-style:normal;letter-spacing:.12em;text-transform:uppercase;color:var(--k);margin-right:8px;vertical-align:1px}
+.ps.tipline.hint{font-style:italic;text-align:center;background:none;border-left:0;color:var(--ink-2)}

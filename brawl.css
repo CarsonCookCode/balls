@@ -214,3 +214,10 @@ body[data-mode="ready"] .ps.tipline,body[data-mode="ready"] .ps.what{min-height:
 button.alt{width:100%;min-height:48px;font-size:15px}
 /* the way out of the ladder: a plate at the top of the scroll (the footer plate also reads Back while the ladder is open) */
 button.backtop{width:auto;align-self:flex-start;min-height:36px;padding:6px 16px 6px 12px;margin-bottom:-4px}
+/* the matchup is centred: the whole block sits in the middle of the scroll, and each fighter's upgrades sit under it.
+   (auto margins, not justify-content, so nothing is cut off at the top if a small screen ever has to scroll) */
+body[data-mode="ready"] #panel>:first-child{margin-top:auto}
+body[data-mode="ready"] #btnFight{margin-top:8px;margin-bottom:auto}
+body[data-mode="ready"] #panel{align-items:stretch;text-align:center}
+.mu2 .chips,.mu2 .chips:last-child{justify-content:center}
+.ps.tipline{text-align:center;border-left:0;border-top:3px solid var(--k,transparent)}

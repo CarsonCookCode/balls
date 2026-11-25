@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 21';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 22';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -100,7 +100,7 @@ function goalLine(){
 // Every sound is a slice of one recorded file (sfx/brawl.mp3, built by tools/sfx-build.js from public-domain packs;
 // brawl-sfx.js says where each slice is). Several takes per sound and a little pitch drift keep repeats from grating;
 // a minimum gap per sound, a cap on voices and a compressor keep fast fights from turning into noise.
-let actx=null,bus=null,comp=null,sfxRaw=null,sfxBuf=null,sfxBusy=false,voices=0;
+let actx=null,bus=null,comp=null,sfxRaw=null,sfxBuf=null,sfxBusy=false,sfxBad=null,voices=0,audioStale=false;
 const sfxLast={},sfxPrev={};
 function audioOut(){
   if(!bus&&actx){
@@ -117,7 +117,10 @@ function audioOut(){
 window.BrawlAudio={ctx:()=>actx,out:()=>{audioOut();return comp}};   // the recorder taps the finished mix
 function audioOn(){
   if(muted)return;
-  try{if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume()}catch(e){actx=null}
+  try{
+    if(!actx){actx=new (window.AudioContext||window.webkitAudioContext)();const c=actx;c.onstatechange=()=>{if(c===actx&&c.state==='interrupted')audioStale=true}}
+    if(actx.state!=='running')actx.resume();
+  }catch(e){actx=null}
   sfxDecode();
 }
 function sfxFetch(){
@@ -125,11 +128,36 @@ function sfxFetch(){
   try{fetch(SFX_FILE).then(r=>r&&r.ok?r.arrayBuffer():null).then(b=>{sfxRaw=b;sfxDecode()}).catch(()=>{})}catch(e){}
 }
 function sfxDecode(){
-  if(!actx||!sfxRaw||sfxBuf||sfxBusy||!actx.decodeAudioData)return;
+  if(!actx||!sfxRaw||sfxBuf||sfxBusy||sfxBad===actx||!actx.decodeAudioData)return;
   sfxBusy=true;
-  const done=b=>{sfxBuf=b;sfxRaw=null;sfxBusy=false},fail=()=>{sfxBusy=false;sfxRaw=null};
-  try{const p=actx.decodeAudioData(sfxRaw,done,fail);if(p&&p.catch)p.catch(()=>{})}catch(e){fail()}
+  // the file's bytes are kept (decoding uses up a copy) so a fresh sound output can decode them again
+  const ctx=actx,done=b=>{if(ctx!==actx)return;sfxBuf=b;sfxBusy=false},fail=()=>{if(ctx!==actx)return;sfxBusy=false;sfxBad=ctx};
+  try{const p=actx.decodeAudioData(sfxRaw.slice(0),done,fail);if(p&&p.catch)p.catch(()=>{})}catch(e){fail()}
 }
+// Phones can leave the sound output silent after the page has been in the background (another app, a locked screen,
+// a call), sometimes while still reporting that it is running. So after any time away the output is rebuilt from
+// scratch on the next tap, and every tap anywhere wakes an output that has been paused.
+function audioReset(){
+  const old=actx,was=old?old.state:'none';
+  actx=null;bus=null;comp=null;sfxBuf=null;sfxBusy=false;sfxBad=null;voices=0;
+  for(const k in sfxLast)delete sfxLast[k];
+  try{if(old&&old.close){const p=old.close();if(p&&p.catch)p.catch(()=>{})}}catch(e){}
+  audioOn();
+  log('audio',{was,now:actx?actx.state:'none'});
+}
+function audioWake(){
+  if(muted||!actx)return;
+  const recording=window.Broadcast&&Broadcast.stats&&Broadcast.stats().state!=='idle';      // a recording holds the old output
+  if(audioStale&&!recording){audioStale=false;audioReset();return}
+  if(actx.state!=='running'){try{const p=actx.resume();if(p&&p.catch)p.catch(()=>{})}catch(e){}}
+}
+for(const ev of ['touchend','click','keydown'])document.addEventListener(ev,audioWake,true);
+document.addEventListener('visibilitychange',()=>{
+  if(!actx)return;
+  if(document.hidden){audioStale=true;return}
+  try{const p=actx.resume();if(p&&p.catch)p.catch(()=>{})}catch(e){}       // allowed without a tap on some phones
+});
+if(window.addEventListener)window.addEventListener('pageshow',ev=>{if(ev.persisted&&actx)audioStale=true});
 // vol and rate are multipliers; ui=true lets it play outside a fight (buttons, the scroll)
 function sfx(name,vol,rate,ui){
   if(muted||!actx||!sfxBuf||(!ui&&!loud)||typeof SFX==='undefined')return;

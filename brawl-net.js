@@ -76,9 +76,13 @@ const Net={
   },
   // everyone else's fighters: the full list, plus ladder entries from players whose list has not arrived
   rivals(){
-    const out=Net.roster.filter(p=>p.id!==Net.id),have=new Set(out.map(p=>p.id+':'+p.key));
-    for(const p of Net.others())if(!have.has(p.id+':'+p.key))out.push(p);
-    return out;
+    const by=new Map();                                  // one entry per player and class: whichever source has the higher climb
+    for(const p of Net.roster.concat(Net.rows)){
+      if(p.id===Net.id)continue;
+      const k=p.id+':'+p.key,was=by.get(k);
+      if(!was||p.cleared>was.cleared)by.set(k,p);
+    }
+    return [...by.values()];
   },
   // today's best climb for this player; a later, higher climb simply replaces it
   async push(day,e){

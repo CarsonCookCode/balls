@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 23';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 24';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -8,7 +8,7 @@ const BOTS=14;           // house fighters on each day's ladder until real playe
 // mode: 'make' (three taps, then a name), 'fight', 'pick' (choose an upgrade), 'over', 'board' (today's ladder), 'duel'
 let browse=false;          // the fighter picker is showing every fighter instead of three
 let mode='make',step=0,me={key:'blade',str:-1,size:-1,name:'',color:0,colorSet:false},deck=[],deckAt=0;
-let myBest={date:'',f:{}};   // this player's best climb today with each class: {class: rungs}
+let myBest={date:'',f:{}};   // this player's best climb today with each class: {class: the fighter as it finished}
 let run=null,match=null,you=-1,loud=false,choice=[],best=0,speed=1,muted=false,last=0,acc=0,overFor=0,shake=0;
 let board={date:'',bots:[]},today={date:'',cleared:0},duel=null,backTo='make';
 const fx={floats:[],sparks:[],rings:[],bolts:[]},floats=fx.floats,sparks=fx.sparks,rings=fx.rings,bolts=fx.bolts;   // short-lived effects, shared with the video recorder
@@ -48,20 +48,34 @@ function rebuild(e){
   for(const id of e.ups)if(UPGRADES[id]&&canTake(b,id))addUpgrade(b,id);
   return b;
 }
+// One row per fighter: every house fighter, and each player's best climb with each class they have tried today.
+// `who` says whose fighter it is, because the daily duel is between two different players.
 function standings(){
-  const rows=board.bots.map((b,i)=>({house:true,cleared:b.cleared,e:b,order:i}));
-  Net.others().forEach((p,i)=>rows.push({player:true,cleared:p.cleared,e:p,order:20+i}));
-  if(today.cleared>0)rows.push({you:true,cleared:today.cleared,e:today,order:9999});
+  const rows=board.bots.map((b,i)=>({house:true,who:'h'+i,cleared:b.cleared,e:b,order:i}));
+  Net.rivals().forEach((p,i)=>rows.push({player:true,who:p.id,cleared:p.cleared,e:p,order:20+i}));
+  const own=Object.values(myBest.f).filter(x=>x&&x.cleared>0);
+  if(today.cleared>0&&!own.some(x=>x.key===today.key&&x.cleared>=today.cleared))own.push(today);
+  own.forEach((x,i)=>rows.push({you:true,who:'me',cleared:x.cleared,e:x,order:9000+i}));
   rows.sort((a,b)=>b.cleared-a.cleared||a.order-b.order);       // ties go to whoever was there first
   return rows;
 }
-function target(){const r=standings().filter(x=>!x.you);return r.length>1?r[1].cleared+1:1}
-const inDuel=()=>standings().slice(0,2).some(x=>x.you);
+// the best fighter of each of the top two players (or house fighters)
+function duelPair(){
+  const out=[],seen=new Set();
+  for(const r of standings()){if(seen.has(r.who))continue;seen.add(r.who);out.push(r);if(out.length===2)break}
+  return out;
+}
+function target(){
+  const best=[],seen=new Set();
+  for(const r of standings()){if(r.you||seen.has(r.who))continue;seen.add(r.who);best.push(r.cleared)}
+  return best.length>1?best[1]+1:1;
+}
+const inDuel=()=>duelPair().some(x=>x.you);
 const owner=r=>r.you?'You':r.player?r.e.name:'House';
 function netLine(){
   if(!Net.on())return '';
   if(!Net.ok)return 'Connecting to today\u2019s ladder\u2026';
-  const n=Net.others().length+(today.cleared>0?1:0);
+  const n=new Set(Net.rivals().map(p=>p.id)).size+(today.cleared>0?1:0);
   return n?n+' player'+(n>1?'s':'')+' on today\u2019s ladder':'No players on today\u2019s ladder yet. Be the first.';
 }
 // A rival on a rung is sometimes another player's fighter, cut back to what they had at that height.
@@ -94,7 +108,7 @@ const whose=b=>(b.owner?esc(b.owner)+'\u2019s ':'')+typeOf(b);
 function goalLine(){
   if(!boardReady())return 'Setting up today’s ladder…';
   if(inDuel())return 'You are in today’s duel. Climb higher to make it safe.';
-  return 'Today’s duel is between the top two. Clear <b>'+target()+'</b> rungs to get in.';
+  return 'Today’s duel is between the top two players. Clear <b>'+target()+'</b> rungs to get in.';
 }
 
 // ----- sound -----
@@ -372,10 +386,10 @@ function fightDone(){
       try{localStorage.setItem('brawl.today2',JSON.stringify(today))}catch(e){}
       Net.push(today.date,today);
     }
-    if(cleared>(myBest.f[me.key]||0)){
-      myBest.f[me.key]=cleared;
+    if(cleared>(myBest.f[me.key]?myBest.f[me.key].cleared:0)){
+      myBest.f[me.key]={cleared,key:me.key,str:me.str,size:me.size,name:run.build.name,color:run.build.color,ups:run.build.ups.slice()};
       try{localStorage.setItem('brawl.mine',JSON.stringify(myBest))}catch(e){}
-      Net.pushFighter(myBest.date,{cleared,key:me.key,str:me.str,size:me.size,name:run.build.name,color:run.build.color,ups:run.build.ups.slice()});
+      Net.pushFighter(myBest.date,myBest.f[me.key]);
     }
     log('end',{cleared,rec:run.record?1:0,best,by:run.rival.key,o:run.rival.owner||'',secs:Math.round((Date.now()-run.t0)/1000),players:Net.others().length});
   }
@@ -384,7 +398,7 @@ function fightDone(){
 
 // ----- today's duel: the top two on the ladder, best of three -----
 function startDuel(){
-  const r=standings().slice(0,2);
+  const r=duelPair();
   if(!boardReady()||r.length<2)return;
   audioOn();
   duel={a:rebuild(r[0].e),b:rebuild(r[1].e),you:r[0].you?0:r[1].you?1:-1,who:[owner(r[0]),owner(r[1])],score:[0,0],round:1,done:false};
@@ -430,16 +444,17 @@ function makeBody(){
     `<button type="button" id="btnNew" class="quiet" data-act="new">Make a different fighter</button>`;
 }
 function boardBody(){
-  const rows=standings(),mine=rows.findIndex(r=>r.you);
+  const rows=standings(),pair=[],seen=new Set();
+  for(const r of rows){if(seen.has(r.who))continue;seen.add(r.who);pair.push(r);if(pair.length===2)break}
   const row=(r,i)=>{
     const b=rebuild(r.e);
-    return `<li class="${r.you?'me':''}${i<2?' in':''}"><span class="rk">${i+1}</span><i style="background:${b.color}"></i>`+
+    return `<li class="${r.you?'me':''}${pair.includes(r)?' in':''}"><span class="rk">${i+1}</span><i style="background:${b.color}"></i>`+
       `<span class="nm"><b>${typeOf(b)}</b><small>${r.you?esc(b.name)+' · you':r.player?esc(b.name):'house fighter'}</small></span><span class="rg">${r.cleared}</span></li>`;
   };
   return `<h2 class="ph">Today’s ladder</h2><p class="ps" id="goal">${goalLine()}</p>`+(netLine()?`<p class="ps" id="netLine">${netLine()}</p>`:'')+
-    (boardReady()?`<ol class="lb">`+rows.slice(0,6).map(row).join('')+(mine>=6?row(rows[mine],mine):'')+`</ol>`+
-      `<button type="button" id="btnDuel" class="go" data-act="duel">Watch today’s duel</button>`+
-      (window.Broadcast&&Broadcast.supported&&Broadcast.supported()?`<button type="button" id="btnRec" data-act="recduel">Record today’s duel as a video</button>`:''):'')+
+    (boardReady()?`<button type="button" id="btnDuel" class="go" data-act="duel">Watch today’s duel</button>`+
+      (window.Broadcast&&Broadcast.supported&&Broadcast.supported()?`<button type="button" id="btnRec" data-act="recduel">Record today’s duel as a video</button>`:'')+
+      `<ol class="lb">`+rows.slice(0,80).map(row).join('')+`</ol>`:'')+
     `<button type="button" id="btnClose" class="quiet" data-act="closeboard">Back</button>`;
 }
 function duelBody(){
@@ -579,7 +594,10 @@ try{
   const td=JSON.parse(localStorage.getItem('brawl.today2'));
   if(td&&td.date===today.date&&okEntry(td))today={date:td.date,cleared:td.cleared,key:td.key,str:td.str,size:td.size,name:cleanName(td.name),color:PALETTE.includes(td.color)?td.color:PALETTE[0],ups:td.ups};
   const mn=JSON.parse(localStorage.getItem('brawl.mine'));
-  if(mn&&mn.date===myBest.date&&mn.f&&typeof mn.f==='object')for(const k of Object.keys(mn.f))if(FIGHTERS[k]&&Number.isInteger(mn.f[k])&&mn.f[k]>0)myBest.f[k]=mn.f[k];
+  if(mn&&mn.date===myBest.date&&mn.f&&typeof mn.f==='object')for(const k of Object.keys(mn.f).slice(0,200)){
+    const x=mn.f[k];
+    if(okEntry(x)&&x.key===k&&x.cleared>0)myBest.f[k]={cleared:x.cleared,key:k,str:x.str,size:x.size,name:cleanName(x.name),color:PALETTE.includes(x.color)?x.color:FIGHTERS[k].color,ups:x.ups};
+  }
 }catch(e){}
 if(!me.colorSet)me.color=ROSTER.indexOf(me.key);
 deck=shuffled(ROSTER);
@@ -588,7 +606,10 @@ if(Net.on()){
   refreshNet();
   if(today.cleared>0){
     Net.push(today.date,today);
-    if(!(myBest.f[today.key]>=today.cleared)){myBest.f[today.key]=today.cleared;Net.pushFighter(today.date,today)}   // a best climb from before fighters were kept
+    if(!(myBest.f[today.key]&&myBest.f[today.key].cleared>=today.cleared)){      // a best climb from before fighters were kept
+      myBest.f[today.key]={cleared:today.cleared,key:today.key,str:today.str,size:today.size,name:today.name,color:today.color,ups:today.ups};
+      Net.pushFighter(today.date,today);
+    }
   }
 }
 // the play log: opening, leaving and coming back, and anything that goes wrong

@@ -4,9 +4,9 @@
 
 // ---------- simulation ----------
 // As in brawl-sim.js, dmg is each class's single damage dial and f.sig (0-3) is the level of its signature upgrade.
-FIGHTERS.archer ={name:'Archer',    color:'#a3b86c',hp:100,speed:165,spin:0,  dmg:7.75,cd:1.1,arms:[],desc:'Arrows that miss stay stuck in the wall as spikes.',sig:['Full quiver','More stuck arrows, and they last longer']};
+FIGHTERS.archer ={name:'Archer',    color:'#a3b86c',hp:100,speed:165,spin:0,  dmg:7.66,cd:1.1,arms:[],desc:'Arrows that miss stay stuck in the wall as spikes.',sig:['Full quiver','Shoots faster; stuck arrows last longer']};
 FIGHTERS.hunter ={name:'Hunter',    color:'#c98b4b',hp:100,speed:175,spin:0,  dmg:12.83, cd:.7, arms:[],desc:'Throws a boomerang that hits on the way out and on the way back.',sig:['Heavy boomerang','A bigger boomerang that flies further']};
-FIGHTERS.beacon ={name:'Lighthouse',color:'#ffe08a',hp:100,speed:150,spin:1.9,dmg:6.57,  cd:.2, arms:[],desc:'Sweeps beams of light around the arena.',sig:['Brighter lamp','One more beam']};
+FIGHTERS.beacon ={name:'Lighthouse',color:'#ffe08a',hp:100,speed:150,spin:1.9,dmg:6.83,  cd:.2, arms:[],desc:'Sweeps beams of light around the arena.',sig:['Brighter lamp','One more beam']};
 FIGHTERS.jugger ={name:'Juggernaut',color:'#b5453c',hp:100,speed:150,spin:0,  dmg:23.89, cd:.5, arms:[],desc:'Winds up, then charges in a straight line. Walls stop it cold.',sig:['Restless','Charges again sooner']};
 FIGHTERS.drum   ={name:'Drummer',   color:'#9a8cff',hp:100,speed:160,spin:0,  dmg:10.23, cd:1,  arms:[],desc:'Beats out shockwaves that hurt as the ring passes.',sig:['Bass drum','Shockwaves travel further']};
 FIGHTERS.volcano={name:'Volcano',   color:'#e8703a',hp:100,speed:155,spin:0,  dmg:9.37, cd:.9, arms:[],desc:'The floor rumbles, then erupts under the rival.',sig:['Bigger eruptions','Wider craters']};
@@ -28,7 +28,7 @@ BEHAVE.archer={
     const D=FIGHTERS.archer,A=f.s.arrows;
     f.s.t-=DT;
     if(f.s.t<=0&&!e.gone){
-      f.s.t=D.cd/f.spdMul;
+      f.s.t=D.cd/f.spdMul/(1+.22*f.sig);
       const d=gap(e,f)||1,lead=d/360*.6,an=Math.atan2(e.y+e.vy*lead-f.y,e.x+e.vx*lead-f.x)+(m.rnd()-.5)*.18;
       A.push({x:f.x+Math.cos(an)*f.r,y:f.y+Math.sin(an)*f.r,an,stuck:0,age:0,tx:0,ty:0});
       m.events.push({k:'shot',x:f.x,y:f.y,i:f.i});

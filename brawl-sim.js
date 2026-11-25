@@ -6,22 +6,22 @@ const AW=260,DT=1/60,R=24,SUDDEN=30,TIMEOUT=70,GP=13,PC=AW/GP;
 const FIGHTERS={
   blade:  {name:'Knight',     color:'#ff6a4d',hp:100,speed:170,spin:5.0,dmg:27.88,  cd:.35,arms:[{a:0,l:36}],desc:'A long sword that never stops spinning.',sig:['Greatsword','A longer sword that hits harder']},
   mace:   {name:'Ogre',       color:'#ffb23e',hp:100,speed:150,spin:3.2,dmg:33.14,  cd:.6, arms:[{a:0,l:34,head:9}],desc:'Slow and heavy. One hit really hurts.',sig:['Wrecking ball','A bigger, heavier mace head']},
-  spikes: {name:'Urchin',     color:'#7ddc5a',hp:100,speed:215,spin:0,  dmg:16.46,  cd:.3, arms:[],desc:'No weapon. Its whole body hurts to touch.',sig:['Longer spines','Its touch hurts 30% more']},
-  blaster:{name:'Gunner',     color:'#38c6ff',hp:100,speed:160,spin:0,  dmg:11, cd:1,  arms:[],desc:'Fires a shot at its rival, again and again.',sig:['Rapid fire','Shoots 30% faster']},
+  spikes: {name:'Urchin',     color:'#7ddc5a',hp:100,speed:215,spin:0,  dmg:17.11,  cd:.3, arms:[],desc:'No weapon. Its whole body hurts to touch.',sig:['Longer spines','Its touch hurts 30% more']},
+  blaster:{name:'Gunner',     color:'#38c6ff',hp:100,speed:160,spin:0,  dmg:11.89, cd:1,  arms:[],desc:'Fires a shot at its rival, again and again.',sig:['Rapid fire','Shoots 30% faster']},
   leech:  {name:'Vampire',    color:'#c77dff',hp:100,speed:180,spin:6.5,dmg:25.45,  cd:.3, arms:[{a:0,l:20}],heal:.7,desc:'Short fangs. Heals with every bite.',sig:['Deep bite','Heals more with every bite']},
   miner:  {name:'Sapper',     color:'#ffd447',hp:100,speed:175,spin:0,  dmg:20.3,cd:2,  arms:[],desc:'Leaves mines behind for rivals to hit.',sig:['Minefield','More mines, bigger blasts']},
   twin:   {name:'Ninja',      color:'#ff6ac1',hp:100,speed:170,spin:6.0,dmg:15.45,cd:.22,arms:[{a:0,l:24},{a:Math.PI,l:24}],desc:'Two short blades, twice the spin.',sig:['Another blade','One more blade in the whirl']},
   fury:   {name:'Berserker',  color:'#2fd6b5',hp:100,speed:170,spin:4.5,dmg:19.79,  cd:.35,arms:[{a:0,l:30}],rage:17,desc:'Hits harder the closer it is to losing.',sig:['Blood rage','Its rage builds 40% higher']},
   comet:  {name:'Comet',      color:'#ff9d2e',hp:100,speed:215,spin:0,  dmg:6.39,   cd:.3, arms:[],desc:'Leaves a burning trail that hurts to cross.',sig:['Long tail','The trail burns for longer']},
   bramble:{name:'Bramble',    color:'#4fbf5b',hp:100,speed:185,spin:0,  dmg:12.26,  cd:.7, arms:[],desc:'Every wall it touches grows thorns.',sig:['Overgrowth','More thorns, and longer ones']},
-  bees:   {name:'Beekeeper',  color:'#f2c230',hp:100,speed:160,spin:0,  dmg:8.01,   cd:1.0,arms:[],desc:'Releases bees that chase the rival.',sig:['Bigger hive','More bees in the air at once']},
+  bees:   {name:'Beekeeper',  color:'#f2c230',hp:100,speed:160,spin:0,  dmg:8.48,   cd:1.0,arms:[],desc:'Releases bees that chase the rival.',sig:['Angry swarm','Faster bees that each sting once more']},
   ghost:  {name:'Ghost',      color:'#cfd6ff',hp:100,speed:165,spin:0,  dmg:26.23,  cd:.5, arms:[],desc:'Fades out of reach, then strikes as it returns.',sig:['Haunting','Fades out more often']},
   snow:   {name:'Snowball',   color:'#dff3ff',hp:100,speed:190,spin:0,  dmg:10.52,   cd:.5, arms:[],desc:'Grows with every bounce: bigger, slower, harder hitting.',sig:['Avalanche','Grows faster']},
   tesla:  {name:'Tesla',      color:'#7fe7ff',hp:100,speed:165,spin:0,  dmg:6.06,   cd:.45,arms:[],desc:'Arcs lightning to the rival whenever they get close.',sig:['High voltage','Lightning reaches further']},
   magnet: {name:'Magnet',     color:'#e2526f',hp:100,speed:160,spin:0,  dmg:29.6,  cd:1.4,arms:[],desc:'Drags the rival in, then blasts them away.',sig:['Stronger field','A bigger blast']},
-  mirror: {name:'Mirror',     color:'#a9b8d9',hp:100,speed:175,spin:0,  dmg:10.61,   cd:.5, arms:[],desc:'Splits off a copy of itself whenever it is hit.',sig:['Hall of mirrors','More copies at once']},
+  mirror: {name:'Mirror',     color:'#a9b8d9',hp:100,speed:175,spin:0,  dmg:10.15,   cd:.5, arms:[],desc:'Splits off a copy of itself whenever it is hit.',sig:['Hall of mirrors','More copies, sooner, and they hit harder']},
   spider: {name:'Spider',     color:'#8a6bd1',hp:100,speed:195,spin:0,  dmg:8.46,   cd:.5, arms:[],desc:'Strings webs between walls that slow whoever crosses.',sig:['More silk','More webs at once']},
-  necro:  {name:'Necromancer',color:'#6fd3a0',hp:100,speed:160,spin:4.6,dmg:14.91,  cd:.45,arms:[{a:0,l:30}],desc:'Every wound it deals raises a minion.',sig:['Horde','More minions at once']},
+  necro:  {name:'Necromancer',color:'#6fd3a0',hp:100,speed:160,spin:4.6,dmg:14.61,  cd:.45,arms:[{a:0,l:30}],desc:'Every wound it deals raises a minion.',sig:['Horde','More minions, tougher and quicker']},
   painter:{name:'Painter',    color:'#ff7fd0',hp:100,speed:200,spin:0,  dmg:3.07, cd:.25,arms:[],desc:'Paints the floor. Its paint heals it and hurts the rival.',sig:['Wide brush','Paints a wider stripe']},
   clock:  {name:'Clockmaker', color:'#d9b36c',hp:100,speed:160,spin:4.2,dmg:21.34,  cd:.4, arms:[{a:0,l:34},{a:Math.PI,l:20,d:.6,rate:.4}],desc:'Freezes the rival for a moment every few seconds.',sig:['Slow time','A longer freeze']},
 };
@@ -59,21 +59,21 @@ const UPGRADES={
   sharper:  {name:'Sharper',    text:'25% more damage',max:9,apply:b=>{b.dmg*=1.25}},
   faster:   {name:'Faster',     text:'Move, spin and strike 20% faster',max:4,apply:b=>{b.spd*=1.2}},
   bulk:     {name:'Bulk up',    text:'Bigger body, 35% more health',max:2,apply:b=>{b.r=Math.min(40,b.r*1.2);b.hp*=1.35}},
-  shrink:   {name:'Shrink',     text:'Smaller body, harder to hit',max:2,apply:b=>{b.r=Math.max(14,b.r*.84)}},
+  shrink:   {name:'Shrink',     text:'Smaller body, harder to hit, 10% quicker',max:2,apply:b=>{b.r=Math.max(14,b.r*.84);b.spd*=1.1}},
   blade:    {name:'Extra blade',text:'One more spinning blade',max:3},
   reach:    {name:'Long reach', text:'Blades and chains 30% longer',max:2,needsArm:true},
   sidearm:  {name:'Sidearm',    text:'Fires a shot every 2 seconds',max:3},
   vampire:  {name:'Vampire',    text:'Heal for 25% of the damage you deal',max:3},
-  regen:    {name:'Regrowth',   text:'Heal 2% of your health every second',max:3},
+  regen:    {name:'Regrowth',   text:'Heal 2 health every second',max:3},
   armor:    {name:'Armour',     text:'Take 15% less damage',max:4},
-  thorns:   {name:'Thorns',     text:'Attackers take 25% of their damage back',max:3},
+  thorns:   {name:'Thorns',     text:'Attackers take 20% of their damage back',max:3},
   poison:   {name:'Poison',     text:'Hits poison for 4 damage a second',max:3},
   frost:    {name:'Frost',      text:'Hits slow the rival for 2 seconds',max:1},
   crit:     {name:'Critical',   text:'20% chance to deal double damage',max:3},
   ambush:   {name:'Ambush',     text:'Your first hit deals triple damage',max:1},
   laststand:{name:'Last stand', text:'50% more damage below 40% health',max:2},
-  shield:   {name:'Shield',     text:'Blocks one hit every 6 seconds',max:2},
-  revive:   {name:'Second life',text:'Come back once with 35% health',max:1},
+  shield:   {name:'Shield',     text:'Blocks one hit every 8 seconds',max:2},
+  revive:   {name:'Second life',text:'Come back once with 20% health',max:1},
 };
 const UP_IDS=Object.keys(UPGRADES);
 const upName=(b,id)=>id==='sig'?FIGHTERS[b.key].sig[0]:UPGRADES[id].name;
@@ -87,7 +87,7 @@ function typeOf(b){
   const pre=top?PREFIX[top]:b.str>=0?STRENGTHS[b.str].label:'';
   return (pre?pre+' ':'')+FIGHTERS[b.key].name;
 }
-const RIVAL_START=.65,RIVAL_GROW=.12,RIVAL_UPS=.5;   // how the ladder gets harder; see rival()
+const RIVAL_START=.72,RIVAL_GROW=.12,RIVAL_UPS=.5;   // how the ladder gets harder; see rival()
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
 // A build is everything a match needs to know about one fighter.
@@ -204,7 +204,7 @@ const BEHAVE={
       f.s.t-=DT;
       if(f.s.t<=0){
         f.s.t=D.cd/f.spdMul;
-        if(mine(f,m,'bee')<5+2*f.sig)m.spawn(f,f.x,f.y,{kind:'bee',r:5,hp:1,dmg:D.dmg,sp:200,home:700,life:8,wear:1});
+        if(mine(f,m,'bee')<5+2*f.sig)m.spawn(f,f.x,f.y,{kind:'bee',r:5,hp:1+f.sig,dmg:D.dmg,sp:200+15*f.sig,home:700,life:8,wear:1});
       }
     }},
   ghost:{
@@ -270,8 +270,8 @@ const BEHAVE={
     tick(f){if(f.s.cd>0)f.s.cd-=DT},
     hurt(f,src,dmg,m){
       if(f.s.cd>0||mine(f,m,'copy')>=3+f.sig)return;
-      f.s.cd=1.2;
-      m.spawn(f,f.x,f.y,{kind:'copy',r:13,hp:30,dmg:FIGHTERS.mirror.dmg*.7,sp:190,home:0,life:6,wear:10});
+      f.s.cd=1.2/(1+.3*f.sig);
+      m.spawn(f,f.x,f.y,{kind:'copy',r:13,hp:30,dmg:FIGHTERS.mirror.dmg*.7*(1+.2*f.sig),sp:190,home:0,life:6+f.sig,wear:10});
     },
     touch:()=>FIGHTERS.mirror.dmg},
   spider:{
@@ -299,7 +299,7 @@ const BEHAVE={
     dealt(f,v,dmg,m){
       if(f.s.cd>0||mine(f,m,'bone')>=3+f.sig)return;
       f.s.cd=.8;
-      m.spawn(f,v.x,v.y,{kind:'bone',r:10,hp:6,dmg:FIGHTERS.necro.dmg*.5,sp:125,home:400,life:9,wear:3});
+      m.spawn(f,v.x,v.y,{kind:'bone',r:10,hp:6+3*f.sig,dmg:FIGHTERS.necro.dmg*.5,sp:125+12*f.sig,home:400,life:9+2*f.sig,wear:3});
     }},
   painter:{tick(f,e,m,rage){
     const D=FIGHTERS.painter,P=m.paint,w=f.sig;
@@ -337,9 +337,9 @@ function createMatch(A,B,seed){
     return {u:{},uh,key:b.key,i,x:i?AW-80:80,y:AW/2+(rnd()-.5)*80,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,r:b.r,speed:sp,base:sp,hp,max:hp,
       dmgMul:b.dmg,spdMul:b.spd,sig,ang:rnd()*6.283,dir:i?-1:1,cd:0,xcd:0,pcd:0,timer:.4+rnd()*.6,flash:0,aim:0,arms,
       spin:D.spin||(arms.length?4.5:0),label:b.name,col:b.color,stunT:0,gone:false,s:{},
-      regen:.02*(P.regen||0),armor:Math.pow(.85,P.armor||0),vamp:.25*(P.vampire||0)+(D.heal?D.heal*(1+.3*sig):0),thorns:.25*(P.thorns||0),
+      regen:2*(P.regen||0),armor:Math.pow(.85,P.armor||0),vamp:.25*(P.vampire||0)+(D.heal?D.heal*(1+.3*sig):0),thorns:.2*(P.thorns||0),
       poison:4*(P.poison||0),frost:P.frost||0,crit:.2*(P.crit||0),ambush:P.ambush||0,last:.5*(P.laststand||0),
-      shield:P.shield?6/P.shield:0,shieldT:0,revives:P.revive||0,side:P.sidearm?2/P.sidearm:0,sideT:1,poisonT:0,poisonDps:0,slowT:0};
+      shield:P.shield?8/P.shield:0,shieldT:0,revives:P.revive||0,side:P.sidearm?2/P.sidearm:0,sideT:1,poisonT:0,poisonDps:0,slowT:0};
   }
   function renorm(f){
     const sp=Math.sqrt(f.vx*f.vx+f.vy*f.vy);
@@ -440,7 +440,7 @@ function createMatch(A,B,seed){
       if(f.pcd>0)f.pcd-=DT;
       if(f.flash>0)f.flash-=DT;
       if(f.shieldT>0)f.shieldT-=DT;
-      if(f.regen&&f.hp>0)f.hp=Math.min(f.max,f.hp+f.max*f.regen*DT);
+      if(f.regen&&f.hp>0)f.hp=Math.min(f.max,f.hp+f.regen*DT);
       if(f.poisonT>0){f.poisonT-=DT;f.hp-=f.poisonDps*rage*DT}
     }
     // bodies bounce off each other; some classes hurt on touch
@@ -504,7 +504,7 @@ function createMatch(A,B,seed){
       if(q.hp<=0||q.life<=0){events.push({k:'pop',x:q.x,y:q.y,i:q.own});minions.splice(i,1)}
     }
     for(const f of F)if(f.hp<=0)for(const h of f.uh)if(h[0].lethal&&f.hp<=0)h[0].lethal(f,F[1-f.i],m,h[1]);
-    for(const f of F)if(f.hp<=0&&f.revives>0){f.revives--;f.hp=f.max*.35;f.poisonT=0;events.push({k:'revive',x:f.x,y:f.y,i:f.i})}
+    for(const f of F)if(f.hp<=0&&f.revives>0){f.revives--;f.hp=f.max*.2;f.poisonT=0;events.push({k:'revive',x:f.x,y:f.y,i:f.i})}
     if(a.hp<=0||b.hp<=0){m.over=true;m.winner=a.hp<=0&&b.hp<=0?(a.hp>=b.hp?0:1):a.hp<=0?1:0}
     else if(m.t>TIMEOUT){m.over=true;m.winner=a.hp/a.max>=b.hp/b.max?0:1}
     if(m.over)events.push({k:'ko',x:F[1-m.winner].x,y:F[1-m.winner].y,i:1-m.winner});

@@ -1,12 +1,15 @@
 // Shared ladder for Ball Brawl, stored in a Firebase Realtime Database through its plain web address (no library).
 // With NET.url empty the game is offline: the ladder holds house fighters and your own climb only.
 //   ladder/<UTC day>/<player id> = {n:name, k:class, s:strength, z:size, c:colour, u:[upgrade ids], r:rungs cleared, t:server time}
+//   fighters/<UTC day>/<player id>/<class> = the same shape: that player's best climb today with each class they tried.
+// The ladder ranks players by their one best climb; the fighters list is who you can meet as a rival.
 // The database's rules open only ladder/<day>/<16-character id> and log/<day>/<id>/<entry>, check each entry's shape
 // and refuse deletes; log entries can be added but never changed.
 // Everything read back is still checked before use, because anyone may write an entry.
 const NET={url:'https://ball-brawl-9b1bb-default-rtdb.firebaseio.com'};   // no trailing slash; '' turns the shared ladder off
 const Net={
   rows:[],        // today's entries from everyone, oldest first
+  roster:[],      // every fighter anyone has climbed with today (several per player)
   id:'',          // this browser's player id
   ok:false,       // the last pull worked
   busy:false,
@@ -43,10 +46,39 @@ const Net={
       rows.sort((a,b)=>a.t-b.t||(a.id<b.id?-1:1));
       const sig=rows.map(e=>e.id+e.cleared+e.name+e.key).join('|'),was=Net.rows.map(e=>e.id+e.cleared+e.name+e.key).join('|');
       Net.rows=rows;
+      Net.pullRoster(day);
       const first=!Net.ok;Net.ok=true;
       return first||sig!==was;
     }catch(e){Net.ok=false;return false}
     finally{Net.busy=false}
+  },
+  // everyone's fighters, for the rival pool; the ladder works without it, so a failure here is silent
+  async pullRoster(day){
+    try{
+      const r=await fetch(NET.url+'/fighters/'+day+'.json',{cache:'no-store'});
+      if(!r.ok)return;
+      const j=await r.json(),out=[];
+      if(j&&typeof j==='object')for(const id of Object.keys(j).slice(0,500)){
+        const mine=j[id];
+        if(mine&&typeof mine==='object')for(const k of Object.keys(mine).slice(0,60)){const e=Net.clean(id,mine[k]);if(e&&e.key===k)out.push(e)}
+      }
+      Net.roster=out;
+    }catch(e){}
+  },
+  // this player's best climb today with one class
+  async pushFighter(day,e){
+    if(!Net.on()||!Net.id||!(e.cleared>0))return false;
+    try{
+      const r=await fetch(NET.url+'/fighters/'+day+'/'+Net.id+'/'+e.key+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({n:e.name,k:e.key,s:e.str,z:e.size,c:e.color,u:e.ups,r:e.cleared,t:{'.sv':'timestamp'}})});
+      return r.ok;
+    }catch(err){return false}
+  },
+  // everyone else's fighters: the full list, plus ladder entries from players whose list has not arrived
+  rivals(){
+    const out=Net.roster.filter(p=>p.id!==Net.id),have=new Set(out.map(p=>p.id+':'+p.key));
+    for(const p of Net.others())if(!have.has(p.id+':'+p.key))out.push(p);
+    return out;
   },
   // today's best climb for this player; a later, higher climb simply replaces it
   async push(day,e){

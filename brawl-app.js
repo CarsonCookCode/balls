@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 20';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 21';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -7,6 +7,7 @@ const PALETTE=ROSTER.map(k=>FIGHTERS[k].color);
 const BOTS=14;           // house fighters on each day's ladder until real players fill it
 // mode: 'make' (three taps, then a name), 'fight', 'pick' (choose an upgrade), 'over', 'board' (today's ladder), 'duel'
 let mode='make',step=0,me={key:'blade',str:-1,size:-1,name:'',color:0,colorSet:false},deck=[],deckAt=0;
+let myBest={date:'',f:{}};   // this player's best climb today with each class: {class: rungs}
 let run=null,match=null,you=-1,loud=false,choice=[],best=0,speed=1,muted=false,last=0,acc=0,overFor=0,shake=0;
 let board={date:'',bots:[]},today={date:'',cleared:0},duel=null,backTo='make';
 const fx={floats:[],sparks:[],rings:[],bolts:[]},floats=fx.floats,sparks=fx.sparks,rings=fx.rings,bolts=fx.bolts;   // short-lived effects, shared with the video recorder
@@ -63,7 +64,8 @@ function netLine(){
   return n?n+' player'+(n>1?'s':'')+' on today\u2019s ladder':'No players on today\u2019s ladder yet. Be the first.';
 }
 // A rival on a rung is sometimes another player's fighter, cut back to what they had at that height.
-// Nobody should meet the same fighter over and over: one player's fighter comes back only after FRIEND_GAP other
+// Players are met through every fighter they have climbed with today, not only their best one.
+// Nobody should meet the same fighter over and over: a player's fighter comes back only after FRIEND_GAP other
 // rivals, and a class that was met in the last few fights is not picked again.
 const FRIEND_CHANCE=.3,FRIEND_GAP=6,CLASS_GAP=5;
 let fightNo=0;
@@ -71,7 +73,7 @@ const lastMet={},metKeys=[];
 function pickRival(rung){
   fightNo++;
   const fresh=k=>!metKeys.includes(k);
-  const all=Net.others().filter(p=>!(fightNo-lastMet[p.id]<=FRIEND_GAP)),pool=all.filter(p=>fresh(p.key));
+  const pool=Net.rivals().filter(p=>!(fightNo-lastMet[p.id+':'+p.key]<=FRIEND_GAP)&&fresh(p.key));
   let b;
   if(pool.length&&Math.random()<FRIEND_CHANCE){
     const p=pool[(Math.random()*pool.length)|0];
@@ -79,7 +81,7 @@ function pickRival(rung){
     const n=Math.min(p.ups.length,Math.floor((rung-1)*RIVAL_UPS));
     for(let k=0;k<n;k++)if(canTake(b,p.ups[k]))addUpgrade(b,p.ups[k]);
     const sc=RIVAL_START+RIVAL_GROW*(rung-1);b.hp*=sc;b.dmg*=sc;b.owner=p.name;
-    lastMet[p.id]=fightNo;
+    lastMet[p.id+':'+p.key]=fightNo;
   }else{
     b=rival(rung,Math.random);
     for(let k=0;k<12&&!fresh(b.key);k++)b=rival(rung,Math.random);
@@ -341,6 +343,11 @@ function fightDone(){
       try{localStorage.setItem('brawl.today2',JSON.stringify(today))}catch(e){}
       Net.push(today.date,today);
     }
+    if(cleared>(myBest.f[me.key]||0)){
+      myBest.f[me.key]=cleared;
+      try{localStorage.setItem('brawl.mine',JSON.stringify(myBest))}catch(e){}
+      Net.pushFighter(myBest.date,{cleared,key:me.key,str:me.str,size:me.size,name:run.build.name,color:run.build.color,ups:run.build.ups.slice()});
+    }
     log('end',{cleared,rec:run.record?1:0,best,by:run.rival.key,o:run.rival.owner||'',secs:Math.round((Date.now()-run.t0)/1000),players:Net.others().length});
   }
   render();
@@ -480,13 +487,13 @@ $('btnBoard').addEventListener('click',()=>{if(mode!=='make'&&mode!=='over')retu
 $('btnSpeed').addEventListener('click',()=>{sfx('click',1,1,true);speed=speed===1?2:speed===2?4:1;$('btnSpeed').textContent='Speed '+speed+'×';try{localStorage.setItem('brawl.speed',String(speed))}catch(e){}log('tap',{a:'speed',v:speed})});
 $('btnSound').addEventListener('click',()=>{muted=!muted;$('btnSound').setAttribute('aria-pressed',String(!muted));if(!muted){audioOn();sfx('click',1,1,true)}log('tap',{a:'sound',v:muted?0:1})});
 
-board.date=today.date=dayKey();
+board.date=today.date=myBest.date=dayKey();
 // Raise LADDER_RESET to wipe the ladder, today's climb and the best record on every device, once, the next time it loads.
 // The player's fighter and speed setting are kept.
 const LADDER_RESET='1';
 try{
   if(localStorage.getItem('brawl.reset')!==LADDER_RESET){
-    ['brawl.board2','brawl.today2','brawl.best'].forEach(k=>localStorage.removeItem(k));
+    ['brawl.board2','brawl.today2','brawl.best','brawl.mine'].forEach(k=>localStorage.removeItem(k));
     localStorage.setItem('brawl.reset',LADDER_RESET);
   }
 }catch(e){}
@@ -503,11 +510,19 @@ try{
   if(bd&&bd.date===board.date&&Array.isArray(bd.bots)&&bd.bots.length===BOTS&&bd.bots.every(okEntry))board=bd;
   const td=JSON.parse(localStorage.getItem('brawl.today2'));
   if(td&&td.date===today.date&&okEntry(td))today={date:td.date,cleared:td.cleared,key:td.key,str:td.str,size:td.size,name:cleanName(td.name),color:PALETTE.includes(td.color)?td.color:PALETTE[0],ups:td.ups};
+  const mn=JSON.parse(localStorage.getItem('brawl.mine'));
+  if(mn&&mn.date===myBest.date&&mn.f&&typeof mn.f==='object')for(const k of Object.keys(mn.f))if(FIGHTERS[k]&&Number.isInteger(mn.f[k])&&mn.f[k]>0)myBest.f[k]=mn.f[k];
 }catch(e){}
 if(!me.colorSet)me.color=ROSTER.indexOf(me.key);
 deck=shuffled(ROSTER);
 Net.init();
-if(Net.on()){refreshNet();if(today.cleared>0)Net.push(today.date,today)}
+if(Net.on()){
+  refreshNet();
+  if(today.cleared>0){
+    Net.push(today.date,today);
+    if(!(myBest.f[today.key]>=today.cleared)){myBest.f[today.key]=today.cleared;Net.pushFighter(today.date,today)}   // a best climb from before fighters were kept
+  }
+}
 // the play log: opening, leaving and coming back, and anything that goes wrong
 const openedAt=Date.now();let errs=0;
 log('open',{b:BUILD,w:window.innerWidth||0,h:window.innerHeight||0,dpr:+(window.devicePixelRatio||1).toFixed(2),touch:'ontouchstart' in window?1:0,back:step===3?1:0,f:me.key,best,today:today.cleared});

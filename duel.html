@@ -50,23 +50,25 @@ button.go{background:var(--go);color:var(--go-ink);border-color:var(--go);font-s
 button[aria-pressed="false"]{color:var(--mute);text-decoration:line-through}
 
 #panel{display:flex;flex-direction:column;gap:8px;flex:0 1 auto;max-height:64%;overflow-y:auto}
-.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.tabs button{min-height:36px;font-size:14px}
-.tabs button.on{border-color:var(--go);color:var(--go)}
 input,textarea{font:500 16px var(--body);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0;width:100%;-webkit-user-select:text;user-select:text}
 input:focus-visible,textarea:focus-visible{outline:2px solid var(--go);outline-offset:1px}
 textarea{resize:none;font:500 14px ui-monospace,Menlo,Consolas,monospace}
-.fld{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;font:600 15px var(--display)}
+.stepn{margin:0;font:600 11px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);text-align:center}
+.card{justify-content:flex-start;text-align:left;min-height:58px;padding:8px 14px;gap:12px}
+.card i{width:18px;height:18px;border-radius:50%;flex:0 0 auto}
+.card span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.card b{font:600 17px/1.1 var(--display)}
+.card small{font:400 12.5px/1.25 var(--body);color:var(--mute)}
+button.quiet{min-height:34px;font-size:13px;color:var(--mute);background:transparent;border-color:transparent;align-self:center}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.row2 button{min-height:38px;font-size:14px}
+.code{display:grid;grid-template-columns:1fr auto;gap:6px}
+.code input{font:600 13px ui-monospace,Menlo,Consolas,monospace}
+.code button{min-height:38px;font-size:14px}
 .sw{display:grid;grid-template-columns:repeat(8,1fr);gap:5px}
 .sw button{min-height:36px;padding:0}
 .sw i{width:18px;height:18px;border-radius:50%}
 .sw button.on{border-color:var(--go);box-shadow:inset 0 0 0 1px var(--go)}
-.pt{display:grid;grid-template-columns:1fr 42px 26px 42px 44px;gap:6px;align-items:center;font:600 15px var(--display)}
-.pt button{min-height:38px;padding:0;font-size:20px}
-.pt output{text-align:center;font-variant-numeric:tabular-nums}
-.pt small{color:var(--mute);font:500 12px var(--body);text-align:right;font-variant-numeric:tabular-nums}
-.code{display:grid;grid-template-columns:1fr auto auto;gap:6px}
-.code input{font:600 13px ui-monospace,Menlo,Consolas,monospace}
 button:disabled{opacity:.4;cursor:default}
 .br small{font:500 11px var(--body);color:var(--mute)}
 .ph{margin:0;font:700 20px/1.1 var(--display);text-align:center;text-wrap:balance}
@@ -150,7 +152,7 @@ function createMatch(keyA,boostA,keyB,boostB,seed){
   const m={f:F,bullets,mines,events,t:0,over:false,winner:-1,step};
   function mk(key,b,i){
     const D=FIGHTERS[key],a=rnd()*6.283,sp=D.speed*(b.spd||1),hp=D.hp*(b.hp||1);
-    return {key,i,x:i?AW-80:80,y:AW/2+(rnd()-.5)*80,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,r:R,speed:sp,hp,max:hp,
+    return {key,i,x:i?AW-80:80,y:AW/2+(rnd()-.5)*80,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,r:b.r||R,speed:sp,hp,max:hp,
       dmgMul:b.dmg||1,spdMul:b.spd||1,ang:rnd()*6.283,dir:i?-1:1,cd:0,pcd:0,timer:.4+rnd()*.6,flash:0,aim:0};
   }
   function renorm(f){
@@ -176,7 +178,7 @@ function createMatch(keyA,boostA,keyB,boostB,seed){
       const D=FIGHTERS[s.key];
       let dmg=D.dmg;
       if(D.rage)dmg+=D.rage*(1-Math.max(0,s.hp)/s.max);
-      s.cd=D.cd;s.dir*=-1;
+      s.cd=D.cd/s.spdMul;s.dir*=-1;
       hurt(v,dmg*s.dmgMul*rage,s);knock(v,s);
       return;
     }
@@ -223,8 +225,8 @@ function createMatch(keyA,boostA,keyB,boostB,seed){
       renorm(a);renorm(b);
       events.push({k:'bump',x:(a.x+b.x)/2,y:(a.y+b.y)/2});
       const sa=a.key==='spikes'&&a.cd<=0,sb=b.key==='spikes'&&b.cd<=0;
-      if(sa){a.cd=FIGHTERS.spikes.cd;hurt(b,FIGHTERS.spikes.dmg*a.dmgMul*rage,a)}
-      if(sb){b.cd=FIGHTERS.spikes.cd;hurt(a,FIGHTERS.spikes.dmg*b.dmgMul*rage,b)}
+      if(sa){a.cd=FIGHTERS.spikes.cd/a.spdMul;hurt(b,FIGHTERS.spikes.dmg*a.dmgMul*rage,a)}
+      if(sb){b.cd=FIGHTERS.spikes.cd/b.spdMul;hurt(a,FIGHTERS.spikes.dmg*b.dmgMul*rage,b)}
     }
     // weapons clash: both spins reverse
     const sa=segs(a),sb=segs(b);
@@ -268,7 +270,7 @@ function quickMatch(keyA,boostA,keyB,boostB,seed){
 //</sim>
 
 // ---------- Page ----------
-const BUILD='Build 6';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 7';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -432,30 +434,42 @@ function frame(ts){
 }
 
 // ----- fighter builds and codes -----
-// A build is a weapon, a colour, a name and six points split across health, damage and speed.
-// Its code is short enough to post in a comment and is checked when read back, so it cannot be edited into a stronger fighter.
+// Making a fighter is three taps (weapon, strength, size), then a name and a colour.
+// Its code is short enough to post in a comment and is checked when read back, so it cannot be edited into something else.
 const PALETTE=ROSTER.map(k=>FIGHTERS[k].color);
-const STATS=[{k:'hp',label:'Health',per:.08},{k:'dmg',label:'Damage',per:.08},{k:'spd',label:'Speed',per:.09}],POINTS=6;
-let tab='weapon',build={name:'',color:0,pts:[2,2,2],colorSet:false},rivalText='',rivals=[],rivalBad=0;
+const STRENGTHS=[
+  {label:'Tough', text:'35% more health',k:'hp',mul:1.35},
+  {label:'Strong',text:'35% more damage',k:'dmg',mul:1.35},
+  {label:'Quick', text:'Moves, spins and strikes 50% faster',k:'spd',mul:1.5},
+];
+const SIZES=[
+  {label:'Small', text:'Hard to hit, a little less health',r:18,hp:.9},
+  {label:'Medium',text:'No tricks, no weak spots',r:24,hp:1},
+  {label:'Big',   text:'Extra health, easy to hit',r:31,hp:1.12},
+];
+let step=0,build={name:'',color:0,colorSet:false,str:-1,size:-1},deck=[],deckAt=0,showRivals=false,rivalText='',rivals=[],rivalBad=0;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const boostOf=p=>({hp:1+p[0]*STATS[0].per,dmg:1+p[1]*STATS[1].per,spd:1+p[2]*STATS[2].per});
+function boostOf(s){
+  const b={hp:1,dmg:1,spd:1},z=SIZES[s.size>=0?s.size:1];
+  if(s.str>=0)b[STRENGTHS[s.str].k]=STRENGTHS[s.str].mul;
+  b.hp*=z.hp;b.r=z.r;
+  return b;
+}
 const cleanName=s=>String(s||'').replace(/[^A-Za-z0-9 ]/g,'').replace(/\s+/g,' ').trim().slice(0,12);
 function check(body){let n=7;for(let i=0;i<body.length;i++)n=(n*31+body.charCodeAt(i))%36;return n.toString(36).toUpperCase()}
 function encode(s){
-  const body=''+ROSTER.indexOf(s.key)+s.color+s.pts.join(''),nm=(cleanName(s.name)||FIGHTERS[s.key].name).replace(/ /g,'_');
-  return 'BB1'+body+check(body+nm)+'-'+nm;
+  const body=''+ROSTER.indexOf(s.key)+s.color+s.str+s.size,nm=(cleanName(s.name)||FIGHTERS[s.key].name).replace(/ /g,'_');
+  return 'BB2'+body+check(body+nm)+'-'+nm;
 }
 function decode(str){
-  const m=/^BB1([0-7])([0-7])([0-6])([0-6])([0-6])([0-9A-Z])-([A-Za-z0-9_]{1,12})$/.exec(String(str).trim());
-  if(!m)return null;
-  const pts=[+m[3],+m[4],+m[5]];
-  if(pts[0]+pts[1]+pts[2]!==POINTS||check(m[1]+m[2]+m[3]+m[4]+m[5]+m[7])!==m[6])return null;
-  return {key:ROSTER[+m[1]],color:+m[2],pts,name:m[7].replace(/_/g,' ')};
+  const m=/^BB2([0-7])([0-7])([0-2])([0-2])([0-9A-Z])-([A-Za-z0-9_]{1,12})$/.exec(String(str).trim());
+  if(!m||check(m[1]+m[2]+m[3]+m[4]+m[6])!==m[5])return null;
+  return {key:ROSTER[+m[1]],color:+m[2],str:+m[3],size:+m[4],name:m[6].replace(/_/g,' ')};
 }
-const mine=()=>({key:pick,color:build.color,pts:build.pts,name:build.name});
-const entry=(s,you)=>({key:s.key,boost:boostOf(s.pts),you:!!you,name:cleanName(s.name)||FIGHTERS[s.key].name,color:PALETTE[s.color]});
-const house=k=>({key:k,boost:boostOf([2,2,2]),you:false,name:FIGHTERS[k].name,color:FIGHTERS[k].color});
-const left=()=>POINTS-build.pts[0]-build.pts[1]-build.pts[2];
+const mine=()=>({key:pick,color:build.color,str:build.str,size:build.size,name:build.name});
+const ready=()=>build.str>=0&&build.size>=0;
+const entry=(s,you)=>({key:s.key,boost:boostOf(s),you:!!you,name:cleanName(s.name)||FIGHTERS[s.key].name,color:PALETTE[s.color]});
+const house=k=>({key:k,boost:boostOf({str:(Math.random()*3)|0,size:1}),you:false,name:FIGHTERS[k].name,color:FIGHTERS[k].color});
 function dress(m,a,b){m.f[0].label=a.name;m.f[0].col=a.color;m.f[1].label=b.name;m.f[1].col=b.color}
 function readRivals(){
   const seen=new Set();rivals=[];rivalBad=0;
@@ -469,11 +483,11 @@ function readRivals(){
 }
 function rivalNote(){
   const n=rivals.length;
-  if(!n&&!rivalBad)return 'Fighters from these codes take the place of house fighters in your cup. Up to seven.';
+  if(!n&&!rivalBad)return 'Paste other fighters’ codes, one per line. Up to seven take the place of house fighters in your cup.';
   return (n?n+' fighter'+(n>1?'s':'')+' ready':'No fighters yet')+(rivalBad?', '+rivalBad+' code'+(rivalBad>1?'s':'')+' not recognised':'')+(n>7?'. Only the first seven are used.':'.');
 }
 function saveBuild(){
-  try{localStorage.setItem('brawl.pick',pick);localStorage.setItem('brawl.build',JSON.stringify(build));localStorage.setItem('brawl.rivals',rivalText)}catch(e){}
+  try{localStorage.setItem('brawl.pick',pick);localStorage.setItem('brawl.build2',JSON.stringify(build));localStorage.setItem('brawl.rivals2',rivalText)}catch(e){}
 }
 
 // ----- the cup -----
@@ -485,7 +499,7 @@ function demo(){
   $('round').textContent='Exhibition';setNames();
 }
 function startCup(){
-  if(left()>0)return;
+  if(!ready())return;
   audioOn();
   const field=[entry(mine(),true),...rivals.slice(0,7).map(s=>entry(s,false))];
   for(const k of shuffled(ROSTER)){if(field.length>=8)break;field.push(house(k))}
@@ -542,34 +556,39 @@ function nm(e){
   const kind=FIGHTERS[e.key].name;
   return (e.you?'You · ':'')+esc(e.name)+(e.name!==kind?' <small>'+kind+'</small>':'');
 }
+const head=(n,title)=>`<p class="stepn">${n}</p><h2 class="ph">${title}</h2>`;
+const card=(id,act,data,title,text,dot)=>`<button type="button" class="card" id="${id}" data-act="${act}" ${data}>${dot?`<i style="background:${dot}"></i>`:''}<span><b>${title}</b><small>${text}</small></span></button>`;
 function pickBody(){
-  if(tab==='weapon'){
-    return `<div class="grid">`+
-      ROSTER.map(k=>`<button type="button" id="pick-${k}" data-act="pick" data-key="${k}" class="fb${k===pick?' on':''}" aria-pressed="${k===pick}"><i style="background:${FIGHTERS[k].color}"></i>${FIGHTERS[k].name}</button>`).join('')+
-      `</div><p class="ps" id="desc">${FIGHTERS[pick].desc}</p>`;
+  if(step===0){
+    const offer=[0,1,2].map(i=>deck[(deckAt+i)%deck.length]);
+    return head('Step 1 of 3','Pick a weapon')+
+      offer.map(k=>card('wp-'+k,'weapon',`data-key="${k}"`,FIGHTERS[k].name,FIGHTERS[k].desc,FIGHTERS[k].color)).join('')+
+      `<button type="button" id="btnOthers" class="quiet" data-act="others">Show three others</button>`;
   }
-  if(tab==='build'){
-    const l=left();
-    return `<label class="fld"><span>Name</span><input id="inName" type="text" maxlength="12" autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="${FIGHTERS[pick].name}" value="${esc(build.name)}"></label>`+
-      `<div class="sw">`+PALETTE.map((c,i)=>`<button type="button" id="col-${i}" data-act="col" data-i="${i}" class="${i===build.color?'on':''}" aria-pressed="${i===build.color}" aria-label="Colour ${i+1}"><i style="background:${c}"></i></button>`).join('')+`</div>`+
-      STATS.map((s,i)=>`<div class="pt"><span>${s.label}</span><button type="button" id="pt-${s.k}-less" data-act="pt" data-i="${i}" data-d="-1" aria-label="Less ${s.label.toLowerCase()}">−</button><output id="pt-${s.k}">${build.pts[i]}</output>`+
-        `<button type="button" id="pt-${s.k}-more" data-act="pt" data-i="${i}" data-d="1" aria-label="More ${s.label.toLowerCase()}">+</button><small>+${Math.round(build.pts[i]*s.per*100)}%</small></div>`).join('')+
-      `<p class="ps" id="ptsLeft">${l?l+' point'+(l>1?'s':'')+' left to spend':'All six points spent. This code is your fighter:'}</p>`+
-      `<div class="code"><input id="outCode" type="text" readonly aria-label="Fighter code" value="${l?'':encode(mine())}" placeholder="Spend every point first">`+
-      `<button type="button" id="btnCopy" data-act="copy"${l?' disabled':''}>Copy</button><button type="button" id="btnLink" data-act="link"${l?' disabled':''}>Link</button></div>`;
-  }
-  return `<textarea id="inRivals" rows="4" placeholder="Paste fighter codes, one per line" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Rival fighter codes">${esc(rivalText)}</textarea>`+
-    `<p class="ps" id="rivalNote">${rivalNote()}</p>`;
+  if(step===1)return head('Step 2 of 3','Pick a strength')+
+    STRENGTHS.map((s,i)=>card('str-'+i,'str',`data-i="${i}"`,s.label,s.text)).join('')+
+    `<button type="button" id="btnBack" class="quiet" data-act="back">Back</button>`;
+  if(step===2)return head('Step 3 of 3','Pick a size')+
+    SIZES.map((s,i)=>card('size-'+i,'size',`data-i="${i}"`,s.label,s.text)).join('')+
+    `<button type="button" id="btnBack" class="quiet" data-act="back">Back</button>`;
+  return `<h2 class="ph">Name your fighter</h2>`+
+    `<p class="ps">${FIGHTERS[pick].name} · ${STRENGTHS[build.str].label} · ${SIZES[build.size].label}</p>`+
+    `<input id="inName" type="text" maxlength="12" autocomplete="off" autocapitalize="words" spellcheck="false" aria-label="Fighter name" placeholder="${FIGHTERS[pick].name}" value="${esc(build.name)}">`+
+    `<div class="sw">`+PALETTE.map((c,i)=>`<button type="button" id="col-${i}" data-act="col" data-i="${i}" class="${i===build.color?'on':''}" aria-pressed="${i===build.color}" aria-label="Colour ${i+1}"><i style="background:${c}"></i></button>`).join('')+`</div>`+
+    `<button type="button" id="btnStart" class="go" data-act="start">Start the cup</button>`+
+    `<div class="code"><input id="outCode" type="text" readonly aria-label="Fighter code" value="${encode(mine())}">`+
+    `<button type="button" id="btnCopy" data-act="copy">Copy code</button></div>`+
+    `<div class="row2"><button type="button" id="btnNew" data-act="new">New fighter</button>`+
+    `<button type="button" id="btnRivals" data-act="rivals" aria-expanded="${showRivals}">Rival codes${rivals.length?' ('+Math.min(7,rivals.length)+')':''}</button></div>`+
+    (showRivals?`<textarea id="inRivals" rows="3" placeholder="Paste fighter codes, one per line" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Rival fighter codes">${esc(rivalText)}</textarea><p class="ps" id="rivalNote">${rivalNote()}</p>`:'');
 }
 function render(){
   const P=$('panel');
   $('btnSpeed').hidden=mode!=='match';
   if(mode==='pick'){
-    const tabs=[['weapon','Weapon'],['build','Build'],['rivals','Rivals'+(rivals.length?' ('+Math.min(7,rivals.length)+')':'')]];
-    P.innerHTML=`<div class="tabs">`+tabs.map(t=>`<button type="button" id="tab-${t[0]}" data-act="tab" data-key="${t[0]}" class="${tab===t[0]?'on':''}" aria-pressed="${tab===t[0]}">${t[1]}</button>`).join('')+`</div>`+
-      pickBody()+
-      `<button type="button" id="btnStart" class="go" data-act="start"${left()?' disabled':''}>Start the cup</button>`+
-      (cups?`<p class="ps">Cups won: ${cups}</p>`:'');
+    P.innerHTML=pickBody()+
+      (rivals.length&&!(step===3&&showRivals)?`<p class="ps">Waiting to fight you: ${rivals.slice(0,7).map(r=>esc(r.name)).join(', ')}</p>`:'')+
+      (cups&&step===3?`<p class="ps">Cups won: ${cups}</p>`:'');
   }else if(mode==='bracket'){
     P.innerHTML=`<h2 class="ph">${ROUNDS[T.round]}${T.round<2?'s':''}</h2><ul class="br">`+
       T.pairs.map((p,i)=>{
@@ -590,23 +609,22 @@ function render(){
 }
 function copyText(text,btn,idle){
   const done=()=>{btn.textContent='Copied';setTimeout(()=>{const x=$(btn.id);if(x)x.textContent=idle},1200)};
-  const manual=()=>{const i=$('outCode');if(i){i.value=text;i.focus();i.select()}btn.textContent='Select it';setTimeout(()=>{const x=$(btn.id);if(x)x.textContent=idle},2000)};
+  const manual=()=>{const i=$('outCode');if(i){i.focus();i.select()}btn.textContent='Select it';setTimeout(()=>{const x=$(btn.id);if(x)x.textContent=idle},2000)};
   try{navigator.clipboard.writeText(text).then(done,manual)}catch(e){manual()}
 }
 $('panel').addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');
   if(!b||b.disabled)return;
   const act=b.dataset.act;
-  if(act==='tab'){tab=b.dataset.key;render()}
-  else if(act==='pick'){pick=b.dataset.key;if(!build.colorSet)build.color=ROSTER.indexOf(pick);saveBuild();render();demo()}
+  if(act==='weapon'){pick=b.dataset.key;if(!build.colorSet)build.color=ROSTER.indexOf(pick);step=1;saveBuild();render();demo()}
+  else if(act==='others'){deckAt=(deckAt+3)%deck.length;render()}
+  else if(act==='str'){build.str=+b.dataset.i;step=2;saveBuild();render();demo()}
+  else if(act==='size'){build.size=+b.dataset.i;step=3;saveBuild();render();demo()}
+  else if(act==='back'){step=Math.max(0,step-1);render()}
+  else if(act==='new'){step=0;build.str=-1;build.size=-1;deck=shuffled(ROSTER);deckAt=0;saveBuild();render();demo()}
   else if(act==='col'){build.color=+b.dataset.i;build.colorSet=true;saveBuild();render();demo()}
-  else if(act==='pt'){
-    const i=+b.dataset.i,d=+b.dataset.d,v=build.pts[i]+d;
-    if(v<0||v>POINTS||(d>0&&left()<1))return;
-    build.pts[i]=v;saveBuild();render();demo();
-  }
-  else if(act==='copy')copyText(encode(mine()),b,'Copy');
-  else if(act==='link')copyText(location.href.split('#')[0]+'#'+encode(mine()),b,'Link');
+  else if(act==='rivals'){showRivals=!showRivals;render()}
+  else if(act==='copy')copyText(encode(mine()),b,'Copy code');
   else if(act==='start')startCup();
   else if(act==='fight')fight();
   else if(act==='boost')takeBoost(b.dataset.key);
@@ -616,13 +634,13 @@ $('panel').addEventListener('input',e=>{
   // typing must not rebuild the panel, or the keyboard would close on every letter
   if(e.target.id==='inName'){
     build.name=cleanName(e.target.value);
-    const o=$('outCode');if(o&&!left())o.value=encode(mine());
+    const o=$('outCode');if(o)o.value=encode(mine());
     if(match&&mode==='pick'){match.f[0].label=build.name||FIGHTERS[pick].name;setNames()}
     saveBuild();
   }else if(e.target.id==='inRivals'){
     rivalText=e.target.value;readRivals();
     $('rivalNote').textContent=rivalNote();
-    $('tab-rivals').textContent='Rivals'+(rivals.length?' ('+Math.min(7,rivals.length)+')':'');
+    $('btnRivals').textContent='Rival codes'+(rivals.length?' ('+Math.min(7,rivals.length)+')':'');
     saveBuild();
   }
 });
@@ -633,16 +651,19 @@ $('btnSound').addEventListener('click',()=>{muted=!muted;$('btnSound').setAttrib
 try{
   const v=parseInt(localStorage.getItem('brawl.cups'),10);if(Number.isFinite(v)&&v>0)cups=v;
   const p=localStorage.getItem('brawl.pick');if(p&&FIGHTERS[p])pick=p;
-  const b=JSON.parse(localStorage.getItem('brawl.build'));
-  if(b&&Array.isArray(b.pts)&&b.pts.length===3&&b.pts.every(n=>Number.isInteger(n)&&n>=0&&n<=POINTS)&&b.pts[0]+b.pts[1]+b.pts[2]<=POINTS&&b.color>=0&&b.color<8)
-    build={name:cleanName(b.name),color:b.color|0,pts:b.pts,colorSet:!!b.colorSet};
-  rivalText=String(localStorage.getItem('brawl.rivals')||'').slice(0,4000);
+  const b=JSON.parse(localStorage.getItem('brawl.build2'));
+  if(b&&[0,1,2].includes(b.str)&&[0,1,2].includes(b.size)&&b.color>=0&&b.color<8){
+    build={name:cleanName(b.name),color:b.color|0,colorSet:!!b.colorSet,str:b.str,size:b.size};
+    step=3;                                   // a returning player goes straight to their fighter
+  }
+  rivalText=String(localStorage.getItem('brawl.rivals2')||'').slice(0,4000);
 }catch(e){}
 if(!build.colorSet)build.color=ROSTER.indexOf(pick);
+deck=shuffled(ROSTER);
 // a link that ends in a fighter code adds that fighter to your rivals
 try{
   const h=decodeURIComponent(location.hash.slice(1));
-  if(decode(h)&&!rivalText.split(/[\s,]+/).includes(h)){rivalText=(rivalText.trim()?rivalText.trim()+'\n':'')+h;tab='rivals'}
+  if(decode(h)&&!rivalText.split(/[\s,]+/).includes(h))rivalText=(rivalText.trim()?rivalText.trim()+'\n':'')+h;
 }catch(e){}
 readRivals();
 $('build').textContent=BUILD;

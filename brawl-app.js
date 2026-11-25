@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 28';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 29';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -539,7 +539,7 @@ function makeBody(){
     `<button type="button" id="btnStart" class="go" data-act="start">Begin the climb</button>`+
     `<p class="ps">Beat a rival, claim a boon, climb a rung. One loss ends the run.</p>`+
     `<p class="ps" id="goal">${goalLine()}</p>`+
-    `<button type="button" id="btnNew" class="quiet" data-act="new">Make a different fighter</button>`;
+    `<button type="button" id="btnNew" class="alt" data-act="new">Make a different fighter</button>`;
 }
 function boardBody(){
   const rows=standings(),pair=[],seen=new Set();
@@ -549,11 +549,11 @@ function boardBody(){
     return `<li class="${r.you?'me':''}${pair.includes(r)?' in':''}"><span class="rk">${i+1}</span><i style="background:${b.color}"></i>`+
       `<span class="nm"><b>${typeOf(b)}</b><small>${r.you?esc(b.name)+' · you':r.player?esc(b.name):'house fighter'}</small></span><span class="rg">${r.cleared}</span></li>`;
   };
-  return `<h2 class="ph">Today’s ladder</h2><p class="ps" id="goal">${goalLine()}</p>`+(netLine()?`<p class="ps" id="netLine">${netLine()}</p>`:'')+
+  return `<button type="button" id="btnClose" class="alt backtop" data-act="closeboard">‹ Back</button><h2 class="ph">Today’s ladder</h2><p class="ps" id="goal">${goalLine()}</p>`+(netLine()?`<p class="ps" id="netLine">${netLine()}</p>`:'')+
     (boardReady()?`<button type="button" id="btnDuel" class="go" data-act="duel">Watch today’s duel</button>`+
       (window.Broadcast&&Broadcast.supported&&Broadcast.supported()?`<button type="button" id="btnRec" data-act="recduel">Record today’s duel as a video</button>`:'')+
       `<ol class="lb">`+rows.slice(0,80).map(row).join('')+`</ol>`:'')+
-    `<button type="button" id="btnClose" class="quiet" data-act="closeboard">Back</button>`;
+    `<button type="button" id="btnClose2" class="alt" data-act="closeboard">Back</button>`;
 }
 function duelBody(){
   // kept short so the arena has the screen; the fighters' names are already above the health bars
@@ -568,7 +568,8 @@ function render(){
   const P=$('panel'),B=document.body;
   if(B&&B.dataset)B.dataset.mode=mode;                 // the stylesheet gives the arena more room while a fight is on
   $('btnSpeed').hidden=!(mode==='fight'||mode==='duel'||mode==='ready');
-  $('btnBoard').hidden=!(mode==='make'||mode==='over');
+  $('btnBoard').hidden=!(mode==='make'||mode==='over'||mode==='board');
+  $('btnBoard').textContent=mode==='board'?'Back':'Ladder';          // the same plate opens the ladder and leaves it
   if(mode==='make'){P.innerHTML=makeBody();if(step===0&&browse)thumbsFill()}
   else if(mode==='board')P.innerHTML=boardBody();
   else if(mode==='duel')P.innerHTML=duelBody();
@@ -585,7 +586,7 @@ function render(){
       `<p class="ps">${run.record?'New best. ':'Your best is '+best+'. '}Beaten by ${run.rival.owner?'':'a '}${whose(run.rival)}.</p>`+
       `<p class="ps" id="goal">${goalLine()}</p>`+
       `<button type="button" id="btnAgain" class="go" data-act="start">Climb again</button>`+
-      `<button type="button" id="btnNew" class="quiet" data-act="new">Make a different fighter</button>`;
+      `<button type="button" id="btnNew" class="alt" data-act="new">Make a different fighter</button>`;
   }
 }
 // Small portraits for the grid of every fighter: each is drawn once, from a real fighter standing in the arena, and kept.
@@ -668,7 +669,9 @@ document.addEventListener('touchend',e=>{
   if(c&&!c.disabled)c.click();
 },{passive:false});
 for(const ev of ['gesturestart','gesturechange','dblclick'])document.addEventListener(ev,e=>e.preventDefault());
-$('btnBoard').addEventListener('click',()=>{if(mode!=='make'&&mode!=='over')return;audioOn();sfx('open',1,1,true);log('tap',{a:'ladder',m:mode});backTo=mode;mode='board';render()});
+$('btnBoard').addEventListener('click',()=>{
+  if(mode==='board'){audioOn();sfx('page',1,1,true);log('tap',{a:'closeboard',m:mode,v:'foot'});mode=backTo;render();if(mode==='make')practice();return}
+  if(mode!=='make'&&mode!=='over')return;audioOn();sfx('open',1,1,true);log('tap',{a:'ladder',m:mode});backTo=mode;mode='board';render()});
 $('btnSpeed').addEventListener('click',()=>{sfx('click',1,1,true);speed=speed===1?2:speed===2?4:1;$('btnSpeed').textContent='Speed '+speed+'×';try{localStorage.setItem('brawl.speed',String(speed))}catch(e){}log('tap',{a:'speed',v:speed})});
 $('btnSound').addEventListener('click',()=>{muted=!muted;$('btnSound').setAttribute('aria-pressed',String(!muted));if(!muted){audioOn();sfx('click',1,1,true)}log('tap',{a:'sound',v:muted?0:1})});
 

@@ -209,3 +209,8 @@ body[data-mode="ready"] .ps.tipline,body[data-mode="ready"] .ps.what{min-height:
   body[data-mode="ready"] #btnFight{min-height:42px}
   body[data-mode="ready"] .ps.note,body[data-mode="ready"] .ps.keep{font-size:13.5px}
 }
+
+/* a second-rank plate: the same size and weight as the main one, in the dark plate colours */
+button.alt{width:100%;min-height:48px;font-size:15px}
+/* the way out of the ladder: a plate at the top of the scroll (the footer plate also reads Back while the ladder is open) */
+button.backtop{width:auto;align-self:flex-start;min-height:36px;padding:6px 16px 6px 12px;margin-bottom:-4px}

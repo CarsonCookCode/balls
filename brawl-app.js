@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 14';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 15';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -133,15 +133,16 @@ function sfx(name,vol,rate,ui){
 }
 // what a hit sounds like depends on who landed it; mines and eruptions already have their boom
 const HIT_SFX={blade:'slash',twin:'slash',leech:'slash',pirate:'slash',clock:'metal',fury:'chop',mace:'heavy',jugger:'heavy',turtle:'iron',spikes:'punch',jester:'punch',
-  blaster:'plate',archer:'plate',miner:'',volcano:'',comet:'tick',bramble:'twig',bees:'tin',ghost:'thump',snow:'thump',tesla:'',magnet:'',mirror:'glass',spider:'soft',
+  blaster:'plate',archer:'twig',miner:'',volcano:'',comet:'tick',bramble:'twig',bees:'tin',ghost:'thump',snow:'thump',tesla:'',magnet:'',mirror:'glass',spider:'soft',
   necro:'wood',painter:'tick',hunter:'wood',beacon:'tick',drum:'thump',wizard:'glass'};
-const SHOT_SFX={blaster:'twang',archer:'twang',wizard:'cast',hunter:'whoosh',pirate:'whoosh'};
+const HIT_VOL={archer:.7};
+const SHOT_SFX={blaster:'twang',archer:'loose',wizard:'cast',hunter:'whoosh',pirate:'whoosh'};
 const UI_SFX={weapon:'place',str:'place',size:'place',others:'page',back:'page',col:'click',new:'page',start:'draw',up:'coins',duel:'draw',recduel:'draw',board:'open',closeboard:'page'};
 function hitSound(e){
   if(e.ind){sfx('tick',.6);return}
   const n=HIT_SFX[e.by];
   if(n===''){return}
-  sfx(n||'punch',.5+Math.min(.5,e.dmg/45),e.crit?.9:1);
+  sfx(n||'punch',(.5+Math.min(.5,e.dmg/45))*(HIT_VOL[e.by]||1),e.crit?.9:1);
   if(e.crit)sfx('clang',.7,1.15);
 }
 
@@ -161,7 +162,7 @@ function onEvents(ev){
     else if(e.k==='revive'){say(e.x,e.y,'Second life','#ffd447',true);burst(e.x,e.y,24,60,220,.5);sfx('toll',1)}
     else if(e.k==='parry'){burst(e.x,e.y,5,60,180,.25);sfx('clang',.55,1.12)}
     else if(e.k==='bump'){sfx('soft',.4)}
-    else if(e.k==='shot'){sfx((match&&e.i>=0&&SHOT_SFX[match.f[e.i].key])||'twang',.6)}
+    else if(e.k==='shot'){const n=(match&&e.i>=0&&SHOT_SFX[match.f[e.i].key])||'twang';sfx(n,n==='loose'?.8:.6,n==='loose'?1.2:1)}
     else if(e.k==='mine'){sfx('latch',.6)}
     else if(e.k==='boom'){burst(e.x,e.y,12,80,240,.35);ring(e.x,e.y,6,34,.3,'#ffd447',3);shake=Math.max(shake,4);sfx('boom',.9)}
     else if(e.k==='zap'){
@@ -176,7 +177,7 @@ function onEvents(ev){
     else if(e.k==='blast'){ring(e.x,e.y,10,e.r,.3,col,4);shake=Math.max(shake,3);sfx('thump',1,.8)}
     else if(e.k==='freeze'){say(e.x,e.y,'Frozen','#9fe0ff',true);ring(e.x,e.y,44,24,.4,'#9fe0ff',3);sfx('shatter',.9)}
     else if(e.k==='spawn'){burst(e.x,e.y,5,30,90,.25,col);sfx('pop',.6)}
-    else if(e.k==='pop'){burst(e.x,e.y,4,30,100,.2,col);sfx('tick',.5)}
+    else if(e.k==='pop'){burst(e.x,e.y,4,30,100,.2,col);if(!(match&&e.i>=0&&match.f[e.i].key==='archer'))sfx('tick',.5)}
     // generic effects any class can ask for without the page knowing about the class
     else if(e.k==='ring'){ring(e.x,e.y,e.r0||6,e.r||40,e.life||.3,e.col||col,e.w||3)}
     else if(e.k==='text'){say(e.x,e.y,String(e.txt),e.col||col,e.big)}

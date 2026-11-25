@@ -35,6 +35,7 @@ const GROUPS = {
   tin:     { g: .45, cap: .2,  gap: .09, files: imp('Tin_medium', 0, 1, 2, 3) },
   // launching, casting and the larger events
   twang:   { g: .5,  cap: .16, gap: .08, files: ['interface-sounds/pluck_001', 'interface-sounds/pluck_002'] },
+  loose:   { g: .4,  cap: .26, gap: .12, files: ['rpg-audio/cloth2', 'rpg-audio/cloth3', 'rpg-audio/cloth4'] },   // an arrow leaving the string: soft, short, airy
   whoosh:  { g: .45, cap: .46, gap: .15, files: ['casino-audio/card-slide-4', 'casino-audio/card-slide-1', 'casino-audio/card-slide-2'] },
   cast:    { g: .4,  cap: .45, gap: .15, files: ['digital-audio/phaseJump1', 'digital-audio/phaseJump2', 'digital-audio/phaseJump3', 'digital-audio/phaseJump4'] },
   zap:     { g: .4,  cap: .34, gap: .1,  files: ['sci-fi-sounds/laserSmall_000', 'sci-fi-sounds/laserSmall_001', 'sci-fi-sounds/laserSmall_002'] },

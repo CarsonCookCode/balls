@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 16';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 17';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -133,10 +133,10 @@ function sfx(name,vol,rate,ui){
 }
 // what a hit sounds like depends on who landed it; mines and eruptions already have their boom
 const HIT_SFX={blade:'slash',twin:'slash',leech:'slash',pirate:'slash',clock:'metal',fury:'chop',mace:'heavy',jugger:'heavy',turtle:'iron',spikes:'punch',jester:'punch',
-  blaster:'plate',archer:'twig',miner:'',volcano:'',comet:'tick',bramble:'twig',bees:'tin',ghost:'thump',snow:'thump',tesla:'',magnet:'',mirror:'glass',spider:'soft',
+  blaster:'punch',archer:'twig',miner:'',volcano:'',comet:'tick',bramble:'twig',bees:'tin',ghost:'thump',snow:'thump',tesla:'',magnet:'',mirror:'glass',spider:'soft',
   necro:'wood',painter:'tick',hunter:'wood',beacon:'tick',drum:'thump',wizard:'glass'};
-const HIT_VOL={archer:.7};
-const SHOT_SFX={blaster:'twang',archer:'loose',wizard:'cast',hunter:'whoosh',pirate:'whoosh'};
+const HIT_VOL={archer:.7,blaster:.8};
+const SHOT_SFX={blaster:'gun',archer:'loose',wizard:'cast',hunter:'whoosh',pirate:'whoosh'};
 const UI_SFX={weapon:'place',str:'place',size:'place',others:'page',back:'page',col:'click',new:'page',start:'draw',up:'coins',duel:'draw',recduel:'draw',board:'open',closeboard:'page'};
 function hitSound(e){
   if(e.ind){sfx('tick',.6);return}
@@ -162,7 +162,7 @@ function onEvents(ev){
     else if(e.k==='revive'){say(e.x,e.y,'Second life','#ffd447',true);burst(e.x,e.y,24,60,220,.5);sfx('toll',1)}
     else if(e.k==='parry'){burst(e.x,e.y,5,60,180,.25);sfx('clang',.55,1.12)}
     else if(e.k==='bump'){sfx('soft',.4)}
-    else if(e.k==='shot'){const n=(match&&e.i>=0&&SHOT_SFX[match.f[e.i].key])||'twang';sfx(n,n==='loose'?.8:.6,n==='loose'?1.2:1)}
+    else if(e.k==='shot'){const n=(match&&e.i>=0&&SHOT_SFX[match.f[e.i].key])||'whoosh';sfx(n,n==='loose'?.8:n==='gun'?.75:.6,n==='loose'?1.2:n==='gun'?1.15:1)}
     else if(e.k==='mine'){sfx('latch',.6)}
     else if(e.k==='boom'){burst(e.x,e.y,12,80,240,.35);ring(e.x,e.y,6,34,.3,'#ffd447',3);shake=Math.max(shake,4);sfx('boom',.9)}
     else if(e.k==='zap'){

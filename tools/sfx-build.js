@@ -27,7 +27,6 @@ const GROUPS = {
   wood:    { g: .7,  cap: .33, gap: .07, files: imp('Wood_medium', 0, 1, 2, 3) },
   twig:    { g: .55, cap: .27, gap: .08, files: imp('Wood_light', 0, 1, 2) },
   chop:    { g: .85, cap: .31, gap: .08, files: ['rpg-audio/chop', ...imp('Wood_heavy', 0, 2)] },
-  plate:   { g: .65, cap: .5,  gap: .08, files: [...imp('Plate_medium', 2, 4), ...imp('Plate_heavy', 1, 3)] },
   glass:   { g: .55, cap: .21, gap: .08, files: imp('Glass_light', 0, 1, 2, 3) },
   shatter: { g: .7,  cap: .54, gap: .2,  files: imp('Glass_medium', 0, 1, 2) },
   bell:    { g: .6,  cap: .7,  gap: .25, files: imp('Bell_heavy', 2, 3, 4) },
@@ -35,7 +34,7 @@ const GROUPS = {
   tick:    { g: .4,  cap: .14, gap: .09, files: imp('Generic_light', 0, 1, 2, 3, 4) },
   tin:     { g: .45, cap: .2,  gap: .09, files: imp('Tin_medium', 0, 1, 2, 3) },
   // launching, casting and the larger events
-  twang:   { g: .5,  cap: .16, gap: .08, files: ['interface-sounds/pluck_001', 'interface-sounds/pluck_002'] },
+  gun:     { g: .5,  cap: .2,  gap: .12, files: ['sci-fi-sounds/explosionCrunch_000', 'sci-fi-sounds/explosionCrunch_003', 'sci-fi-sounds/explosionCrunch_001'] },   // only the crack of the bang, cut short
   loose:   { g: .4,  cap: .26, gap: .12, files: ['rpg-audio/cloth2', 'rpg-audio/cloth3', 'rpg-audio/cloth4'] },   // an arrow leaving the string: soft, short, airy
   whoosh:  { g: .45, cap: .46, gap: .15, files: ['casino-audio/card-slide-4', 'casino-audio/card-slide-1', 'casino-audio/card-slide-2'] },
   cast:    { g: .4,  cap: .45, gap: .15, files: ['digital-audio/phaseJump1', 'digital-audio/phaseJump2', 'digital-audio/phaseJump3', 'digital-audio/phaseJump4'] },

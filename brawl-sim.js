@@ -36,7 +36,22 @@ const SIZES=[
   {label:'Medium',text:'No tricks, no weak spots',r:24,hp:1},
   {label:'Big',   text:'Extra health, easy to hit',r:31,hp:1.12},
 ];
-// Upgrades picked during a climb. `apply` changes the build's numbers; the rest are counted in build.p and read by the match.
+// Upgrades picked during a climb. Every pick is counted in build.p. An upgrade can have:
+//   apply(b)   changes the build's numbers when it is picked
+//   only(b)    false when this build cannot take it
+//   hooks      functions the match calls for a fighter that has it; n is how many times it was picked:
+//     init(f,n,m)                  once, after the class's own init; may change the fighter's numbers
+//     tick(f,e,m,n,rage)           every step while not frozen; e is the rival
+//     guard(f,src,dmg,m,n)         multiplier for a direct hit it is about to take, before its shield (0 = no hit at all)
+//     deal(f,v,dmg,m,n)            returns the damage of a direct hit it is about to land
+//     take(f,src,dmg,m,n)          returns the damage of a direct hit it is about to take
+//     hit(f,v,dmg,m,n)             after it lands a direct hit
+//     hurt(f,src,dmg,m,n)          after it takes a direct hit
+//     bounce(f,m,n,x,y,nx,ny)      when it hits a wall
+//     bump(f,e,m,n)                when the two bodies touch
+//     lethal(f,e,m,n)              when its health has reached zero, before Second life; may raise f.hp to survive
+//     minion(f,q,m,n)              when it spawns a minion q; shot(f,q,m,n) when it fires a bullet q
+//   f.u is a scratch object for upgrade state. Upgrades in other files add to UPGRADES and PREFIX and push their ids to UP_IDS.
 // `sig` is the class's own upgrade: its name and text come from the class.
 const UPGRADES={
   sig:      {name:'Signature',  text:'',max:3},
@@ -86,9 +101,10 @@ function canTake(b,id){
   for(const x of b.ups)if(x===id)n++;
   if(n>=U.max)return false;
   if(U.needsArm&&!(FIGHTERS[b.key].arms.length||b.p.blade))return false;
+  if(U.only&&!U.only(b))return false;
   return true;
 }
-function addUpgrade(b,id){const U=UPGRADES[id];if(U.apply)U.apply(b);else b.p[id]=(b.p[id]||0)+1;b.ups.push(id)}
+function addUpgrade(b,id){const U=UPGRADES[id];if(U.apply)U.apply(b);b.p[id]=(b.p[id]||0)+1;b.ups.push(id)}
 function offers(b,rnd,n){
   const pool=UP_IDS.filter(id=>canTake(b,id)),out=[];
   while(out.length<n&&pool.length)out.push(pool.splice((rnd()*pool.length)|0,1)[0]);
@@ -308,7 +324,7 @@ function createMatch(A,B,seed){
   const rnd=mulberry32(seed),bullets=[],minions=[],events=[],paint=new Int8Array(GP*GP).fill(-1);
   const F=[mk(A,0),mk(B,1)];
   const m={f:F,bullets,minions,events,paint,t:0,over:false,winner:-1,step,rnd,hurt,knock,renorm,shoot,spawn};
-  for(const f of F){const H=BEHAVE[f.key];if(H&&H.init)H.init(f,m)}
+  for(const f of F){const H=BEHAVE[f.key];if(H&&H.init)H.init(f,m);for(const h of f.uh)if(h[0].init)h[0].init(f,h[1],m)}
   function mk(b,i){
     const D=FIGHTERS[b.key],P=b.p||{},sig=P.sig||0,a=rnd()*6.283,sp=D.speed*b.spd,hp=D.hp*b.hp,reach=1+.3*(P.reach||0);
     const arms=D.arms.map(o=>({a:o.a,l:o.l*reach,head:o.head||0,dmg:D.dmg*(o.d||1),extra:0,rate:o.rate||1}));
@@ -317,7 +333,8 @@ function createMatch(A,B,seed){
     if(b.key==='twin')for(let k=0;k<sig;k++)arms.push({a:[Math.PI/2,Math.PI*1.5,Math.PI/4][k],l:24*reach,head:0,dmg:D.dmg,extra:0,rate:1});
     const slots=b.key==='twin'?[2.2,5.3,.9]:D.arms.length===1?[Math.PI,Math.PI/2,Math.PI*1.5]:D.arms.length===2?[Math.PI/2,Math.PI*1.5,Math.PI/4]:[0,Math.PI,Math.PI/2];
     for(let k=0;k<(P.blade||0)&&k<3;k++)arms.push({a:slots[k],l:28*reach,head:0,dmg:10,extra:1,rate:1});
-    return {key:b.key,i,x:i?AW-80:80,y:AW/2+(rnd()-.5)*80,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,r:b.r,speed:sp,base:sp,hp,max:hp,
+    const uh=[];for(const id in P){const U=UPGRADES[id];if(U&&U.hooks&&P[id]>0)uh.push([U.hooks,P[id]])}
+    return {u:{},uh,key:b.key,i,x:i?AW-80:80,y:AW/2+(rnd()-.5)*80,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,r:b.r,speed:sp,base:sp,hp,max:hp,
       dmgMul:b.dmg,spdMul:b.spd,sig,ang:rnd()*6.283,dir:i?-1:1,cd:0,xcd:0,pcd:0,timer:.4+rnd()*.6,flash:0,aim:0,arms,
       spin:D.spin||(arms.length?4.5:0),label:b.name,col:b.color,stunT:0,gone:false,s:{},
       regen:.02*(P.regen||0),armor:Math.pow(.85,P.armor||0),vamp:.25*(P.vampire||0)+(D.heal?D.heal*(1+.3*sig):0),thorns:.25*(P.thorns||0),
@@ -337,6 +354,7 @@ function createMatch(A,B,seed){
     const a=rnd()*6.283;
     minions.push({own:f.i,kind:o.kind,x:Math.min(AW-o.r,Math.max(o.r,x)),y:Math.min(AW-o.r,Math.max(o.r,y)),vx:Math.cos(a)*o.sp,vy:Math.sin(a)*o.sp,
       r:o.r,hp:o.hp,dmg:o.dmg,sp:o.sp,home:o.home,life:o.life,wear:o.wear,cd:.35,icd:0,col:f.col});
+    for(const h of f.uh)if(h[0].minion)h[0].minion(f,minions[minions.length-1],m,h[1]);
     events.push({k:'spawn',x,y,i:f.i});
   }
   // indirect = damage that is not a hit (thorns), so it cannot be blocked or trigger on-hit effects
@@ -346,10 +364,14 @@ function createMatch(A,B,seed){
     if(!indirect){
       const G=BEHAVE[v.key];
       if(G&&G.guard){dmg*=G.guard(v,s,dmg,m);if(!(dmg>0))return}
+      for(const h of v.uh)if(h[0].guard){dmg*=h[0].guard(v,s,dmg,m,h[1]);if(!(dmg>0))return}
       if(v.shield&&v.shieldT<=0){v.shieldT=v.shield;events.push({k:'block',x:v.x,y:v.y,i:v.i});return}
       if(s.ambush){dmg*=3;s.ambush=0;crit=true}
       if(s.crit&&rnd()<s.crit){dmg*=2;crit=true}
       if(s.last&&s.hp<s.max*.4)dmg*=1+s.last;
+      for(const h of s.uh)if(h[0].deal)dmg=h[0].deal(s,v,dmg,m,h[1]);
+      for(const h of v.uh)if(h[0].take)dmg=h[0].take(v,s,dmg,m,h[1]);
+      if(!(dmg>0))return;
     }
     dmg*=v.armor;
     v.hp-=dmg;v.flash=.12;
@@ -362,6 +384,8 @@ function createMatch(A,B,seed){
     const Hv=BEHAVE[v.key],Hs=BEHAVE[s.key];
     if(Hv&&Hv.hurt)Hv.hurt(v,s,dmg,m);
     if(Hs&&Hs.dealt)Hs.dealt(s,v,dmg,m);
+    for(const h of v.uh)if(h[0].hurt)h[0].hurt(v,s,dmg,m,h[1]);
+    for(const h of s.uh)if(h[0].hit)h[0].hit(s,v,dmg,m,h[1]);
   }
   function strike(s,ss,v,rage){
     if(s.stunT>0||v.gone)return;
@@ -381,6 +405,7 @@ function createMatch(A,B,seed){
   function shoot(f,d){
     const an=f.aim+(rnd()-.5)*.3;
     bullets.push({x:f.x+Math.cos(an)*f.r,y:f.y+Math.sin(an)*f.r,vx:Math.cos(an)*330,vy:Math.sin(an)*330,own:f.i,d});
+    for(const h of f.uh)if(h[0].shot)h[0].shot(f,bullets[bullets.length-1],m,h[1]);
     events.push({k:'shot',x:f.x,y:f.y,i:f.i});
   }
   function step(){
@@ -402,10 +427,12 @@ function createMatch(A,B,seed){
           if(hx)H.bounce(f,m,hx>0?0:AW,f.y,hx,0);
           if(hy)H.bounce(f,m,f.x,hy>0?0:AW,0,hy);
         }
+        if(hx||hy)for(const h of f.uh)if(h[0].bounce){if(hx)h[0].bounce(f,m,h[1],hx>0?0:AW,f.y,hx,0);if(hy)h[0].bounce(f,m,h[1],f.x,hy>0?0:AW,0,hy)}
         let spin=f.spin*f.spdMul*(f.slowT>0?.6:1);
         if(D.rage)spin*=1+(1-Math.max(0,f.hp)/f.max)*.8;
         f.ang+=spin*f.dir*DT;
         if(H&&H.tick)H.tick(f,e,m,rage);
+        for(const h of f.uh)if(h[0].tick)h[0].tick(f,e,m,h[1],rage);
         if(f.side){f.sideT-=DT;if(f.sideT<=0){f.sideT=f.side;shoot(f,6)}}
       }
       if(f.cd>0)f.cd-=DT;
@@ -426,6 +453,8 @@ function createMatch(A,B,seed){
         if(va-vb>0){a.vx+=(vb-va)*nx;a.vy+=(vb-va)*ny;b.vx+=(va-vb)*nx;b.vy+=(va-vb)*ny}
         renorm(a);renorm(b);
         events.push({k:'bump',x:(a.x+b.x)/2,y:(a.y+b.y)/2});
+        for(const h of a.uh)if(h[0].bump)h[0].bump(a,b,m,h[1]);
+        for(const h of b.uh)if(h[0].bump)h[0].bump(b,a,m,h[1]);
         const Ha=BEHAVE[a.key],Hb=BEHAVE[b.key];
         const ta=Ha&&Ha.touch&&a.cd<=0&&a.stunT<=0?Ha.touch(a,b):0,tb=Hb&&Hb.touch&&b.cd<=0&&b.stunT<=0?Hb.touch(b,a):0;
         if(ta>0){a.cd=FIGHTERS[a.key].cd/a.spdMul;hurt(b,ta*a.dmgMul*rage,a)}
@@ -474,6 +503,7 @@ function createMatch(A,B,seed){
       }
       if(q.hp<=0||q.life<=0){events.push({k:'pop',x:q.x,y:q.y,i:q.own});minions.splice(i,1)}
     }
+    for(const f of F)if(f.hp<=0)for(const h of f.uh)if(h[0].lethal&&f.hp<=0)h[0].lethal(f,F[1-f.i],m,h[1]);
     for(const f of F)if(f.hp<=0&&f.revives>0){f.revives--;f.hp=f.max*.35;f.poisonT=0;events.push({k:'revive',x:f.x,y:f.y,i:f.i})}
     if(a.hp<=0||b.hp<=0){m.over=true;m.winner=a.hp<=0&&b.hp<=0?(a.hp>=b.hp?0:1):a.hp<=0?1:0}
     else if(m.t>TIMEOUT){m.over=true;m.winner=a.hp/a.max>=b.hp/b.max?0:1}

@@ -188,7 +188,7 @@ const SHOT_SFX={blaster:'gun',archer:'loose',wizard:'cast',hunter:'whoosh',pirat
 const UI_SFX={weapon:'place',str:'place',size:'place',others:'page',back:'page',col:'click',new:'page',start:'draw',up:'coins',duel:'draw',recduel:'draw',board:'open',closeboard:'page'};
 function hitSound(e){
   if(e.ind){sfx('tick',.6);return}
-  const n=HIT_SFX[e.by];
+  const own=FIGHTERS[e.by]&&FIGHTERS[e.by].sfx,n=e.by in HIT_SFX?HIT_SFX[e.by]:own?own.hit:undefined;
   if(n===''){return}
   sfx(n||'punch',(.5+Math.min(.5,e.dmg/45))*(HIT_VOL[e.by]||1),e.crit?.9:1);
   if(e.crit)sfx('clang',.7,1.15);
@@ -210,7 +210,7 @@ function onEvents(ev){
     else if(e.k==='revive'){say(e.x,e.y,'Second life','#ffd447',true);burst(e.x,e.y,24,60,220,.5);sfx('toll',1)}
     else if(e.k==='parry'){burst(e.x,e.y,5,60,180,.25);sfx('clang',.55,1.12)}
     else if(e.k==='bump'){sfx('soft',.4)}
-    else if(e.k==='shot'){const n=(match&&e.i>=0&&SHOT_SFX[match.f[e.i].key])||'whoosh';sfx(n,n==='loose'?.8:n==='gun'?.75:.6,n==='loose'?1.2:n==='gun'?1.15:1)}
+    else if(e.k==='shot'){const sk=match&&e.i>=0?match.f[e.i].key:'',n=SHOT_SFX[sk]||(FIGHTERS[sk]&&FIGHTERS[sk].sfx&&FIGHTERS[sk].sfx.shot)||'whoosh';sfx(n,n==='loose'?.8:n==='gun'?.75:.6,n==='loose'?1.2:n==='gun'?1.15:1)}
     else if(e.k==='mine'){sfx('latch',.6)}
     else if(e.k==='boom'){burst(e.x,e.y,12,80,240,.35);ring(e.x,e.y,6,34,.3,'#ffd447',3);shake=Math.max(shake,4);sfx('boom',.9)}
     else if(e.k==='zap'){

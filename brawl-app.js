@@ -25,7 +25,7 @@ function summary(b){
 // ----- today's ladder -----
 // Until entries are stored on a server, the ladder is filled with house fighters. Each one really plays a climb,
 // seeded by the date, so the board is the same all day and changes at midnight.
-function dayKey(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function dayKey(){const d=new Date();return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0')}
 function daySeed(s){let h=2166136261;for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619);return h>>>0}
 const boardReady=()=>board.bots.length>=BOTS;
 function addBot(){
@@ -45,12 +45,31 @@ function rebuild(e){
 }
 function standings(){
   const rows=board.bots.map((b,i)=>({house:true,cleared:b.cleared,e:b,order:i}));
-  if(today.cleared>0)rows.push({you:true,cleared:today.cleared,e:today,order:99});
+  Net.others().forEach((p,i)=>rows.push({player:true,cleared:p.cleared,e:p,order:20+i}));
+  if(today.cleared>0)rows.push({you:true,cleared:today.cleared,e:today,order:9999});
   rows.sort((a,b)=>b.cleared-a.cleared||a.order-b.order);       // ties go to whoever was there first
   return rows;
 }
 function target(){const r=standings().filter(x=>!x.you);return r.length>1?r[1].cleared+1:1}
 const inDuel=()=>standings().slice(0,2).some(x=>x.you);
+const owner=r=>r.you?'You':r.player?r.e.name:'House';
+function netLine(){
+  if(!Net.on())return '';
+  if(!Net.ok)return 'Connecting to today\u2019s ladder\u2026';
+  const n=Net.others().length+(today.cleared>0?1:0);
+  return n?n+' player'+(n>1?'s':'')+' on today\u2019s ladder':'No players on today\u2019s ladder yet. Be the first.';
+}
+// a rival on a rung is sometimes another player's fighter, cut back to what they had at that height
+function pickRival(rung){
+  const pool=Net.others();
+  if(!pool.length||Math.random()<.5)return rival(rung,Math.random);
+  const p=pool[(Math.random()*pool.length)|0],b=makeBuild(p.key,rung>1?p.str:-1,p.size,p.name,p.color);
+  const n=Math.min(p.ups.length,Math.floor((rung-1)*RIVAL_UPS));
+  for(let k=0;k<n;k++)if(canTake(b,p.ups[k]))addUpgrade(b,p.ups[k]);
+  const sc=RIVAL_START+RIVAL_GROW*(rung-1);b.hp*=sc;b.dmg*=sc;b.owner=p.name;
+  return b;
+}
+const whose=b=>(b.owner?esc(b.owner)+'\u2019s ':'')+typeOf(b);
 function goalLine(){
   if(!boardReady())return 'Setting up today’s ladder…';
   if(inDuel())return 'You are in today’s duel. Climb higher to make it safe.';
@@ -144,15 +163,24 @@ function hud(){
 }
 function setNames(){
   $('nameA').textContent=(you===0?'You · ':'')+match.f[0].label;$('nameB').textContent=(you===1?'You · ':'')+match.f[1].label;
-  $('nameA').style.color=match.f[0].col;$('nameB').style.color=match.f[1].col;
 }
 
 // ----- loop -----
+let netT=0;
+function refreshNet(){
+  Net.pull(board.date).then(changed=>{
+    if(!changed)return;
+    if(mode==='board')render();                         // other screens may hold a text box, so only their goal line is touched
+    else{const el=$('goal');if(el&&(mode==='make'||mode==='over'))el.innerHTML=goalLine()}
+  });
+}
 function frame(ts){
   const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
   fit();
   const playing=mode==='fight'||mode==='duel';
-  if(!boardReady()&&!playing)addBot();                 // one house climb per frame, never during a fight
+  if(!boardReady()&&!playing)addBot();
+  netT+=dt;
+  if(Net.on()&&!playing&&netT>15){netT=0;refreshNet()}                 // one house climb per frame, never during a fight
   if(match&&(mode==='make'||playing)){
     acc+=dt*(playing?speed:1);
     let n=0;
@@ -188,7 +216,7 @@ function startClimb(){
   nextFight();
 }
 function nextFight(){
-  run.rival=rival(run.rung,Math.random);
+  run.rival=pickRival(run.rung);
   mode='fight';
   begin(createMatch(run.build,run.rival,newSeed()),0,'Rung '+run.rung,true);
   render();
@@ -207,6 +235,7 @@ function fightDone(){
     if(cleared>today.cleared){
       today={date:dayKey(),cleared,key:me.key,str:me.str,size:me.size,name:run.build.name,color:run.build.color,ups:run.build.ups.slice()};
       try{localStorage.setItem('brawl.today2',JSON.stringify(today))}catch(e){}
+      Net.push(today.date,today);
     }
   }
   render();
@@ -217,7 +246,7 @@ function startDuel(){
   const r=standings().slice(0,2);
   if(!boardReady()||r.length<2)return;
   audioOn();
-  duel={a:rebuild(r[0].e),b:rebuild(r[1].e),you:r[0].you?0:r[1].you?1:-1,score:[0,0],round:1,done:false};
+  duel={a:rebuild(r[0].e),b:rebuild(r[1].e),you:r[0].you?0:r[1].you?1:-1,who:[owner(r[0]),owner(r[1])],score:[0,0],round:1,done:false};
   mode='duel';duelRound();
 }
 function duelRound(){begin(createMatch(duel.a,duel.b,newSeed()),duel.you,'Today’s duel · round '+duel.round,true);render()}
@@ -233,7 +262,7 @@ const card=(id,act,data,title,text,dot,tag)=>`<button type="button" class="card"
 function makeBody(){
   if(step===0){
     const offer=[0,1,2].map(i=>deck[(deckAt+i)%deck.length]);
-    return head('Step 1 of 3 · '+ROSTER.length+' fighters','Pick a fighter')+
+    return head('Step 1 of 3 · '+ROSTER.length+' fighters','Choose your champion')+
       offer.map(k=>card('wp-'+k,'weapon',`data-key="${k}"`,FIGHTERS[k].name,FIGHTERS[k].desc,FIGHTERS[k].color)).join('')+
       `<button type="button" id="btnOthers" class="quiet" data-act="others">Show three others</button>`;
   }
@@ -246,8 +275,8 @@ function makeBody(){
   return `<h2 class="ph">Name your ${typeOf(myBuild())}</h2>`+
     `<input id="inName" type="text" maxlength="12" autocomplete="off" autocapitalize="words" spellcheck="false" aria-label="Fighter name" placeholder="${FIGHTERS[me.key].name}" value="${esc(me.name)}">`+
     `<div class="sw">`+PALETTE.map((c,i)=>`<button type="button" id="col-${i}" data-act="col" data-i="${i}" class="${i===me.color?'on':''}" aria-pressed="${i===me.color}" aria-label="Colour ${i+1}"><i style="background:${c}"></i></button>`).join('')+`</div>`+
-    `<button type="button" id="btnStart" class="go" data-act="start">Start the climb</button>`+
-    `<p class="ps">Beat a rival, pick an upgrade, climb a rung. One loss ends the run.</p>`+
+    `<button type="button" id="btnStart" class="go" data-act="start">Begin the climb</button>`+
+    `<p class="ps">Beat a rival, claim a boon, climb a rung. One loss ends the run.</p>`+
     `<p class="ps" id="goal">${goalLine()}</p>`+
     `<button type="button" id="btnNew" class="quiet" data-act="new">Make a different fighter</button>`;
 }
@@ -256,16 +285,16 @@ function boardBody(){
   const row=(r,i)=>{
     const b=rebuild(r.e);
     return `<li class="${r.you?'me':''}${i<2?' in':''}"><span class="rk">${i+1}</span><i style="background:${b.color}"></i>`+
-      `<span class="nm"><b>${typeOf(b)}</b><small>${r.you?esc(b.name)+' · you':'house fighter'}</small></span><span class="rg">${r.cleared}</span></li>`;
+      `<span class="nm"><b>${typeOf(b)}</b><small>${r.you?esc(b.name)+' · you':r.player?esc(b.name):'house fighter'}</small></span><span class="rg">${r.cleared}</span></li>`;
   };
-  return `<h2 class="ph">Today’s ladder</h2><p class="ps">${goalLine()}</p>`+
+  return `<h2 class="ph">Today’s ladder</h2><p class="ps" id="goal">${goalLine()}</p>`+(netLine()?`<p class="ps" id="netLine">${netLine()}</p>`:'')+
     (boardReady()?`<ol class="lb">`+rows.slice(0,6).map(row).join('')+(mine>=6?row(rows[mine],mine):'')+`</ol>`+
       `<button type="button" id="btnDuel" class="go" data-act="duel">Watch today’s duel</button>`+
       (window.Broadcast&&Broadcast.supported&&Broadcast.supported()?`<button type="button" id="btnRec" data-act="recduel">Record today’s duel as a video</button>`:''):'')+
     `<button type="button" id="btnClose" class="quiet" data-act="closeboard">Back</button>`;
 }
 function duelBody(){
-  const who=i=>duel.you===i?'You':'House',t=[typeOf(duel.a),typeOf(duel.b)],c=[duel.a.color,duel.b.color];
+  const who=i=>esc(duel.who[i]),t=[typeOf(duel.a),typeOf(duel.b)],c=[duel.a.color,duel.b.color];
   return `<p class="stepn">Today’s duel · best of three</p>`+
     `<h2 class="ph vsh"><span style="color:${c[0]}">${t[0]}</span><small>vs</small><span style="color:${c[1]}">${t[1]}</span></h2>`+
     `<p class="score"><span>${who(0)}</span><b>${duel.score[0]} – ${duel.score[1]}</b><span>${who(1)}</span></p>`+
@@ -281,15 +310,15 @@ function render(){
   else if(mode==='board')P.innerHTML=boardBody();
   else if(mode==='duel')P.innerHTML=duelBody();
   else if(mode==='fight'){
-    P.innerHTML=`<p class="ps"><b>You, ${typeOf(run.build)}:</b> ${summary(run.build)}</p><p class="ps"><b>${typeOf(run.rival)}:</b> ${FIGHTERS[run.rival.key].desc}${run.rival.ups.length?' ('+summary(run.rival)+')':''}</p>`;
+    P.innerHTML=`<p class="ps"><b>You, ${typeOf(run.build)}:</b> ${summary(run.build)}</p><p class="ps"><b>${whose(run.rival)}:</b> ${FIGHTERS[run.rival.key].desc}${run.rival.ups.length?' ('+summary(run.rival)+')':''}</p>`;
   }else if(mode==='pick'){
     const have=id=>{let n=0;for(const x of run.build.ups)if(x===id)n++;return n};
-    P.innerHTML=head('Rung '+run.rung+' cleared · you are a '+typeOf(run.build),'Pick an upgrade')+
+    P.innerHTML=head('Rung '+run.rung+' cleared · you are a '+typeOf(run.build),'Claim a boon')+
       choice.map(id=>card('up-'+id,'up',`data-key="${id}"`,upName(run.build,id),upText(run.build,id),id==='sig'?run.build.color:null,have(id)?'you have '+have(id):'')).join('');
   }else{
     const cleared=run.rung-1;
     P.innerHTML=`<h2 class="ph">${cleared?'Your '+typeOf(run.build)+' climbed '+cleared+' rung'+(cleared>1?'s':''):'Out on the first rung'}</h2>`+
-      `<p class="ps">${run.record?'New best. ':'Your best is '+best+'. '}Beaten by a ${typeOf(run.rival)}.</p>`+
+      `<p class="ps">${run.record?'New best. ':'Your best is '+best+'. '}Beaten by ${run.rival.owner?'':'a '}${whose(run.rival)}.</p>`+
       `<p class="ps" id="goal">${goalLine()}</p>`+
       `<button type="button" id="btnAgain" class="go" data-act="start">Climb again</button>`+
       `<button type="button" id="btnNew" class="quiet" data-act="new">Make a different fighter</button>`;
@@ -346,6 +375,8 @@ try{
 }catch(e){}
 if(!me.colorSet)me.color=ROSTER.indexOf(me.key);
 deck=shuffled(ROSTER);
+Net.init();
+if(Net.on()){refreshNet();if(today.cleared>0)Net.push(today.date,today)}
 $('build').textContent=BUILD;
 render();practice();
 requestAnimationFrame(frame);

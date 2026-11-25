@@ -4,26 +4,26 @@
 const AW=260,DT=1/60,R=24,SUDDEN=30,TIMEOUT=70,GP=13,PC=AW/GP;
 // dmg is the class's one damage dial: everything the class does scales from it, so the balance test can tune a single number.
 const FIGHTERS={
-  blade:  {name:'Knight',     color:'#ff6a4d',hp:100,speed:170,spin:5.0,dmg:25.1,  cd:.35,arms:[{a:0,l:36}],desc:'A long sword that never stops spinning.',sig:['Greatsword','A longer sword that hits harder']},
-  mace:   {name:'Ogre',       color:'#ffb23e',hp:100,speed:150,spin:3.2,dmg:25.1,  cd:.6, arms:[{a:0,l:34,head:9}],desc:'Slow and heavy. One hit really hurts.',sig:['Wrecking ball','A bigger, heavier mace head']},
-  spikes: {name:'Urchin',     color:'#7ddc5a',hp:100,speed:215,spin:0,  dmg:15,  cd:.3, arms:[],desc:'No weapon. Its whole body hurts to touch.',sig:['Longer spines','Its touch hurts 30% more']},
-  blaster:{name:'Gunner',     color:'#38c6ff',hp:100,speed:160,spin:0,  dmg:9.7, cd:1,  arms:[],desc:'Fires a shot at its rival, again and again.',sig:['Rapid fire','Shoots 30% faster']},
-  leech:  {name:'Vampire',    color:'#c77dff',hp:100,speed:180,spin:6.5,dmg:20.3,  cd:.3, arms:[{a:0,l:20}],heal:.7,desc:'Short fangs. Heals with every bite.',sig:['Deep bite','Heals more with every bite']},
-  miner:  {name:'Sapper',     color:'#ffd447',hp:100,speed:175,spin:0,  dmg:16.4,cd:2,  arms:[],desc:'Leaves mines behind for rivals to hit.',sig:['Minefield','More mines, bigger blasts']},
-  twin:   {name:'Ninja',      color:'#ff6ac1',hp:100,speed:170,spin:6.0,dmg:12.9,cd:.22,arms:[{a:0,l:24},{a:Math.PI,l:24}],desc:'Two short blades, twice the spin.',sig:['Another blade','One more blade in the whirl']},
-  fury:   {name:'Berserker',  color:'#2fd6b5',hp:100,speed:170,spin:4.5,dmg:15.1,  cd:.35,arms:[{a:0,l:30}],rage:17,desc:'Hits harder the closer it is to losing.',sig:['Blood rage','Its rage builds 40% higher']},
-  comet:  {name:'Comet',      color:'#ff9d2e',hp:100,speed:215,spin:0,  dmg:5.6,   cd:.3, arms:[],desc:'Leaves a burning trail that hurts to cross.',sig:['Long tail','The trail burns for longer']},
-  bramble:{name:'Bramble',    color:'#4fbf5b',hp:100,speed:185,spin:0,  dmg:10.8,  cd:.7, arms:[],desc:'Every wall it touches grows thorns.',sig:['Overgrowth','More thorns, and longer ones']},
-  bees:   {name:'Beekeeper',  color:'#f2c230',hp:100,speed:160,spin:0,  dmg:7.2,   cd:1.0,arms:[],desc:'Releases bees that chase the rival.',sig:['Bigger hive','More bees in the air at once']},
-  ghost:  {name:'Ghost',      color:'#cfd6ff',hp:100,speed:165,spin:0,  dmg:25.9,  cd:.5, arms:[],desc:'Fades out of reach, then strikes as it returns.',sig:['Haunting','Fades out more often']},
-  snow:   {name:'Snowball',   color:'#dff3ff',hp:100,speed:190,spin:0,  dmg:8.6,   cd:.5, arms:[],desc:'Grows with every bounce: bigger, slower, harder hitting.',sig:['Avalanche','Grows faster']},
-  tesla:  {name:'Tesla',      color:'#7fe7ff',hp:100,speed:165,spin:0,  dmg:5.1,   cd:.45,arms:[],desc:'Arcs lightning to the rival whenever they get close.',sig:['High voltage','Lightning reaches further']},
-  magnet: {name:'Magnet',     color:'#e2526f',hp:100,speed:160,spin:0,  dmg:27.3,  cd:1.4,arms:[],desc:'Drags the rival in, then blasts them away.',sig:['Stronger field','A bigger blast']},
-  mirror: {name:'Mirror',     color:'#a9b8d9',hp:100,speed:175,spin:0,  dmg:9.2,   cd:.5, arms:[],desc:'Splits off a copy of itself whenever it is hit.',sig:['Hall of mirrors','More copies at once']},
-  spider: {name:'Spider',     color:'#8a6bd1',hp:100,speed:195,spin:0,  dmg:7.6,   cd:.5, arms:[],desc:'Strings webs between walls that slow whoever crosses.',sig:['More silk','More webs at once']},
-  necro:  {name:'Necromancer',color:'#6fd3a0',hp:100,speed:160,spin:4.6,dmg:13.2,  cd:.45,arms:[{a:0,l:30}],desc:'Every wound it deals raises a minion.',sig:['Horde','More minions at once']},
-  painter:{name:'Painter',    color:'#ff7fd0',hp:100,speed:200,spin:0,  dmg:2.8, cd:.25,arms:[],desc:'Paints the floor. Its paint heals it and hurts the rival.',sig:['Wide brush','Paints a wider stripe']},
-  clock:  {name:'Clockmaker', color:'#d9b36c',hp:100,speed:160,spin:4.2,dmg:18.3,  cd:.4, arms:[{a:0,l:34},{a:Math.PI,l:20,d:.6,rate:.4}],desc:'Freezes the rival for a moment every few seconds.',sig:['Slow time','A longer freeze']},
+  blade:  {name:'Knight',     color:'#ff6a4d',hp:100,speed:170,spin:5.0,dmg:27.88,  cd:.35,arms:[{a:0,l:36}],desc:'A long sword that never stops spinning.',sig:['Greatsword','A longer sword that hits harder']},
+  mace:   {name:'Ogre',       color:'#ffb23e',hp:100,speed:150,spin:3.2,dmg:33.14,  cd:.6, arms:[{a:0,l:34,head:9}],desc:'Slow and heavy. One hit really hurts.',sig:['Wrecking ball','A bigger, heavier mace head']},
+  spikes: {name:'Urchin',     color:'#7ddc5a',hp:100,speed:215,spin:0,  dmg:16.46,  cd:.3, arms:[],desc:'No weapon. Its whole body hurts to touch.',sig:['Longer spines','Its touch hurts 30% more']},
+  blaster:{name:'Gunner',     color:'#38c6ff',hp:100,speed:160,spin:0,  dmg:11, cd:1,  arms:[],desc:'Fires a shot at its rival, again and again.',sig:['Rapid fire','Shoots 30% faster']},
+  leech:  {name:'Vampire',    color:'#c77dff',hp:100,speed:180,spin:6.5,dmg:25.45,  cd:.3, arms:[{a:0,l:20}],heal:.7,desc:'Short fangs. Heals with every bite.',sig:['Deep bite','Heals more with every bite']},
+  miner:  {name:'Sapper',     color:'#ffd447',hp:100,speed:175,spin:0,  dmg:20.3,cd:2,  arms:[],desc:'Leaves mines behind for rivals to hit.',sig:['Minefield','More mines, bigger blasts']},
+  twin:   {name:'Ninja',      color:'#ff6ac1',hp:100,speed:170,spin:6.0,dmg:15.45,cd:.22,arms:[{a:0,l:24},{a:Math.PI,l:24}],desc:'Two short blades, twice the spin.',sig:['Another blade','One more blade in the whirl']},
+  fury:   {name:'Berserker',  color:'#2fd6b5',hp:100,speed:170,spin:4.5,dmg:19.79,  cd:.35,arms:[{a:0,l:30}],rage:17,desc:'Hits harder the closer it is to losing.',sig:['Blood rage','Its rage builds 40% higher']},
+  comet:  {name:'Comet',      color:'#ff9d2e',hp:100,speed:215,spin:0,  dmg:6.39,   cd:.3, arms:[],desc:'Leaves a burning trail that hurts to cross.',sig:['Long tail','The trail burns for longer']},
+  bramble:{name:'Bramble',    color:'#4fbf5b',hp:100,speed:185,spin:0,  dmg:12.26,  cd:.7, arms:[],desc:'Every wall it touches grows thorns.',sig:['Overgrowth','More thorns, and longer ones']},
+  bees:   {name:'Beekeeper',  color:'#f2c230',hp:100,speed:160,spin:0,  dmg:8.01,   cd:1.0,arms:[],desc:'Releases bees that chase the rival.',sig:['Bigger hive','More bees in the air at once']},
+  ghost:  {name:'Ghost',      color:'#cfd6ff',hp:100,speed:165,spin:0,  dmg:26.23,  cd:.5, arms:[],desc:'Fades out of reach, then strikes as it returns.',sig:['Haunting','Fades out more often']},
+  snow:   {name:'Snowball',   color:'#dff3ff',hp:100,speed:190,spin:0,  dmg:10.52,   cd:.5, arms:[],desc:'Grows with every bounce: bigger, slower, harder hitting.',sig:['Avalanche','Grows faster']},
+  tesla:  {name:'Tesla',      color:'#7fe7ff',hp:100,speed:165,spin:0,  dmg:6.06,   cd:.45,arms:[],desc:'Arcs lightning to the rival whenever they get close.',sig:['High voltage','Lightning reaches further']},
+  magnet: {name:'Magnet',     color:'#e2526f',hp:100,speed:160,spin:0,  dmg:29.6,  cd:1.4,arms:[],desc:'Drags the rival in, then blasts them away.',sig:['Stronger field','A bigger blast']},
+  mirror: {name:'Mirror',     color:'#a9b8d9',hp:100,speed:175,spin:0,  dmg:10.61,   cd:.5, arms:[],desc:'Splits off a copy of itself whenever it is hit.',sig:['Hall of mirrors','More copies at once']},
+  spider: {name:'Spider',     color:'#8a6bd1',hp:100,speed:195,spin:0,  dmg:8.46,   cd:.5, arms:[],desc:'Strings webs between walls that slow whoever crosses.',sig:['More silk','More webs at once']},
+  necro:  {name:'Necromancer',color:'#6fd3a0',hp:100,speed:160,spin:4.6,dmg:14.91,  cd:.45,arms:[{a:0,l:30}],desc:'Every wound it deals raises a minion.',sig:['Horde','More minions at once']},
+  painter:{name:'Painter',    color:'#ff7fd0',hp:100,speed:200,spin:0,  dmg:3.07, cd:.25,arms:[],desc:'Paints the floor. Its paint heals it and hurts the rival.',sig:['Wide brush','Paints a wider stripe']},
+  clock:  {name:'Clockmaker', color:'#d9b36c',hp:100,speed:160,spin:4.2,dmg:21.34,  cd:.4, arms:[{a:0,l:34},{a:Math.PI,l:20,d:.6,rate:.4}],desc:'Freezes the rival for a moment every few seconds.',sig:['Slow time','A longer freeze']},
 };
 const ROSTER=Object.keys(FIGHTERS);
 const STRENGTHS=[
@@ -134,6 +134,7 @@ const mine=(f,m,kind)=>{let n=0;for(const q of m.minions)if(q.own===f.i&&q.kind=
 //   bounce(f,m,x,y,nx,ny)     when it hits a wall at (x,y); (nx,ny) points back into the arena
 //   touch(f,e)                damage dealt on body contact (0 for none)
 //   fast(f)                   speed multiplier for this step
+//   guard(f,src,dmg,m)        multiplier for a direct hit it is about to take (1 = full, 0 = no hit at all)
 //   hurt(f,src,dmg,m)         after it takes a direct hit
 //   dealt(f,v,dmg,m)          after it lands a direct hit
 const BEHAVE={
@@ -343,6 +344,8 @@ function createMatch(A,B,seed){
     if(v.gone)return;
     let crit=false;
     if(!indirect){
+      const G=BEHAVE[v.key];
+      if(G&&G.guard){dmg*=G.guard(v,s,dmg,m);if(!(dmg>0))return}
       if(v.shield&&v.shieldT<=0){v.shieldT=v.shield;events.push({k:'block',x:v.x,y:v.y,i:v.i});return}
       if(s.ambush){dmg*=3;s.ambush=0;crit=true}
       if(s.crit&&rnd()<s.crit){dmg*=2;crit=true}

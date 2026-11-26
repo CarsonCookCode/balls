@@ -15,7 +15,7 @@ const raw = args => cp.spawnSync(FF, ['-v', 'error', ...args], { maxBuffer: 1 <<
 // the length of the picture: a browser's recording does not always say, so the last frame's time is read
 function duration(file) {
   const r = cp.spawnSync(PROBE, ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'packet=pts_time', '-of', 'csv=p=0', file], { encoding: 'utf8', maxBuffer: 1 << 26 });
-  const t = String(r.stdout || '').trim().split(/\r?\n/).map(Number).filter(Number.isFinite);
+  const t = String(r.stdout || '').trim().split(/\r?\n/).map(parseFloat).filter(Number.isFinite);   // parseFloat: some ffprobe builds end each line with a comma
   return t.length ? Math.max(...t) : 0;
 }
 const AUDIO = 'aresample=16000:async=1:first_pts=0';     // the sound on the file's own clock, holes filled with silence

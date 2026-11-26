@@ -17,7 +17,7 @@
   // timeline, in seconds: OPEN holds the first round under its call and STING each later one; the deciding blow and
   // KO_LINGER after it run at KO_SLOW of normal speed; CROWN is the closing screen. CLAP_LEAD is the extra hold at the
   // very start, and CLAP_TAIL the one at the very end, that carry the sync marks and are cut off afterwards.
-  const OPEN=.9,STING=.8,KO_SLOW=.22,KO_LINGER=.5,CROWN=2.3,CLAP_LEAD=2.6,CLAP_AT=2.1,CLAP_LEN=.07,CLAP_TAIL=.5,TAIL_AT=.2;
+  const OPEN=.9,STING=.8,KO_SLOW=.22,KO_LINGER=.5,CROWN=2.3,CLAP_LEAD=2.6,CLAP_AT=2.1,CLAP_LEN=.13,CLAP_TAIL=1.2,TAIL_AT=.3;
   // layout
   const AX=60,AY=484,AS=960;                        // where the arena's 0..AW square sits in the frame
 

@@ -11,6 +11,8 @@
 #   3. Optional: add the variable DUEL_PRIVACY with the value public (or unlisted). Without it, daily videos
 #      are uploaded as private, so nobody sees them until you publish them by hand in YouTube Studio.
 #      (The value no makes the daily run record the video without uploading it.)
+#   4. Optional: add the variable DUEL_MIN_PLAYERS (0, 1 or 2): how many of the two duellists must be real players
+#      for a video to be made. Without it, 1: a day with nobody on the ladder makes no video.
 # To turn it off again: change DUEL_VIDEO to anything else (off, say) or delete it.
 #
 # To try it by hand: Actions tab > "Daily duel video" > Run workflow. Manual runs ignore the DUEL_VIDEO switch.
@@ -40,6 +42,15 @@ on:
           - private
           - unlisted
           - public
+      players:
+        description: 'How many of the two duellists must be real players (0 lets two house fighters duel: handy for a test).'
+        required: true
+        type: choice
+        default: '1'
+        options:
+          - '0'
+          - '1'
+          - '2'
   schedule:
     - cron: '20 0 * * *'
 
@@ -62,6 +73,9 @@ jobs:
       # What to do with the finished video: no (keep it as a download only), private, unlisted or public.
       # Daily runs read the variable DUEL_PRIVACY (private if unset); manual runs use the "upload" choice.
       PRIVACY: ${{ github.event_name == 'schedule' && (vars.DUEL_PRIVACY || 'private') || inputs.upload || 'no' }}
+      # How many of the two duellists must be real, proven players for a video to be made at all (0, 1 or 2).
+      # Daily runs read the variable DUEL_MIN_PLAYERS (1 if unset); manual runs use the "players" choice.
+      MIN_PLAYERS: ${{ github.event_name == 'schedule' && (vars.DUEL_MIN_PLAYERS || '1') || inputs.players || '1' }}
     steps:
       - name: Pick the day
         id: day
@@ -95,7 +109,8 @@ jobs:
           CHROME="$(which google-chrome || which google-chrome-stable || true)"
           if [ -n "$CHROME" ]; then export CHROME_PATH="$CHROME"; fi
           echo "Chrome: ${CHROME:-not found on PATH, the recorder will look for it itself}"
-          node tools/duel-video.js --day "$DAY" --out out
+          case "$MIN_PLAYERS" in 0|1|2) ;; *) MIN_PLAYERS=1 ;; esac
+          node tools/duel-video.js --day "$DAY" --out out --min "$MIN_PLAYERS"
 
       - name: Keep the video as a download
         if: always() && steps.day.outputs.day != ''

@@ -3,9 +3,8 @@
 // To add a class: one row in FIGHTERS, one block in BEHAVE, and (on the page side) one block in LOOKS.
 const AW=260,DT=1/60,R=24,SUDDEN=30,TIMEOUT=70,GP=13,PC=AW/GP;
 // The pace of a fight. HP_SCALE multiplies every fighter's health (a class's `hp` of 100 is 140 in the arena), so fights
-// last long enough for each fighter's trick to show more than once. HIT_CAP is the most of a fighter's health one blow
-// can take: nothing dies to a single hit.
-const HP_SCALE=1.4,HIT_CAP=.5;
+// last long enough for each fighter's trick to show more than once.
+const HP_SCALE=1.4;
 // dmg is the class's one damage dial: everything the class does scales from it, so the balance test can tune a single number.
 const FIGHTERS={
   blade:  {name:'Knight',     color:'#ff6a4d',hp:100,speed:170,spin:5.0,dmg:27.88,  cd:.35,arms:[{a:0,l:36}],desc:'A long sword that never stops spinning.',sig:['Greatsword','A longer sword that hits harder']},
@@ -41,9 +40,11 @@ const SIZES=[
   {label:'Big',   text:'Extra health, easy to hit',r:31,hp:1.12},
 ];
 // Upgrades picked during a climb. Every pick is counted in build.p.
-// Percentages ADD: a build keeps ah, ad and as (health, damage and speed bonuses, as fractions) and two +25% make +50%,
-// not +56%. Bonuses to one hit (first hit, critical, a `deal` hook) join the damage pool the same way. This is what keeps
-// a long climb from snowballing: the ladder grows steadily, so the player must too.
+// Permanent percentages of the same kind ADD: a build keeps ah, ad and as (health, damage and speed bonuses, as
+// fractions) and two +25% make +50%, not +56%. This is what keeps a long climb from snowballing: the ladder grows
+// steadily, so the player must too. Bonuses to one hit (first hit, critical, a `deal` hook) add to each other and then
+// MULTIPLY the hit, so a critical is double damage whatever else the build has. (Letting everything multiply was tried
+// in the lab: one build reached rung 60.)
 // An upgrade can have:
 //   apply(b)   changes the build's numbers when it is picked
 //   only(b)    false when this build cannot take it
@@ -359,7 +360,7 @@ function createMatch(A,B,seed){
     for(let k=0;k<(P.blade||0)&&k<3;k++)arms.push({a:slots[k],l:28*reach,head:0,dmg:10,extra:1,rate:1});
     const uh=[];for(const id in P){const U=UPGRADES[id];if(U&&U.hooks&&P[id]>0)uh.push([U.hooks,P[id]])}
     return {u:{},uh,p:P,key:b.key,i,x:i?AW-80:80,y:AW/2+(rnd()-.5)*80,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,r:b.r,speed:sp,base:sp,hp,max:hp,
-      dmgMul:effDmg(b),pool:Math.max(.2,1+(b.ad||0)),spdMul:spd,sig,ang:rnd()*6.283,dir:i?-1:1,cd:0,xcd:0,pcd:0,timer:.4+rnd()*.6,flash:0,aim:0,arms,
+      dmgMul:effDmg(b),spdMul:spd,sig,ang:rnd()*6.283,dir:i?-1:1,cd:0,xcd:0,pcd:0,timer:.4+rnd()*.6,flash:0,aim:0,arms,
       spin:D.spin||(arms.length?4.5:0),label:b.name,col:b.color,stunT:0,gone:false,s:{},
       regen:3*(P.regen||0),armor:Math.pow(.85,P.armor||0),vamp:.2*(P.vampire||0)+(D.heal?D.heal*(1+.3*sig):0),thorns:.2*(P.thorns||0),
       poison:4*(P.poison||0),frost:P.frost||0,crit:.2*(P.crit||0),ambush:P.ambush||0,last:.5*(P.laststand||0),
@@ -390,18 +391,17 @@ function createMatch(A,B,seed){
       if(G&&G.guard){dmg*=G.guard(v,s,dmg,m);if(!(dmg>0))return}
       for(const h of v.uh)if(h[0].guard){dmg*=h[0].guard(v,s,dmg,m,h[1]);if(!(dmg>0))return}
       if(v.shield&&v.shieldT<=0){v.shieldT=v.shield;events.push({k:'block',x:v.x,y:v.y,i:v.i});return}
-      // every bonus to this hit joins the attacker's damage pool: they add up, they do not multiply
+      // bonuses to this one hit add to each other, then multiply the hit
       let add=0;
       if(s.ambush){add+=2;s.ambush=0;crit=true;amb=true}
       if(s.crit&&rnd()<s.crit){add+=1;crit=true}
       if(s.last&&s.hp<s.max*.4)add+=s.last;
       for(const h of s.uh)if(h[0].deal)add+=h[0].deal(s,v,dmg,m,h[1])/dmg-1;
-      if(add)dmg*=Math.max(.1,(s.pool+add)/s.pool);
+      if(add)dmg*=Math.max(.1,1+add);
       for(const h of v.uh)if(h[0].take)dmg=h[0].take(v,s,dmg,m,h[1]);
       if(!(dmg>0))return;
     }
     dmg*=v.armor;
-    if(!indirect&&dmg>v.max*HIT_CAP)dmg=v.max*HIT_CAP;      // no single blow takes more than half a fighter's health
     v.hp-=dmg;v.flash=.12;
     events.push({k:'hit',x:v.x,y:v.y,dmg,i:v.i,crit,by:s.key,ind:!!indirect,ax:s.x,ay:s.y});
     if(v.last&&!v.lastOn&&v.hp>0&&v.hp<v.max*.4){v.lastOn=1;events.push({k:'proc',id:'laststand',i:v.i})}

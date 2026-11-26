@@ -13,6 +13,6 @@ function load(kind) {
   if (extra.length) { let at = 0; list.forEach((f, i) => { if (/^brawl-(sim|pack\d*|boons\d*)\.js$/.test(f)) at = i + 1; }); list.splice(at, 0, ...extra); }
   if (kind === 'sim') list = list.filter(f => f === 'brawl-sim.js' || /^brawl-pack\d*\.js$/.test(f));
   // tests never talk to the real database: the shared ladder's address is blanked here
-  return list.map(f => fs.readFileSync(R + f, 'utf8')).join('\n;\n').replace(/const NET=\{url:'[^']*'\};/, "const NET={url:''};");
+  return list.map(f => fs.readFileSync(R + f, 'utf8')).join('\n;\n').replace(/const NET=\{url:'[^']*'/, "const NET={url:''");
 }
 module.exports = { load, files, R };

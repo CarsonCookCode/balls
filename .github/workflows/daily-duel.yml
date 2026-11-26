@@ -1,0 +1,118 @@
+# Daily duel video: records yesterday's duel as a short video and (when switched on) posts it to the
+# Duel King YouTube channel. Runs every day at 00:20 UTC, just after the game's daily reset at midnight UTC.
+#
+# IT SHIPS SWITCHED OFF. Until the switch below is on, the daily run shows as "skipped" and does nothing.
+#
+# To turn it on (repo Settings > Secrets and variables > Actions):
+#   1. "Secrets" tab, add three repository secrets:
+#        YT_CLIENT_ID, YT_CLIENT_SECRET   from the Google "Desktop app" OAuth client
+#        YT_REFRESH_TOKEN                 printed once by: node tools/youtube-auth.js  (setup notes are in that file)
+#   2. "Variables" tab, add the repository variable DUEL_VIDEO with the value: on
+#   3. Optional: add the variable DUEL_PRIVACY with the value public (or unlisted). Without it, daily videos
+#      are uploaded as private, so nobody sees them until you publish them by hand in YouTube Studio.
+#      (The value no makes the daily run record the video without uploading it.)
+# To turn it off again: change DUEL_VIDEO to anything else (off, say) or delete it.
+#
+# To try it by hand: Actions tab > "Daily duel video" > Run workflow. Manual runs ignore the DUEL_VIDEO switch.
+# Leave "upload" on "no" to only make the video; it is kept for 14 days as a download on the run's page
+# (an artifact named duel-<day>). Pick private / unlisted / public to also upload that one video.
+#
+# Good to know: GitHub only runs the schedule from the default branch, may start it some minutes late, and
+# pauses schedules on a public repo that has had no activity for 60 days (it emails first; one click re-enables).
+
+name: Daily duel video
+
+on:
+  workflow_dispatch:
+    inputs:
+      day:
+        description: 'Day to make the video for, as YYYY-MM-DD. Empty means yesterday (UTC).'
+        required: false
+        type: string
+        default: ''
+      upload:
+        description: 'Upload to YouTube? "no" only makes the video.'
+        required: true
+        type: choice
+        default: 'no'
+        options:
+          - 'no'
+          - private
+          - unlisted
+          - public
+  schedule:
+    - cron: '20 0 * * *'
+
+permissions:
+  contents: read
+
+# Never two at once: a second run waits for the first to finish.
+concurrency:
+  group: daily-duel-video
+  cancel-in-progress: false
+
+jobs:
+  video:
+    name: Record and post
+    # The on/off switch. Manual runs always go ahead; the daily run only when the variable DUEL_VIDEO is "on".
+    if: github.event_name != 'schedule' || vars.DUEL_VIDEO == 'on'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # What to do with the finished video: no (keep it as a download only), private, unlisted or public.
+      # Daily runs read the variable DUEL_PRIVACY (private if unset); manual runs use the "upload" choice.
+      PRIVACY: ${{ github.event_name == 'schedule' && (vars.DUEL_PRIVACY || 'private') || inputs.upload || 'no' }}
+    steps:
+      - name: Pick the day
+        id: day
+        env:
+          DAY_INPUT: ${{ inputs.day }}
+        run: |
+          DAY="$DAY_INPUT"
+          if [ -z "$DAY" ]; then DAY="$(date -u -d yesterday +%F)"; fi
+          if [[ ! "$DAY" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+            echo "::error::The day must look like YYYY-MM-DD, for example 2026-11-26."
+            exit 1
+          fi
+          echo "day=$DAY" >> "$GITHUB_OUTPUT"
+          echo "Making the video for $DAY (upload: $PRIVACY)"
+
+      - name: Get the game
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # full history: the recorder's verifier reads older commits
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false   # no packages to install, nothing to cache
+
+      - name: Record the duel
+        env:
+          DAY: ${{ steps.day.outputs.day }}
+        run: |
+          CHROME="$(which google-chrome || which google-chrome-stable || true)"
+          if [ -n "$CHROME" ]; then export CHROME_PATH="$CHROME"; fi
+          echo "Chrome: ${CHROME:-not found on PATH, the recorder will look for it itself}"
+          node tools/duel-video.js --day "$DAY" --out out
+
+      - name: Keep the video as a download
+        if: always() && steps.day.outputs.day != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: duel-${{ steps.day.outputs.day }}
+          path: out
+          retention-days: 14
+          if-no-files-found: warn
+          overwrite: true   # so "Re-run jobs" on the same run does not fail on the name being taken
+
+      - name: Upload to YouTube
+        id: youtube
+        if: env.PRIVACY != 'no'
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: |
+          node tools/youtube-upload.js --file "out/$(node -p "require('./out/meta.json').file")" --meta out/meta.json --privacy "$PRIVACY"

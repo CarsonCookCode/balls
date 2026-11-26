@@ -20,7 +20,7 @@ function bnSeen(key){
   return out;
 }
 const bnAim=(f,e,away)=>{                                   // point a fighter straight at (or away from) the other, keeping its pace
-  const d=Math.hypot(e.x-f.x,e.y-f.y)||1,sp=Math.hypot(f.vx,f.vy)||f.speed,k=away?-1:1;
+  const d=dhyp(e.x-f.x,e.y-f.y)||1,sp=dhyp(f.vx,f.vy)||f.speed,k=away?-1:1;
   f.vx=(e.x-f.x)/d*sp*k;f.vy=(e.y-f.y)/d*sp*k;
 };
 const bnHeal=(f,h,m)=>{h=Math.min(h,f.max-f.hp);if(h>.05){f.hp+=h;if(h>=1)m.events.push({k:'heal',x:f.x,y:f.y,dmg:h,i:f.i})}};
@@ -90,7 +90,7 @@ Object.assign(UPGRADES,{
     hooks:{bounce(f,m,n,x,y){if(m.t<(f.u.mdT||0)||f.hp<=0)return;f.u.mdT=m.t+.6;if(f.hp<f.max-1)m.events.push({k:'proc',id:'mending',i:f.i,x,y});bnHeal(f,(f.max-f.hp)*.04*n,m)}}},
   siphon:   {name:'Siphon',       text:'Drain 2 health a second from a rival within arm\'s reach',max:3,
     hooks:{tick(f,e,m,n){
-      if(e.gone||m.t<(f.u.spT||0)||Math.hypot(e.x-f.x,e.y-f.y)>f.r+e.r+40)return;
+      if(e.gone||m.t<(f.u.spT||0)||dhyp(e.x-f.x,e.y-f.y)>f.r+e.r+40)return;
       f.u.spT=m.t+1;const d=2*n*f.dmgMul;m.events.push({k:'proc',id:'siphon',i:f.i});m.hurt(e,d,f,true);bnHeal(f,d,m);
     }}},
   adrenaline:{name:'Adrenaline',  text:'Below half health, spin and strike 70% faster',max:2,
@@ -104,14 +104,14 @@ Object.assign(UPGRADES,{
       deal(f,v,dmg,m){if(m.t<(f.u.lgH||0)){f.u.lgH=0;return dmg*1.75}return dmg}}},
   keepaway: {name:'Keep away',    text:'Veer away from a close rival every 2.5 seconds, taking 35% less for a second',max:1,
     hooks:{init(f){f.u.kaT=1},
-      tick(f,e,m){f.u.kaT-=DT;if(f.u.kaT>0||e.gone||Math.hypot(e.x-f.x,e.y-f.y)>f.r+e.r+70)return;f.u.kaT=2.5;f.u.kaG=m.t+1;bnAim(f,e,true);m.events.push({k:'proc',id:'keepaway',i:f.i})},
+      tick(f,e,m){f.u.kaT-=DT;if(f.u.kaT>0||e.gone||dhyp(e.x-f.x,e.y-f.y)>f.r+e.r+70)return;f.u.kaT=2.5;f.u.kaG=m.t+1;bnAim(f,e,true);m.events.push({k:'proc',id:'keepaway',i:f.i})},
       take:(f,s,dmg,m)=>m.t<(f.u.kaG||0)?dmg*.65:dmg}},
   shoulder: {name:'Shoulder charge',text:'Bumping bodies hurts the rival for 6 and shoves it (once a second)',max:3,
     hooks:{bump(f,e,m,n){if(m.t<(f.u.shT||0)||e.gone||f.stunT>0)return;f.u.shT=m.t+1;m.events.push({k:'proc',id:'shoulder',i:f.i});m.hurt(e,6*n*f.dmgMul,f);m.knock(e,f)}}},
   nova:     {name:'Nova',         text:'Every 7 seconds, blast a rival within reach for 12 and throw it back',max:2,
     hooks:{init(f){f.u.nvT=4},tick(f,e,m,n,rage){
       f.u.nvT-=DT;
-      if(f.u.nvT>0||e.gone||Math.hypot(e.x-f.x,e.y-f.y)>70+e.r)return;
+      if(f.u.nvT>0||e.gone||dhyp(e.x-f.x,e.y-f.y)>70+e.r)return;
       f.u.nvT=n>1?4:7;m.events.push({k:'blast',x:f.x,y:f.y,r:70,i:f.i});m.events.push({k:'proc',id:'nova',i:f.i});m.hurt(e,12*f.dmgMul*rage,f);m.knock(e,f);
     }}},
   concuss:  {name:'Concussion',   text:'Every 5 seconds, your next hit dazes the rival for 0.6 seconds',max:1,

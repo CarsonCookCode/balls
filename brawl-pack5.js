@@ -29,7 +29,7 @@ function p5turn(a,b,step){let d=(b-a)%P5_TAU;if(d>Math.PI)d-=P5_TAU;if(d<-Math.P
 function p5cut(e,x,y,r){for(const s of segs(e))if(distPS(x,y,s[0],s[1],s[2],s[3])<r+(s[4]||0))return true;return false}
 // a shot from any point, handled like every other shot in the match (weapons and minions can block it)
 function p5shot(f,m,x,y,an,d){
-  m.bullets.push({x,y,vx:Math.cos(an)*330,vy:Math.sin(an)*330,own:f.i,d});m.events.push({k:'shot',x,y,i:f.i});
+  m.bullets.push({x,y,vx:dcos(an)*330,vy:dsin(an)*330,own:f.i,d});m.events.push({k:'shot',x,y,i:f.i});
   m.events.push({k:'fx',n:'flash',x,y,r:8,life:.1,i:f.i});m.events.push({k:'fx',n:'sparks',x,y,num:4,dir:an,spread:.7,lo:120,hi:260,life:.15,i:f.i});
 }
 
@@ -47,23 +47,23 @@ BEHAVE.netrunner={
     S.t-=DT;
     if(S.t<=0&&!e.gone){
       S.t=2.6/f.spdMul;
-      Q.push({x:f.x+Math.cos(f.aim)*f.r,y:f.y+Math.sin(f.aim)*f.r,vx:Math.cos(f.aim)*235,vy:Math.sin(f.aim)*235,t:0});
+      Q.push({x:f.x+dcos(f.aim)*f.r,y:f.y+dsin(f.aim)*f.r,vx:dcos(f.aim)*235,vy:dsin(f.aim)*235,t:0});
       m.events.push({k:'shot',x:f.x,y:f.y,i:f.i});
     }
     for(let i=Q.length-1;i>=0;i--){
       const q=Q[i];
       q.t+=DT;
       if(!e.gone){
-        const d=Math.hypot(e.x-q.x,e.y-q.y)||1;
+        const d=dhyp(e.x-q.x,e.y-q.y)||1;
         q.vx+=(e.x-q.x)/d*560*DT;q.vy+=(e.y-q.y)/d*560*DT;
-        const sp=Math.hypot(q.vx,q.vy)||1;q.vx*=235/sp;q.vy*=235/sp;
+        const sp=dhyp(q.vx,q.vy)||1;q.vx*=235/sp;q.vy*=235/sp;
       }
       q.x+=q.vx*DT;q.y+=q.vy*DT;
       if(p5cut(e,q.x,q.y,5)){m.events.push({k:'parry',x:q.x,y:q.y});Q.splice(i,1);continue}
-      if(!e.gone&&Math.hypot(e.x-q.x,e.y-q.y)<e.r+4){
+      if(!e.gone&&dhyp(e.x-q.x,e.y-q.y)<e.r+4){
         m.hurt(e,D.dmg*f.dmgMul*rage,f);
         S.jam=1.1+.45*f.sig;
-        const a=m.rnd()*P5_TAU;e.vx=Math.cos(a)*e.speed;e.vy=Math.sin(a)*e.speed;e.dir*=-1;
+        const a=m.rnd()*P5_TAU;e.vx=dcos(a)*e.speed;e.vy=dsin(a)*e.speed;e.dir*=-1;
         m.events.push({k:'text',x:e.x,y:e.y-e.r,txt:'Jammed',col:'#7fe7ff',i:f.i});
         m.events.push({k:'fx',n:'tele',x:e.x,y:e.y,r:e.r+6,col:'#55e6ff',i:f.i});
         m.events.push({k:'fx',n:'shards',x:q.x,y:q.y,num:7,col:'#d6fbff',lo:60,hi:190,i:f.i});
@@ -88,22 +88,22 @@ BEHAVE.drone={
     const D=FIGHTERS.drone,S=f.s,R=f.r+24;
     S.rot+=1.5*DT;
     for(const q of S.d){
-      const tx=p5clamp(f.x+Math.cos(S.rot+q.a)*R,5),ty=p5clamp(f.y+Math.sin(S.rot+q.a)*R,5);
+      const tx=p5clamp(f.x+dcos(S.rot+q.a)*R,5),ty=p5clamp(f.y+dsin(S.rot+q.a)*R,5);
       if(!q.alive){
         q.re-=DT;q.x=f.x;q.y=f.y;
         if(q.re<=0){q.alive=1;q.t=.8;q.burst=0;m.events.push({k:'spawn',x:f.x,y:f.y,i:f.i});m.events.push({k:'fx',n:'line',x:f.x,y:f.y,x2:tx,y2:ty,col:'#55e6ff',w:1.6,life:.25,i:f.i})}
         continue;
       }
-      const dx=tx-q.x,dy=ty-q.y,d=Math.hypot(dx,dy)||1,st=Math.min(d,420*DT);
+      const dx=tx-q.x,dy=ty-q.y,d=dhyp(dx,dy)||1,st=Math.min(d,420*DT);
       q.x+=dx/d*st;q.y+=dy/d*st;
-      if(!e.gone&&(Math.hypot(q.x-e.x,q.y-e.y)<e.r+5||p5cut(e,q.x,q.y,5))){
+      if(!e.gone&&(dhyp(q.x-e.x,q.y-e.y)<e.r+5||p5cut(e,q.x,q.y,5))){
         q.alive=0;q.re=4.5/f.spdMul;m.events.push({k:'pop',x:q.x,y:q.y,i:f.i});
         m.events.push({k:'fx',n:'shatter',x:q.x,y:q.y,num:7,col:'#8b959d',r:10,i:f.i});m.events.push({k:'fx',n:'smoke',x:q.x,y:q.y,num:3,i:f.i});continue;
       }
       q.t-=DT;
       if(q.t<=0&&!e.gone){
-        const dd=Math.hypot(e.x-q.x,e.y-q.y)||1,lead=dd/330*.6;
-        p5shot(f,m,q.x,q.y,Math.atan2(e.y+e.vy*lead-q.y,e.x+e.vx*lead-q.x)+(m.rnd()-.5)*.2,D.dmg);
+        const dd=dhyp(e.x-q.x,e.y-q.y)||1,lead=dd/330*.6;
+        p5shot(f,m,q.x,q.y,datan2(e.y+e.vy*lead-q.y,e.x+e.vx*lead-q.x)+(m.rnd()-.5)*.2,D.dmg);
         q.burst++;
         if(q.burst>=2){q.burst=0;q.t=D.cd*(1+.12*f.sig)/f.spdMul}else q.t=.16;
       }
@@ -138,7 +138,7 @@ BEHAVE.mech={
         m.events.push({k:'boom',x:q.x,y:q.y,i:f.i});
         m.events.push({k:'fx',n:'dust',x:q.x,y:q.y,num:8,lo:50,hi:120,life:.6,i:f.i});
         m.events.push({k:'fx',n:'shards',x:q.x,y:q.y,num:6,col:'#5b554c',lo:80,hi:220,i:f.i});
-        if(!e.gone&&Math.hypot(e.x-q.x,e.y-q.y)<q.r+e.r*.5){m.hurt(e,D.dmg*f.dmgMul*rage,f);m.knock(e,q)}
+        if(!e.gone&&dhyp(e.x-q.x,e.y-q.y)<q.r+e.r*.5){m.hurt(e,D.dmg*f.dmgMul*rage,f);m.knock(e,q)}
         M.splice(i,1);
       }
     }
@@ -163,7 +163,7 @@ BEHAVE.glitch={
       const fx0=f.x,fy0=f.y;
       m.events.push({k:'fx',n:'shards',x:fx0,y:fy0,num:6,col:'#55e6ff',lo:40,hi:150,i:f.i});
       const a=m.rnd()*P5_TAU,d=e.r+f.r+14+m.rnd()*24;
-      f.x=p5clamp(e.x+Math.cos(a)*d,f.r);f.y=p5clamp(e.y+Math.sin(a)*d,f.r);
+      f.x=p5clamp(e.x+dcos(a)*d,f.r);f.y=p5clamp(e.y+dsin(a)*d,f.r);
       p5seek(f,e);f.gone=true;S.blink=.2;S.fresh=.9;
       m.events.push({k:'appear',x:f.x,y:f.y,i:f.i});
       m.events.push({k:'fx',n:'line',x:fx0-2,y:fy0,x2:f.x-2,y2:f.y,col:'#55e6ff',w:2,life:.22,i:f.i});                // the jump, split into its two colours
@@ -173,7 +173,7 @@ BEHAVE.glitch={
     for(let i=Q.length-1;i>=0;i--){
       const q=Q[i];
       q.t+=DT;
-      if(q.t>.35&&!e.gone&&Math.hypot(e.x-q.x,e.y-q.y)<e.r+q.r*.7){
+      if(q.t>.35&&!e.gone&&dhyp(e.x-q.x,e.y-q.y)<e.r+q.r*.7){
         m.events.push({k:'burst',x:q.x,y:q.y,n:10,i:f.i});
         m.events.push({k:'fx',n:'shatter',x:q.x,y:q.y,num:9,col:'#55e6ff',r:q.r,i:f.i});
         m.events.push({k:'fx',n:'wave',x:q.x,y:q.y,r0:q.r*.4,r:q.r+16,life:.3,col:'#ff4fd8',w:2.6,fill:.3,i:f.i});
@@ -196,7 +196,7 @@ BEHAVE.laser={
       return;
     }
     if(S.mode===1&&S.t>.22&&!e.gone)S.an=p5turn(S.an,f.aim,3.2*DT);
-    const c=Math.cos(S.an),s=Math.sin(S.an),L=p5ray(f.x,f.y,c,s);
+    const c=dcos(S.an),s=dsin(S.an),L=p5ray(f.x,f.y,c,s);
     S.x2=f.x+c*L;S.y2=f.y+s*L;
     if(S.mode===1){
       if(S.t<=0){
@@ -228,7 +228,7 @@ BEHAVE.railgun={
       return;
     }
     if(S.t>S.lock&&!e.gone)S.an=f.aim;
-    const c=Math.cos(S.an),s=Math.sin(S.an),L=p5ray(f.x,f.y,c,s);
+    const c=dcos(S.an),s=dsin(S.an),L=p5ray(f.x,f.y,c,s);
     S.x1=f.x;S.y1=f.y;S.x2=f.x+c*L;S.y2=f.y+s*L;
     if(S.t<=S.lock&&!S.fxL){                               // locked on (fxL is only for show)
       S.fxL=1;
@@ -259,22 +259,22 @@ BEHAVE.engineer={
     S.t-=DT;
     if(S.t<=0){
       S.t=.5;
-      let near=false;for(const q of T)if(Math.hypot(q.x-f.x,q.y-f.y)<46)near=true;
+      let near=false;for(const q of T)if(dhyp(q.x-f.x,q.y-f.y)<46)near=true;
       if(T.length<2+f.sig&&!near){S.t=(2.4-.15*f.sig)/f.spdMul;T.push({x:p5clamp(f.x,8),y:p5clamp(f.y,8),t:.7,life:9+f.sig,an:f.aim});m.events.push({k:'mine',x:f.x,y:f.y,i:f.i});
         m.events.push({k:'fx',n:'sparks',x:f.x,y:f.y,num:9,col:'#ffd27a',lo:60,hi:180,life:.3,grav:220,i:f.i});m.events.push({k:'fx',n:'poof',x:f.x,y:f.y,r:10,i:f.i})}
     }
     for(let i=T.length-1;i>=0;i--){
       const q=T[i];
       q.life-=DT;
-      if(!e.gone)q.an=Math.atan2(e.y-q.y,e.x-q.x);
-      if(q.life<=0||(!e.gone&&(Math.hypot(q.x-e.x,q.y-e.y)<e.r+7||p5cut(e,q.x,q.y,6)))){
+      if(!e.gone)q.an=datan2(e.y-q.y,e.x-q.x);
+      if(q.life<=0||(!e.gone&&(dhyp(q.x-e.x,q.y-e.y)<e.r+7||p5cut(e,q.x,q.y,6)))){
         m.events.push({k:'pop',x:q.x,y:q.y,i:f.i});
         if(q.life<=0)m.events.push({k:'fx',n:'smoke',x:q.x,y:q.y,num:5,i:f.i});                                         // worn out: it just gives up
         else{m.events.push({k:'fx',n:'explode',x:q.x,y:q.y,r:15,col:'#ffb347',i:f.i});m.events.push({k:'fx',n:'shards',x:q.x,y:q.y,num:6,col:'#8b959d',i:f.i})}
         T.splice(i,1);continue;
       }
       q.t-=DT;
-      if(q.t<=0&&!e.gone){q.t=1.15/(1+.08*f.sig)/f.spdMul;p5shot(f,m,q.x+Math.cos(q.an)*8,q.y+Math.sin(q.an)*8,q.an+(m.rnd()-.5)*.16,D.dmg*.55)}
+      if(q.t<=0&&!e.gone){q.t=1.15/(1+.08*f.sig)/f.spdMul;p5shot(f,m,q.x+dcos(q.an)*8,q.y+dsin(q.an)*8,q.an+(m.rnd()-.5)*.16,D.dmg*.55)}
     }
   }};
 
@@ -320,7 +320,7 @@ BEHAVE.chainsaw={
     if(S.c>0)S.c-=DT;
     if(S.on>0)S.on-=DT;
     if(S.stall>0){S.stall-=DT;S.rev=Math.max(0,S.rev-DT*2);S.heat=Math.max(0,S.heat-DT*3);return}
-    const c=Math.cos(S.an),s=Math.sin(S.an);
+    const c=dcos(S.an),s=dsin(S.an);
     const on=!e.gone&&distPS(e.x,e.y,f.x+c*f.r,f.y+s*f.r,f.x+c*(f.r+S.len),f.y+s*(f.r+S.len))<e.r+2;
     if(on){
       S.rev=Math.min(1,S.rev+DT/(2-.35*f.sig));S.on=.12;
@@ -343,7 +343,7 @@ BEHAVE.chainsaw={
   hurt(f,src,dmg,m){
     if(dmg>=f.max*.15){
       f.s.stall=.6;f.s.rev*=.4;
-      const c=Math.cos(f.s.an),s=Math.sin(f.s.an);                                                                   // kicked loose
+      const c=dcos(f.s.an),s=dsin(f.s.an);                                                                   // kicked loose
       m.events.push({k:'fx',n:'sparks',x:f.x+c*(f.r+f.s.len*.5),y:f.y+s*(f.r+f.s.len*.5),num:10,col:'#d7dde2',lo:80,hi:240,life:.28,i:f.i});
       m.events.push({k:'fx',n:'smoke',x:f.x,y:f.y-f.r*.6,num:4,col:'#5a534c',i:f.i});
       m.events.push({k:'fx',n:'wave',x:f.x,y:f.y,r0:f.r,r:f.r+14,life:.26,col:'#ffd27a',w:2,i:f.i});
@@ -359,8 +359,8 @@ const P5_FLOOR={points:['mines','trail','vents','boxes','im','tu'],lines:['webs'
 BEHAVE.roomba={
   init(f){f.s.eat=0;f.s.got=0;f.s.rad=f.r+30},
   bounce(f,m,x,y,nx,ny){
-    const a=Math.atan2(ny,nx)+(m.rnd()-.5)*2.3;
-    f.vx=Math.cos(a)*f.speed;f.vy=Math.sin(a)*f.speed;
+    const a=datan2(ny,nx)+(m.rnd()-.5)*2.3;
+    f.vx=dcos(a)*f.speed;f.vy=dsin(a)*f.speed;
   },
   tick(f,e,m){
     const S=f.s,R=f.r+30+8*f.sig;
@@ -375,18 +375,18 @@ BEHAVE.roomba={
     const B=m.bullets,N=m.minions,P=m.paint,es=e.s||{};
     for(let i=B.length-1;i>=0&&!ate;i--){                  // a shot is swallowed about half the time; the rest get through
       const q=B[i];
-      if(q.own===f.i||q.p5||Math.hypot(q.x-f.x,q.y-f.y)>=R)continue;
+      if(q.own===f.i||q.p5||dhyp(q.x-f.x,q.y-f.y)>=R)continue;
       if(m.rnd()<.5){B.splice(i,1);ate=1}else q.p5=1;
     }
-    for(let i=N.length-1;i>=0&&!ate;i--)if(N[i].own!==f.i&&Math.hypot(N[i].x-f.x,N[i].y-f.y)<R){N[i].hp=0;N[i].life=0;ate=1}
+    for(let i=N.length-1;i>=0&&!ate;i--)if(N[i].own!==f.i&&dhyp(N[i].x-f.x,N[i].y-f.y)<R){N[i].hp=0;N[i].life=0;ate=1}
     for(const k of P5_FLOOR.points){
       const A=es[k];
       if(ate||!Array.isArray(A))continue;
       let n=0;
-      for(let i=A.length-1;i>=0&&n<8;i--){const q=A[i];if(q&&Math.hypot(q.x-f.x,q.y-f.y)<R){A.splice(i,1);n++}}
+      for(let i=A.length-1;i>=0&&n<8;i--){const q=A[i];if(q&&dhyp(q.x-f.x,q.y-f.y)<R){A.splice(i,1);n++}}
       if(n)ate=1;
     }
-    if(!ate&&Array.isArray(es.arrows))for(let i=es.arrows.length-1;i>=0&&!ate;i--){const q=es.arrows[i];if(q&&q.stuck&&Math.hypot(q.x-f.x,q.y-f.y)<R){es.arrows.splice(i,1);ate=1}}
+    if(!ate&&Array.isArray(es.arrows))for(let i=es.arrows.length-1;i>=0&&!ate;i--){const q=es.arrows[i];if(q&&q.stuck&&dhyp(q.x-f.x,q.y-f.y)<R){es.arrows.splice(i,1);ate=1}}
     for(const k of P5_FLOOR.lines){
       const A=es[k];
       if(ate||!Array.isArray(A))continue;
@@ -399,7 +399,7 @@ BEHAVE.roomba={
     if(!ate){
       let n=0;
       const x0=Math.max(0,((f.x-R)/PC)|0),x1=Math.min(GP-1,((f.x+R)/PC)|0),y0=Math.max(0,((f.y-R)/PC)|0),y1=Math.min(GP-1,((f.y+R)/PC)|0);
-      for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)if(P[y*GP+x]===e.i&&Math.hypot((x+.5)*PC-f.x,(y+.5)*PC-f.y)<R){P[y*GP+x]=-1;n++}
+      for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)if(P[y*GP+x]===e.i&&dhyp((x+.5)*PC-f.x,(y+.5)*PC-f.y)<R){P[y*GP+x]=-1;n++}
       if(n>=2)ate=1;
     }
     if(ate){
@@ -451,7 +451,7 @@ function p5lite(x,y,r,col,a){
 const p5rnd=Math.random;
 // a quadcopter seen from above
 function p5drone(x,y,rot){
-  const c=Math.cos(rot+.785),s=Math.sin(rot+.785),L=5.6;
+  const c=dcos(rot+.785),s=dsin(rot+.785),L=5.6;
   p5seg(x-c*L,y-s*L,x+c*L,y+s*L,P5.STEEL_LO,1.3);p5seg(x+s*L,y-c*L,x-s*L,y+c*L,P5.STEEL_LO,1.3);
   g.fillStyle='rgba(215,221,226,.22)';g.strokeStyle='rgba(215,221,226,.7)';g.lineWidth=.6;
   for(const p of [[c,s],[-c,-s],[-s,c],[s,-c]]){p5disc(x+p[0]*L,y+p[1]*L,2.9);g.fill();g.stroke()}
@@ -461,8 +461,8 @@ function p5drone(x,y,rot){
 }
 // a turret on three legs, barrel along an; left is how much of its life remains (0-1)
 function p5turret(x,y,an,left){
-  for(let k=0;k<3;k++){const a=k*2.094+.5;p5seg(x,y,x+Math.cos(a)*7,y+Math.sin(a)*7,P5.STEEL_LO,1.3)}
-  p5seg(x,y,x+Math.cos(an)*9.5,y+Math.sin(an)*9.5,P5.STEEL,2.1);
+  for(let k=0;k<3;k++){const a=k*2.094+.5;p5seg(x,y,x+dcos(a)*7,y+dsin(a)*7,P5.STEEL_LO,1.3)}
+  p5seg(x,y,x+dcos(an)*9.5,y+dsin(an)*9.5,P5.STEEL,2.1);
   p5disc(x,y,4.4);p5solid(P5.GUN);
   g.strokeStyle=P5.GOLD;g.lineWidth=.9;g.beginPath();g.arc(x,y,3,-1.5708,-1.5708+P5_TAU*Math.max(.02,left));g.stroke();
   g.fillStyle='#ffb347';p5disc(x,y,1.1);g.fill();
@@ -480,7 +480,7 @@ LOOKS.netrunner={
   },
   over(f,m){
     for(const q of f.s.pk){                               // data packets: a bright square with a tail of smaller ones
-      const sp=Math.hypot(q.vx,q.vy)||1,ux=q.vx/sp,uy=q.vy/sp;
+      const sp=dhyp(q.vx,q.vy)||1,ux=q.vx/sp,uy=q.vy/sp;
       p5glow(q.x,q.y,10,'85,230,255',.5);
       g.fillStyle='rgba(85,230,255,.55)';
       for(let k=1;k<=3;k++){const z=2.4-k*.5;g.fillRect(q.x-ux*k*5.5-z/2,q.y-uy*k*5.5-z/2,z,z)}
@@ -497,7 +497,7 @@ LOOKS.netrunner={
       for(const sx of [-1,1])for(const sy of [-1,1]){g.moveTo(x+sx*r,y+sy*(r-c));g.lineTo(x+sx*r,y+sy*r);g.lineTo(x+sx*(r-c),y+sy*r)}
       g.stroke();
       g.fillStyle='rgba(85,230,255,.4)';
-      for(let k=0;k<3;k++){const yy=y+Math.sin(t*9+k*2.1)*e.r*.75,w=e.r*(1.1+.5*Math.sin(t*17+k));g.fillRect(x-w+Math.sin(t*31+k*4)*3,yy-1,w*2,2)}
+      for(let k=0;k<3;k++){const yy=y+dsin(t*9+k*2.1)*e.r*.75,w=e.r*(1.1+.5*dsin(t*17+k));g.fillRect(x-w+dsin(t*31+k*4)*3,yy-1,w*2,2)}
       p5lite(x,y,e.r*1.8,P5.CYAN,.25);
     }
   },
@@ -506,16 +506,16 @@ LOOKS.netrunner={
     if(!Q||m.over)return;
     if(Q.length)for(let n=FX.due(f.i,'p5pk',10*Q.length,dt);n>0;n--){   // a packet sheds bits as it flies
       const q=Q[(p5rnd()*Q.length)|0];
-      FX.sparks(q.x,q.y,1,p5rnd()<.3?'#ffffff':P5.CYAN,{dir:Math.atan2(-q.vy,-q.vx),spread:.9,lo:10,hi:55,life:.3,size:1});
+      FX.sparks(q.x,q.y,1,p5rnd()<.3?'#ffffff':P5.CYAN,{dir:datan2(-q.vy,-q.vx),spread:.9,lo:10,hi:55,life:.3,size:1});
     }
     if(S.jam>0&&e.hp>0&&!e.gone){
       for(let n=FX.due(f.i,'p5jm',11,dt);n>0;n--){                      // static crawling over the jammed rival
         const a=p5rnd()*P5_TAU,d=e.r*(.3+p5rnd()*.9);
-        FX.sparks(e.x+Math.cos(a)*d,e.y+Math.sin(a)*d,1,P5.CYAN,{lo:10,hi:70,life:.2,size:1});
+        FX.sparks(e.x+dcos(a)*d,e.y+dsin(a)*d,1,P5.CYAN,{lo:10,hi:70,life:.2,size:1});
       }
       for(let n=FX.due(f.i,'p5jb',5,dt);n>0;n--){const yy=e.y+(p5rnd()-.5)*e.r*1.6,w=e.r*(.5+p5rnd()*.8),ox=(p5rnd()-.5)*8;FX.line(e.x-w+ox,yy,e.x+w+ox,yy,p5rnd()<.5?P5.CYAN:'#ffffff',1.8,.1)}
       if(!f.gone)for(let n=FX.due(f.i,'p5rs',9,dt);n>0;n--){           // the rush: streaks off its back
-        const sp=Math.hypot(f.vx,f.vy)||1,bx=-f.vx/sp,by=-f.vy/sp,off=(p5rnd()-.5)*f.r*1.6,x=f.x+bx*f.r*.7-by*off,y=f.y+by*f.r*.7+bx*off,l=10+p5rnd()*14;
+        const sp=dhyp(f.vx,f.vy)||1,bx=-f.vx/sp,by=-f.vy/sp,off=(p5rnd()-.5)*f.r*1.6,x=f.x+bx*f.r*.7-by*off,y=f.y+by*f.r*.7+bx*off,l=10+p5rnd()*14;
         FX.line(x,y,x+bx*l,y+by*l,P5.CYAN,1.1,.2);
       }
     }
@@ -546,7 +546,7 @@ LOOKS.drone={
     }
     for(let n=FX.due(f.i,'p5rb',4*dead,dt);n>0;n--){                    // a drone being rebuilt: welding sparks at the pilot
       const a=p5rnd()*P5_TAU;
-      FX.sparks(f.x+Math.cos(a)*f.r,f.y+Math.sin(a)*f.r,1,'#ffd27a',{dir:a,spread:1.2,lo:30,hi:110,life:.25,grav:200,size:1});
+      FX.sparks(f.x+dcos(a)*f.r,f.y+dsin(a)*f.r,1,'#ffd27a',{dir:a,spread:1.2,lo:30,hi:110,life:.25,grav:200,size:1});
     }
   }};
 
@@ -580,10 +580,10 @@ LOOKS.mech={
   },
   over(f){                                                // missiles in the air: they climb, then come down on the mark
     for(const q of f.s.ms){
-      const p=Math.min(1,q.t),x=q.sx+(q.x-q.sx)*p,gy=q.sy+(q.y-q.sy)*p,h=Math.sin(p*Math.PI)*46,y=gy-h;
-      const p2=Math.min(1,p+.04),x2=q.sx+(q.x-q.sx)*p2,y2=q.sy+(q.y-q.sy)*p2-Math.sin(p2*Math.PI)*46,an=Math.atan2(y2-y,x2-x);
+      const p=Math.min(1,q.t),x=q.sx+(q.x-q.sx)*p,gy=q.sy+(q.y-q.sy)*p,h=dsin(p*Math.PI)*46,y=gy-h;
+      const p2=Math.min(1,p+.04),x2=q.sx+(q.x-q.sx)*p2,y2=q.sy+(q.y-q.sy)*p2-dsin(p2*Math.PI)*46,an=datan2(y2-y,x2-x);
       g.fillStyle='rgba(0,0,0,.3)';g.beginPath();g.ellipse(x,gy,3.5,2,0,0,P5_TAU);g.fill();           // its shadow on the floor
-      const c=Math.cos(an),s=Math.sin(an);
+      const c=dcos(an),s=dsin(an);
       p5glow(x-c*6,y-s*6,6,'255,170,80',.7);
       p5seg(x-c*4.5,y-s*4.5,x+c*3,y+s*3,P5.STEEL,2.6);
       g.beginPath();g.moveTo(x+c*6.5,y+s*6.5);g.lineTo(x+c*2.5-s*2,y+s*2.5+c*2);g.lineTo(x+c*2.5+s*2,y+s*2.5-c*2);g.closePath();p5solid(P5.RED);
@@ -594,10 +594,10 @@ LOOKS.mech={
     const M=f.s.ms;
     if(!M||m.over)return;
     for(const q of M){                                     // each missile trails smoke and fire down to its mark
-      const p=Math.min(1,q.t),x=q.sx+(q.x-q.sx)*p,y=q.sy+(q.y-q.sy)*p-Math.sin(p*Math.PI)*46;
+      const p=Math.min(1,q.t),x=q.sx+(q.x-q.sx)*p,y=q.sy+(q.y-q.sy)*p-dsin(p*Math.PI)*46;
       for(let n=FX.due(f.i,'p5ms',13,dt);n>0;n--)FX.smoke(x,y,1,'#8a8378',{lo:2,hi:14,life:.45,size:2.6,grav:-8});
       for(let n=FX.due(f.i,'p5mf',9,dt);n>0;n--)FX.embers(x,y,1,'#ffb050',{lo:2,hi:16,life:.3,grav:20,jit:3});
-      if(p>.6)for(let n=FX.due(f.i,'p5mk',7,dt);n>0;n--){const a=p5rnd()*P5_TAU;FX.embers(q.x+Math.cos(a)*q.r,q.y+Math.sin(a)*q.r,1,'#ff785a',{life:.3,lo:2,hi:12})}   // the mark heats up
+      if(p>.6)for(let n=FX.due(f.i,'p5mk',7,dt);n>0;n--){const a=p5rnd()*P5_TAU;FX.embers(q.x+dcos(a)*q.r,q.y+dsin(a)*q.r,1,'#ff785a',{life:.3,lo:2,hi:12})}   // the mark heats up
     }
     if(!f.gone)for(let n=FX.due(f.i,'p5st',2.4,dt);n>0;n--)FX.dust(f.x+(p5rnd()-.5)*f.r*1.4,f.y+f.r*.75,1,null,{lo:6,hi:26,life:.45});   // heavy feet
   }};
@@ -613,7 +613,7 @@ LOOKS.glitch={
   under(f){                                               // the copies it leaves: a medallion's outline, split into colours
     const life=f.s.life||2.4,t=p5now();
     for(const q of f.s.im){
-      const a=Math.max(.15,1-q.t/life),j=Math.sin(t*23+q.x)*1.2;
+      const a=Math.max(.15,1-q.t/life),j=dsin(t*23+q.x)*1.2;
       g.globalAlpha=a*.85;
       g.lineWidth=1.6;g.strokeStyle=P5.CYAN;p5disc(q.x-2+j,q.y,q.r);g.stroke();
       g.strokeStyle=P5.MAGENTA;p5disc(q.x+2-j,q.y,q.r);g.stroke();
@@ -623,7 +623,7 @@ LOOKS.glitch={
     }
   },
   back(f){                                                // its own edges never quite line up
-    const j=Math.sin(p5now()*29)*1.1+1.6;
+    const j=dsin(p5now()*29)*1.1+1.6;
     g.lineWidth=1.3;g.strokeStyle='rgba(85,230,255,.75)';p5disc(f.x-j,f.y,f.r+.6);g.stroke();
     g.strokeStyle='rgba(255,79,216,.75)';p5disc(f.x+j,f.y,f.r+.6);g.stroke();
     if(f.s.fresh>0)p5lite(f.x,f.y,f.r*2,P5.MAGENTA,.5*Math.min(1,f.s.fresh/.5));        // just landed: it hits harder
@@ -634,13 +634,13 @@ LOOKS.glitch={
     if(Q.length){
       for(let n=FX.due(f.i,'p5im',4*Q.length,dt);n>0;n--){              // the copies flicker
         const q=Q[(p5rnd()*Q.length)|0],a=p5rnd()*P5_TAU;
-        FX.sparks(q.x+Math.cos(a)*q.r,q.y+Math.sin(a)*q.r,1,p5rnd()<.5?P5.CYAN:P5.MAGENTA,{lo:6,hi:36,life:.26,size:1});
+        FX.sparks(q.x+dcos(a)*q.r,q.y+dsin(a)*q.r,1,p5rnd()<.5?P5.CYAN:P5.MAGENTA,{lo:6,hi:36,life:.26,size:1});
       }
       for(let n=FX.due(f.i,'p5ib',1.6*Q.length,dt);n>0;n--){const q=Q[(p5rnd()*Q.length)|0],yy=q.y+(p5rnd()-.5)*q.r*1.5,ox=(p5rnd()-.5)*10;FX.line(q.x-q.r+ox,yy,q.x+q.r+ox,yy,p5rnd()<.5?P5.CYAN:P5.MAGENTA,1.6,.1)}
     }
     if(f.gone)return;
     for(let n=FX.due(f.i,'p5gb',1.6,dt);n>0;n--){const yy=f.y+(p5rnd()-.5)*f.r*1.5,ox=(p5rnd()-.5)*12;FX.line(f.x-f.r+ox,yy,f.x+f.r+ox,yy,p5rnd()<.5?P5.CYAN:P5.MAGENTA,1.6,.09)}   // a torn scan line now and then
-    if(S.fresh>0)for(let n=FX.due(f.i,'p5fr',14,dt);n>0;n--){const a=p5rnd()*P5_TAU;FX.sparks(f.x+Math.cos(a)*f.r,f.y+Math.sin(a)*f.r,1,P5.MAGENTA,{dir:a,spread:1,lo:20,hi:90,life:.24})}
+    if(S.fresh>0)for(let n=FX.due(f.i,'p5fr',14,dt);n>0;n--){const a=p5rnd()*P5_TAU;FX.sparks(f.x+dcos(a)*f.r,f.y+dsin(a)*f.r,1,P5.MAGENTA,{dir:a,spread:1,lo:20,hi:90,life:.24})}
   }};
 
 LOOKS.laser={
@@ -650,7 +650,7 @@ LOOKS.laser={
     g.beginPath();g.arc(-.14,0,.21,0,P5_TAU);g.fill();
     g.beginPath();g.moveTo(.3,-.07);g.lineTo(.74,-.03);g.lineTo(.74,.03);g.lineTo(.3,.07);g.closePath();g.fill();
     g.lineWidth=.05;g.beginPath();
-    for(const a of [2.0,2.6,3.68,4.28]){g.moveTo(-.14+Math.cos(a)*.5,Math.sin(a)*.5);g.lineTo(-.14+Math.cos(a)*.6,Math.sin(a)*.6)}
+    for(const a of [2.0,2.6,3.68,4.28]){g.moveTo(-.14+dcos(a)*.5,dsin(a)*.5);g.lineTo(-.14+dcos(a)*.6,dsin(a)*.6)}
     g.stroke();
     g.fillStyle=P5.RED;g.beginPath();g.arc(-.14,0,.1,0,P5_TAU);g.fill();
   },
@@ -663,11 +663,11 @@ LOOKS.laser={
     }else if(S.mode===2){                                 // the beam
       p5beam(f.x,f.y,S.x2,S.y2,'255,70,60',5+2*f.sig,1);
       p5glow(S.x2,S.y2,14,'255,120,90',.7);
-      p5lite(S.x2,S.y2,20+4*Math.sin(p5now()*40),'#ff7a5a',.8);
+      p5lite(S.x2,S.y2,20+4*dsin(p5now()*40),'#ff7a5a',.8);
     }
   },
   over(f){                                                // the emitter, pointing where it will fire
-    const S=f.s,a=S.mode?S.an:f.aim,c=Math.cos(a),s=Math.sin(a),r=f.r;
+    const S=f.s,a=S.mode?S.an:f.aim,c=dcos(a),s=dsin(a),r=f.r;
     p5seg(f.x+c*(r-2),f.y+s*(r-2),f.x+c*(r+7),f.y+s*(r+7),P5.GUN,4.2);
     g.strokeStyle=P5.GOLD;g.lineWidth=1;g.beginPath();g.moveTo(f.x+c*(r+3)-s*3,f.y+s*(r+3)+c*3);g.lineTo(f.x+c*(r+3)+s*3,f.y+s*(r+3)-c*3);g.stroke();
     const hot=S.mode===1?Math.max(0,1-S.t/.8):S.mode===2?1:0;
@@ -677,12 +677,12 @@ LOOKS.laser={
   amb(f,e,m,dt){
     const S=f.s;
     if(!S.mode||m.over||f.gone)return;
-    const c=Math.cos(S.an),s=Math.sin(S.an),ex=f.x+c*(f.r+8),ey=f.y+s*(f.r+8);
+    const c=dcos(S.an),s=dsin(S.an),ex=f.x+c*(f.r+8),ey=f.y+s*(f.r+8);
     if(S.mode===1){                                        // charging: light gathers at the lens
-      for(let n=FX.due(f.i,'p5lc',16,dt);n>0;n--){const a=p5rnd()*P5_TAU,d=16+p5rnd()*22;FX.seek(ex+Math.cos(a)*d,ey+Math.sin(a)*d,-2,1,'#ff6a5a',ex,ey,{jit:1,life:.5,size:1.3})}
+      for(let n=FX.due(f.i,'p5lc',16,dt);n>0;n--){const a=p5rnd()*P5_TAU,d=16+p5rnd()*22;FX.seek(ex+dcos(a)*d,ey+dsin(a)*d,-2,1,'#ff6a5a',ex,ey,{jit:1,life:.5,size:1.3})}
       return;
     }
-    const L=Math.hypot(S.x2-f.x,S.y2-f.y);                 // firing: the wall spits sparks, the air along the beam glows
+    const L=dhyp(S.x2-f.x,S.y2-f.y);                 // firing: the wall spits sparks, the air along the beam glows
     for(let n=FX.due(f.i,'p5lw',22,dt);n>0;n--)FX.sparks(S.x2,S.y2,1,p5rnd()<.4?'#ffffff':'#ffa080',{dir:S.an+Math.PI,spread:2.4,lo:50,hi:190,life:.3,grav:140});
     for(let n=FX.due(f.i,'p5lb',12,dt);n>0;n--){const t=p5rnd()*L;FX.embers(f.x+c*t,f.y+s*t,1,'#ff6a5a',{life:.35,lo:4,hi:22,jit:5})}
     for(let n=FX.due(f.i,'p5ls',3,dt);n>0;n--)FX.smoke(S.x2,S.y2,1,'#6a5a56',{lo:6,hi:22});
@@ -710,7 +710,7 @@ LOOKS.railgun={
     if(S.tr>0)p5beam(S.x1,S.y1,S.x2,S.y2,'120,200,255',7,Math.min(1,S.tr/.2));   // the shot, for an instant
   },
   over(f){                                                // the gun: two long rails bound with coils
-    const S=f.s,a=S.mode?S.an:f.aim,c=Math.cos(a),s=Math.sin(a),r=f.r;
+    const S=f.s,a=S.mode?S.an:f.aim,c=dcos(a),s=dsin(a),r=f.r;
     for(const k of [-1,1])p5seg(f.x+c*(r-2)-s*2.4*k,f.y+s*(r-2)+c*2.4*k,f.x+c*(r+17)-s*2.4*k,f.y+s*(r+17)+c*2.4*k,P5.STEEL,1.5);
     for(const d of [4,10]){g.beginPath();g.moveTo(f.x+c*(r+d)-s*4,f.y+s*(r+d)+c*4);g.lineTo(f.x+c*(r+d)+s*4,f.y+s*(r+d)-c*4);p5rod(P5.GOLD,1.6)}
     if(S.mode===1){p5glow(f.x+c*(r+9),f.y+s*(r+9),4+8*Math.max(0,1-S.t),'120,200,255',.7);p5lite(f.x+c*(r+9),f.y+s*(r+9),7+15*Math.max(0,1-S.t),'#78c8ff',.3+.5*Math.max(0,1-S.t))}
@@ -718,8 +718,8 @@ LOOKS.railgun={
   amb(f,e,m,dt){
     const S=f.s;
     if(S.mode!==1||m.over||f.gone)return;
-    const c=Math.cos(S.an),s=Math.sin(S.an),mx=f.x+c*(f.r+9),my=f.y+s*(f.r+9),p=Math.max(0,1-S.t);
-    for(let n=FX.due(f.i,'p5rc',8+16*p,dt);n>0;n--){const a=p5rnd()*P5_TAU,d=14+p5rnd()*20;FX.seek(mx+Math.cos(a)*d,my+Math.sin(a)*d,-2,1,'#9fd4ff',mx,my,{jit:1,life:.5,size:1.2})}   // the capacitors fill
+    const c=dcos(S.an),s=dsin(S.an),mx=f.x+c*(f.r+9),my=f.y+s*(f.r+9),p=Math.max(0,1-S.t);
+    for(let n=FX.due(f.i,'p5rc',8+16*p,dt);n>0;n--){const a=p5rnd()*P5_TAU,d=14+p5rnd()*20;FX.seek(mx+dcos(a)*d,my+dsin(a)*d,-2,1,'#9fd4ff',mx,my,{jit:1,life:.5,size:1.2})}   // the capacitors fill
     if(S.t<=S.lock){                                       // locked: sparks crawl along the rails
       for(let n=FX.due(f.i,'p5rl',14,dt);n>0;n--){const d=f.r+p5rnd()*17,k=p5rnd()<.5?-2.4:2.4;FX.sparks(f.x+c*d-s*k,f.y+s*d+c*k,1,'#eaf6ff',{lo:10,hi:60,life:.16,size:1})}
     }
@@ -730,8 +730,8 @@ LOOKS.engineer={
     g.fillStyle=fg;g.beginPath();
     for(let k=0;k<8;k++){
       const a=k/8*P5_TAU;
-      g.lineTo(Math.cos(a-.25)*.46,Math.sin(a-.25)*.46);g.lineTo(Math.cos(a-.15)*.68,Math.sin(a-.15)*.68);
-      g.lineTo(Math.cos(a+.15)*.68,Math.sin(a+.15)*.68);g.lineTo(Math.cos(a+.25)*.46,Math.sin(a+.25)*.46);
+      g.lineTo(dcos(a-.25)*.46,dsin(a-.25)*.46);g.lineTo(dcos(a-.15)*.68,dsin(a-.15)*.68);
+      g.lineTo(dcos(a+.15)*.68,dsin(a+.15)*.68);g.lineTo(dcos(a+.25)*.46,dsin(a+.25)*.46);
     }
     g.closePath();g.fill();
     g.fillStyle=bg;g.beginPath();g.arc(0,0,.22,0,P5_TAU);g.fill();
@@ -739,14 +739,14 @@ LOOKS.engineer={
   },
   arm(f,A,x1,y1,x2,y2,an){                                // a wrench: steel shaft, open jaw
     p5seg(x1,y1,x2,y2,P5.STEEL,2.6);
-    g.beginPath();g.arc(x2+Math.cos(an)*2.6,y2+Math.sin(an)*2.6,4,an+.85,an+P5_TAU-.85);p5rod(P5.STEEL,2.4);
+    g.beginPath();g.arc(x2+dcos(an)*2.6,y2+dsin(an)*2.6,4,an+.85,an+P5_TAU-.85);p5rod(P5.STEEL,2.4);
   },
   under(f){for(const q of f.s.tu)p5turret(q.x,q.y,q.an,q.life/(9+2*f.sig))},
   amb(f,e,m,dt){
     const T=f.s.tu;
     if(!T||m.over)return;
     for(const q of T){
-      if(q.t<.18&&FX.due(f.i,'p5tw',14,dt))FX.sparks(q.x+Math.cos(q.an)*9.5,q.y+Math.sin(q.an)*9.5,1,'#ffb347',{lo:4,hi:26,life:.14,size:1});   // about to fire: the muzzle warms
+      if(q.t<.18&&FX.due(f.i,'p5tw',14,dt))FX.sparks(q.x+dcos(q.an)*9.5,q.y+dsin(q.an)*9.5,1,'#ffb347',{lo:4,hi:26,life:.14,size:1});   // about to fire: the muzzle warms
       if(q.life<2.5){                                      // nearly worn out: it smokes and spits
         if(FX.due(f.i,'p5ts',4,dt))FX.smoke(q.x,q.y-3,1,'#5a534c',{lo:4,hi:14,life:.6,size:3});
         if(FX.due(f.i,'p5tk',3,dt))FX.sparks(q.x,q.y,1,'#ffd27a',{lo:30,hi:110,life:.22,grav:200,size:1});
@@ -761,8 +761,8 @@ LOOKS.battery={
   },
   back(f){                                                // the charge gauge: eight cells round the rim, lit as it fills
     const ch=f.s.ch||0,n=8,lit=Math.round(ch*n),R=f.r+4.5;
-    if(ch>=.99)p5glow(f.x,f.y,f.r+16,'216,255,90',.45+.2*Math.sin(p5now()*18));
-    if(ch>.05)p5lite(f.x,f.y,f.r*(1.5+.5*ch),P5.LIME,.12+.4*ch*(.8+.2*Math.sin(p5now()*18)));
+    if(ch>=.99)p5glow(f.x,f.y,f.r+16,'216,255,90',.45+.2*dsin(p5now()*18));
+    if(ch>.05)p5lite(f.x,f.y,f.r*(1.5+.5*ch),P5.LIME,.12+.4*ch*(.8+.2*dsin(p5now()*18)));
     g.lineCap='butt';
     for(let k=0;k<n;k++){
       const a0=-1.5708+k/n*P5_TAU+.07,a1=-1.5708+(k+1)/n*P5_TAU-.07;
@@ -775,14 +775,14 @@ LOOKS.battery={
     if(ch<.05||m.over||f.gone)return;
     for(let n=FX.due(f.i,'p5bc',2+12*ch,dt);n>0;n--){     // the stored charge leaks sparks, more as the cells fill
       const a=p5rnd()*P5_TAU;
-      FX.sparks(f.x+Math.cos(a)*(f.r+4),f.y+Math.sin(a)*(f.r+4),1,p5rnd()<.3?'#ffffff':P5.LIME,{dir:a,spread:1.6,lo:20,hi:90,life:.2,size:1});
+      FX.sparks(f.x+dcos(a)*(f.r+4),f.y+dsin(a)*(f.r+4),1,p5rnd()<.3?'#ffffff':P5.LIME,{dir:a,spread:1.6,lo:20,hi:90,life:.2,size:1});
     }
     if(ch>=.99){                                           // full: arcs jump across the rim
       for(let n=FX.due(f.i,'p5ba',7,dt);n>0;n--){
-        const a=p5rnd()*P5_TAU,b=a+.5+p5rnd()*.9,R=f.r+5,mx=f.x+Math.cos((a+b)/2)*(R+3+p5rnd()*5),my=f.y+Math.sin((a+b)/2)*(R+3+p5rnd()*5);
-        FX.line(f.x+Math.cos(a)*R,f.y+Math.sin(a)*R,mx,my,'#f4ffd0',1.3,.1);FX.line(mx,my,f.x+Math.cos(b)*R,f.y+Math.sin(b)*R,'#f4ffd0',1.3,.1);
+        const a=p5rnd()*P5_TAU,b=a+.5+p5rnd()*.9,R=f.r+5,mx=f.x+dcos((a+b)/2)*(R+3+p5rnd()*5),my=f.y+dsin((a+b)/2)*(R+3+p5rnd()*5);
+        FX.line(f.x+dcos(a)*R,f.y+dsin(a)*R,mx,my,'#f4ffd0',1.3,.1);FX.line(mx,my,f.x+dcos(b)*R,f.y+dsin(b)*R,'#f4ffd0',1.3,.1);
       }
-      for(let n=FX.due(f.i,'p5bs',3,dt);n>0;n--){const a=p5rnd()*P5_TAU;FX.stars(f.x+Math.cos(a)*(f.r+6),f.y+Math.sin(a)*(f.r+6),1,P5.LIME,{lo:0,hi:10,size:3,life:.35})}
+      for(let n=FX.due(f.i,'p5bs',3,dt);n>0;n--){const a=p5rnd()*P5_TAU;FX.stars(f.x+dcos(a)*(f.r+6),f.y+dsin(a)*(f.r+6),1,P5.LIME,{lo:0,hi:10,size:3,life:.35})}
     }
   }};
 
@@ -818,7 +818,7 @@ LOOKS.chainsaw={
   amb(f,e,m,dt){
     const S=f.s;
     if(S.an===undefined||m.over||f.gone)return;
-    const c=Math.cos(S.an),s=Math.sin(S.an),rev=S.rev||0,L=S.len||22,ex=f.x-c*f.r*.55,ey=f.y-s*f.r*.55;
+    const c=dcos(S.an),s=dsin(S.an),rev=S.rev||0,L=S.len||22,ex=f.x-c*f.r*.55,ey=f.y-s*f.r*.55;
     if(S.stall>0){                                         // stalled: the engine smokes
       for(let n=FX.due(f.i,'p5cs',7,dt);n>0;n--)FX.smoke(ex,ey,1,'#5a534c',{lo:6,hi:22,jit:f.r*.5});
       for(let n=FX.due(f.i,'p5ck',2,dt);n>0;n--)FX.sparks(f.x+c*(f.r+L*.4),f.y+s*(f.r+L*.4),1,'#ffd27a',{lo:20,hi:90,life:.2,grav:200,size:1});
@@ -851,7 +851,7 @@ LOOKS.roomba={
     if(f.s.got>0)p5glow(f.x,f.y,f.r+12,'125,220,90',.5*Math.min(1,f.s.got/.35));
   },
   back(f){                                                // the bumper, on the side it is heading towards
-    const a=Math.atan2(f.vy,f.vx),R=f.r+2.6;
+    const a=datan2(f.vy,f.vx),R=f.r+2.6;
     g.lineCap='round';g.beginPath();g.arc(f.x,f.y,R,a-1.15,a+1.15);g.strokeStyle=P5.EDGE;g.lineWidth=5.6;g.stroke();
     g.strokeStyle='#59626b';g.lineWidth=3.8;g.stroke();
     g.strokeStyle='rgba(255,255,255,.3)';g.lineWidth=.8;g.beginPath();g.arc(f.x,f.y,R+1.2,a-1,a+1);g.stroke();
@@ -862,14 +862,14 @@ LOOKS.roomba={
     if(m.over||f.gone)return;
     for(let n=FX.due(f.i,'p5va',8,dt);n>0;n--){           // dust off the floor, drawn into the vacuum
       const a=p5rnd()*P5_TAU,d=R*(.65+p5rnd()*.35);
-      FX.seek(f.x+Math.cos(a)*d,f.y+Math.sin(a)*d,f.i,1,'#cfd8e0',0,0,{jit:1,life:.7,size:1});
+      FX.seek(f.x+dcos(a)*d,f.y+dsin(a)*d,f.i,1,'#cfd8e0',0,0,{jit:1,life:.7,size:1});
     }
-    if(!e.gone&&e.hp>0&&e.stunT<=0&&Math.hypot(e.x-f.x,e.y-f.y)<R+e.r*.5){   // the rival is in the suction: it streams towards the Roomba
-      const d=Math.hypot(f.x-e.x,f.y-e.y)||1,ux=(f.x-e.x)/d,uy=(f.y-e.y)/d;
+    if(!e.gone&&e.hp>0&&e.stunT<=0&&dhyp(e.x-f.x,e.y-f.y)<R+e.r*.5){   // the rival is in the suction: it streams towards the Roomba
+      const d=dhyp(f.x-e.x,f.y-e.y)||1,ux=(f.x-e.x)/d,uy=(f.y-e.y)/d;
       for(let n=FX.due(f.i,'p5vr',9,dt);n>0;n--){
         const off=(p5rnd()-.5)*e.r*1.6,x=e.x+ux*e.r*.8-uy*off,y=e.y+uy*e.r*.8+ux*off;
         if(p5rnd()<.5)FX.seek(x,y,f.i,1,'#eef3f6',0,0,{jit:1,life:.6,size:1.1});else{const l=8+p5rnd()*12;FX.line(x,y,x+ux*l,y+uy*l,'#eef3f6',1,.18)}
       }
     }
-    if(S.got>0)for(let n=FX.due(f.i,'p5vg',12,dt);n>0;n--){const a=p5rnd()*P5_TAU;FX.stars(f.x+Math.cos(a)*f.r,f.y+Math.sin(a)*f.r,1,'#9be86a',{lo:4,hi:30,size:2.6,life:.4,grav:-30})}
+    if(S.got>0)for(let n=FX.due(f.i,'p5vg',12,dt);n>0;n--){const a=p5rnd()*P5_TAU;FX.stars(f.x+dcos(a)*f.r,f.y+dsin(a)*f.r,1,'#9be86a',{lo:4,hi:30,size:2.6,life:.4,grav:-30})}
   }};

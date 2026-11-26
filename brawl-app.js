@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 35';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 36';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -16,9 +16,10 @@ let board={date:'',bots:[]},today={date:'',cleared:0},duel=null,backTo='make';
 const fx={floats:[],sparks:[],rings:[],bolts:[],live:true},floats=fx.floats,sparks=fx.sparks,rings=fx.rings,bolts=fx.bolts;   // short-lived effects, shared with the video recorder
 const newSeed=()=>(Math.random()*2147483647)|0;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const cleanName=s=>String(s||'').replace(/[^A-Za-z0-9 ]/g,'').replace(/\s+/g,' ').trim().slice(0,12);
+const cleanName=s=>Names.tidy(s);                      // what may be typed; what is shown also passes Names.safe (brawl-names.js)
+const shownName=()=>Names.safe(me.name,FIGHTERS[me.key].name);
 const ready=()=>me.str>=0&&me.size>=0;
-const myBuild=()=>makeBuild(me.key,me.str,me.size,cleanName(me.name)||FIGHTERS[me.key].name,PALETTE[me.color]||FIGHTERS[me.key].color);
+const myBuild=()=>makeBuild(me.key,me.str,me.size,shownName(),PALETTE[me.color]||FIGHTERS[me.key].color);
 function shuffled(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]]}return a}
 // Every upgrade is one of a few kinds, each with a colour and an icon, so a card can be read at a glance.
 const KINDS={
@@ -67,7 +68,8 @@ function summary(b){
 // ----- today's ladder -----
 // Until entries are stored on a server, the ladder is filled with house fighters. Each one really plays a climb,
 // seeded by the date, so the board is the same all day and changes at midnight.
-function dayKey(){const d=new Date();return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0')}
+let pinnedDay='';
+function dayKey(){if(pinnedDay)return pinnedDay;const d=new Date();return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0')}
 // the play log (see Net.log): every fight, boon and tap, so play can be reviewed afterwards
 const log=(ev,d)=>{try{Net.log(dayKey(),ev,d)}catch(e){}};
 const logBuild=b=>({k:b.key,s:b.str,z:b.size,u:b.ups,hp:Math.round(effHp(b)),d:+effDmg(b).toFixed(2)});
@@ -122,26 +124,17 @@ function netLine(){
 // Players are met through every fighter they have climbed with today, not only their best one.
 // Nobody should meet the same fighter over and over: a player's fighter comes back only after FRIEND_GAP other
 // rivals, and a class that was met in the last few fights is not picked again.
-const FRIEND_CHANCE=.3,FRIEND_GAP=6,CLASS_GAP=5;
+// The climb itself (Climb, in brawl-proof.js) rolls whether a player's fighter may stand on a rung and builds the rival;
+// this page only offers it a candidate.
+const FRIEND_GAP=6;
 let fightNo=0;
-const lastMet={},metKeys=[];
-function pickRival(rung){
+const lastMet={};
+function pickRival(st){
   fightNo++;
-  const fresh=k=>!metKeys.includes(k);
-  const pool=Net.rivals().filter(p=>!(fightNo-lastMet[p.id+':'+p.key]<=FRIEND_GAP)&&fresh(p.key));
-  let b;
-  if(pool.length&&Math.random()<FRIEND_CHANCE){
-    const p=pool[(Math.random()*pool.length)|0];
-    b=makeBuild(p.key,rung>1?p.str:-1,p.size,p.name,p.color);
-    const n=Math.min(p.ups.length,Math.floor((rung-1)*RIVAL_UPS));
-    for(let k=0;k<n;k++)if(canTake(b,p.ups[k]))addUpgrade(b,p.ups[k]);
-    const sc=rivalScale(rung);b.hp*=sc;b.dmg*=sc;b.owner=p.name;
-    lastMet[p.id+':'+p.key]=fightNo;
-  }else{
-    b=rival(rung,Math.random);
-    for(let k=0;k<12&&!fresh(b.key);k++)b=rival(rung,Math.random);
-  }
-  metKeys.push(b.key);if(metKeys.length>CLASS_GAP)metKeys.shift();
+  const pool=Net.rivals().filter(p=>!(fightNo-lastMet[p.id+':'+p.key]<=FRIEND_GAP)&&!st.met.includes(p.key));
+  const p=pool.length?pool[(Math.random()*pool.length)|0]:null;
+  const b=Climb.next(st,p?{k:p.key,s:p.str,z:p.size,u:p.ups,n:p.name,c:p.color}:null);
+  if(st.friend&&p){b.owner=p.name;lastMet[p.id+':'+p.key]=fightNo}
   return b;
 }
 const whose=b=>(b.owner?esc(b.owner)+'\u2019s ':'')+typeOf(b);
@@ -352,13 +345,14 @@ function setNames(){
 // ----- loop -----
 let netT=0;
 const fps={n:0,t:0,slow:0};   // frames drawn, seconds, and frames slower than 30 a second in the current fight
-function refreshNet(){
-  Net.pull(board.date).then(changed=>{
-    if(!changed)return;
-    if(mode==='board')render();                         // other screens may hold a text box, so only their goal line is touched
-    else{const el=$('goal');if(el&&(mode==='make'||mode==='over'))el.innerHTML=goalLine()}
-  });
+function ladderChanged(){
+  if(mode==='board')render();                           // other screens may hold a text box, so only their goal line is touched
+  else{const el=$('goal');if(el&&(mode==='make'||mode==='over'))el.innerHTML=goalLine()}
 }
+function refreshNet(){Net.pull(board.date).then(changed=>{if(changed)ladderChanged()})}
+// each other player's climb is played again on this device (see brawl-net.js); the verdict goes in the play log, so it
+// can be seen whether honest climbs from every kind of phone pass
+function onVerdict(e,c){log('vfy',{p:e.id.slice(0,6),c:e.cid,k:e.key,r:e.cleared,ok:c.ok?1:0,why:c.why,n:c.fights})}
 function frame(ts){
   const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
   if(mode==='fight'&&match&&!match.over){fps.n++;fps.t+=dt;if(dt>.034)fps.slow++}
@@ -366,7 +360,8 @@ function frame(ts){
   const playing=mode==='fight'||mode==='duel';
   if(!boardReady()&&!playing)addBot();
   netT+=dt;
-  if(Net.on()&&!playing&&netT>15){netT=0;refreshNet()}                 // one house climb per frame, never during a fight
+  if(Net.on()&&!playing&&!pinnedDay&&netT>15){netT=0;refreshNet()}                 // one house climb per frame, never during a fight
+  if(Net.on()&&!playing&&!pinnedDay&&mode!=='ready'&&Net.pending()&&Net.verifyStep(6,onVerdict))ladderChanged();
   if(match&&(mode==='make'||playing)){
     acc+=dt*(playing?speed:1);
     let n=0;
@@ -402,27 +397,25 @@ function practice(){begin(createMatch(myBuild(),rival(1,Math.random),newSeed()),
 function startClimb(){
   if(!ready())return;
   audioOn();
-  run={rung:1,build:myBuild(),rival:null,t0:Date.now()};
+  const b0=myBuild(),st=Climb.start((Math.random()*4294967296)>>>0,me.key,me.str,me.size,b0.name,b0.color);
+  run={st,rung:1,build:st.build,rival:null,shield:0,life:0,t0:Date.now()};
   log('run',{k:me.key,s:me.str,z:me.size,n:run.build.name,c:run.build.color,best,today:today.cleared});
   nextFight();
 }
 // Before every fight the two fighters stand in the arena and the scroll shows the matchup; the fight starts on a tap.
-// A climb earns two second chances: a shield on reaching rung SHIELD_RUNG, which the player may raise before one fight
-// of their choosing (lose that fight and the climb goes on), and an extra life after clearing rung LIFE_RUNG, which is
-// spent by itself on the next loss. Either way a saved loss brings a new rival on the same rung, and no boon.
-// A draw (both fall in the same instant) does the same and spends nothing.
-const SHIELD_RUNG=5,LIFE_RUNG=10;
+// The rules of a climb (the shield, the extra life, draws) live in Climb, in brawl-proof.js; run mirrors its state.
 function nextFight(note){
-  run.rival=pickRival(run.rung);run.seed=newSeed();run.armed=false;run.note=note||'';tip=null;
-  if(run.rung>=SHIELD_RUNG&&!run.gotShield){run.gotShield=true;run.shield=1;run.note+=(run.note?' ':'')+'You have earned a shield.'}
-  if(run.rung>LIFE_RUNG&&!run.gotLife){run.gotLife=true;run.life=1;run.note+=(run.note?' ':'')+'You have earned an extra life.'}
+  const st=run.st;
+  run.rival=pickRival(st);run.seed=st.fseed;run.armed=false;run.note=note||'';tip=null;
+  run.rung=st.rung;run.shield=st.shield;run.life=st.life;
+  if(st.earned==='shield'||st.earned==='both')run.note+=(run.note?' ':'')+'You have earned a shield.';
+  if(st.earned==='life'||st.earned==='both')run.note+=(run.note?' ':'')+'You have earned an extra life.';
   mode='ready';
   begin(createMatch(run.build,run.rival,run.seed),0,'Rung '+run.rung,true);
   render();
 }
 function startFight(){
   if(mode!=='ready')return;
-  if(run.armed)run.shield=0;                              // raised for this fight, win or lose
   fps.n=fps.t=fps.slow=0;overFor=0;acc=0;
   mode='fight';
   render();
@@ -465,41 +458,40 @@ function readyBody(){
 }
 function fightDone(){
   const left=f=>+Math.max(0,f.hp/f.max).toFixed(2);
-  const draw=!!match.draw,won=!draw&&match.winner===0;
-  const saved=won||draw?'':run.armed?'shield':run.life>0?'life':'';
-  log('fight',{r:run.rung,win:won?1:0,dr:draw?1:0,sh:run.armed?1:0,saved,t:+match.t.toFixed(1),hp:[left(match.f[0]),left(match.f[1])],seed:run.seed,sp:speed,
+  const st=run.st,draw=!!match.draw,won=!draw&&match.winner===0,rung=st.rung,wasArmed=run.armed&&st.shield>0;
+  const next=Climb.settle(st,match,run.armed);
+  const saved=st.last==='shield'||st.last==='life'?st.last:'';
+  run.shield=st.shield;run.life=st.life;
+  log('fight',{r:rung,win:won?1:0,dr:draw?1:0,sh:wasArmed?1:0,saved,t:+match.t.toFixed(1),hp:[left(match.f[0]),left(match.f[1])],seed:run.seed,sp:speed,
     fps:fps.t>0?Math.round(fps.n/fps.t):0,slow:fps.slow,me:logBuild(run.build),vs:Object.assign(logBuild(run.rival),{o:run.rival.owner||''})});
   if(draw){                                               // both fell at once: nobody wins, nothing is spent, a new rival steps up
-    if(run.armed)run.shield=1;
     sfx('bell',.9,.8,true);
     nextFight('A draw: you both fell at once. A new rival steps up.');
     return;
   }
   if(won){
-    choice=offers(run.build,Math.random,3);
-    if(!choice.length){run.rung++;nextFight();return}      // nothing left to take: just keep climbing
+    if(next!=='pick'){nextFight();return}                  // nothing left to take: just keep climbing
+    choice=st.choice.slice();
     mode='pick';
     sfx('bell',.8,1,true);
   }else if(saved){
-    if(saved==='life')run.life=0;
     sfx('bell',.9,.8,true);
     nextFight(saved==='shield'?'Your shield held. A new rival steps up.':'Your extra life is spent. A new rival steps up.');
     return;
   }else{
     mode='over';
     sfx('door',.9,1,true);
-    const cleared=run.rung-1;
+    const cleared=st.cleared;
     run.record=cleared>best;
     if(run.record){best=cleared;try{localStorage.setItem('brawl.best',String(best))}catch(e){}}
     if(cleared>today.cleared){
       today={date:dayKey(),cleared,key:me.key,str:me.str,size:me.size,name:run.build.name,color:run.build.color,ups:run.build.ups.slice()};
       try{localStorage.setItem('brawl.today2',JSON.stringify(today))}catch(e){}
-      Net.push(today.date,today);
     }
-    if(cleared>(myBest.f[me.key]?myBest.f[me.key].cleared:0)){
-      myBest.f[me.key]={cleared,key:me.key,str:me.str,size:me.size,name:run.build.name,color:run.build.color,ups:run.build.ups.slice()};
+    if(cleared>(myBest.f[me.key]?myBest.f[me.key].cleared:0)){      // a new best with this class today goes to the shared ladder, with its proof
+      myBest.f[me.key]={cleared,key:me.key,str:me.str,size:me.size,name:run.build.name,color:run.build.color,ups:run.build.ups.slice(),seed:st.seed,proof:Climb.proof(st)};
       try{localStorage.setItem('brawl.mine',JSON.stringify(myBest))}catch(e){}
-      Net.pushFighter(myBest.date,myBest.f[me.key]);
+      Net.pushClimb(myBest.date,myBest.f[me.key]);
     }
     log('end',{cleared,rec:run.record?1:0,best,by:run.rival.key,o:run.rival.owner||'',secs:Math.round((Date.now()-run.t0)/1000),players:Net.others().length});
   }
@@ -515,7 +507,11 @@ function startDuel(){
   mode='duel';duelRound();
   log('duel',{a:logBuild(duel.a),b:logBuild(duel.b),who:duel.who,you:duel.you,rec:window.Broadcast&&Broadcast.stats&&Broadcast.stats().state!=='idle'?1:0});
 }
-function duelRound(){begin(createMatch(duel.a,duel.b,newSeed()),duel.you,'Today’s duel · round '+duel.round,true);render()}
+function duelRound(){
+  duel.tries=(duel.tries||0)+1;
+  const seed=daySeed([dayKey(),duel.a.key,duel.a.ups.join('.'),duel.b.key,duel.b.ups.join('.'),duel.tries].join('|'))&0x7fffffff;
+  begin(createMatch(duel.a,duel.b,seed),duel.you,'Today’s duel · round '+duel.round,true);render();
+}
 function duelDone(){
   if(match.draw){duelRound();return}                      // a double knockout settles nothing: the round is fought again
   duel.score[match.winner]++;
@@ -658,7 +654,7 @@ $('panel').addEventListener('click',e=>{
   else if(act==='up'){
     if(mode!=='pick'||!choice.includes(b.dataset.key))return;
     log('pick',{r:run.rung,of:choice,got:b.dataset.key});
-    addUpgrade(run.build,b.dataset.key);run.rung++;nextFight();
+    if(Climb.pick(run.st,choice.indexOf(b.dataset.key)))nextFight();
   }
   else if(act==='duel')startDuel();
   else if(act==='recduel'){if(window.Broadcast&&Broadcast.start)Broadcast.start();startDuel()}
@@ -669,7 +665,7 @@ $('panel').addEventListener('input',e=>{
   // typing must not rebuild the panel, or the keyboard would close on every letter
   if(e.target.id!=='inName')return;
   me.name=cleanName(e.target.value);
-  if(match&&mode==='make'){match.f[0].label=me.name||FIGHTERS[me.key].name;setNames()}
+  if(match&&mode==='make'){match.f[0].label=shownName();setNames()}
   save();
 });
 document.addEventListener('contextmenu',e=>{if(!e.target.closest('input'))e.preventDefault()});
@@ -694,7 +690,7 @@ $('btnSound').addEventListener('click',()=>{muted=!muted;$('btnSound').setAttrib
 board.date=today.date=myBest.date=dayKey();
 // Raise LADDER_RESET to wipe the ladder, today's climb and the best record on every device, once, the next time it loads.
 // The player's fighter and speed setting are kept.
-const LADDER_RESET='1';
+const LADDER_RESET='1:'+RULES;
 try{
   if(localStorage.getItem('brawl.reset')!==LADDER_RESET){
     ['brawl.board2','brawl.today2','brawl.best','brawl.mine'].forEach(k=>localStorage.removeItem(k));
@@ -713,29 +709,72 @@ try{
   const bd=JSON.parse(localStorage.getItem('brawl.board2'));
   if(bd&&bd.date===board.date&&Array.isArray(bd.bots)&&bd.bots.length===BOTS&&bd.bots.every(okEntry))board=bd;
   const td=JSON.parse(localStorage.getItem('brawl.today2'));
-  if(td&&td.date===today.date&&okEntry(td))today={date:td.date,cleared:td.cleared,key:td.key,str:td.str,size:td.size,name:cleanName(td.name),color:okColor(td.color)?td.color:FIGHTERS[td.key].color,ups:td.ups};
+  if(td&&td.date===today.date&&okEntry(td))today={date:td.date,cleared:td.cleared,key:td.key,str:td.str,size:td.size,name:Names.safe(td.name,FIGHTERS[td.key].name),color:okColor(td.color)?td.color:FIGHTERS[td.key].color,ups:td.ups};
   const mn=JSON.parse(localStorage.getItem('brawl.mine'));
   if(mn&&mn.date===myBest.date&&mn.f&&typeof mn.f==='object')for(const k of Object.keys(mn.f).slice(0,200)){
     const x=mn.f[k];
-    if(okEntry(x)&&x.key===k&&x.cleared>0)myBest.f[k]={cleared:x.cleared,key:k,str:x.str,size:x.size,name:cleanName(x.name),color:okColor(x.color)?x.color:FIGHTERS[k].color,ups:x.ups};
+    if(okEntry(x)&&x.key===k&&x.cleared>0)myBest.f[k]={cleared:x.cleared,key:k,str:x.str,size:x.size,name:Names.safe(x.name,FIGHTERS[k].name),color:okColor(x.color)?x.color:FIGHTERS[k].color,ups:x.ups,seed:x.seed>>>0,proof:typeof x.proof==='string'?x.proof:''};
   }
 }catch(e){}
 if(!me.colorSet)me.color=PALETTE.indexOf(FIGHTERS[me.key].color);
 deck=shuffled(ROSTER);
 Net.init();
-if(Net.on()){
+// ----- the automatic daily video -----
+// tools/duel-video.js opens the page as ?video=YYYY-MM-DD in a browser nobody is watching. The page then reads that
+// day's ladder, plays every climb's proof again and keeps only those that pass (whatever NET.proof says), and records
+// the duel between the best fighters of the top two players. What happened is left in window.__duel for the tool:
+// state 'done' (with the file and the words for the title), 'skip' (nothing worth posting) or 'error'.
+const VIDEO=(()=>{try{const m=/[?&]video=(\d{4}-\d{2}-\d{2})(?:&|$)/.exec(location.search||'');return m?m[1]:''}catch(e){return ''}})();
+const VIDEO_MIN=(()=>{try{const m=/[?&]min=(\d)(?:&|$)/.exec(location.search||'');return m?+m[1]:1}catch(e){return 1}})();   // real players the duel needs
+async function autoVideo(day){
+  const out=window.__duel={state:'starting',day,rules:RULES,build:BUILD};
+  const wait=ms=>new Promise(r=>setTimeout(r,ms));
+  try{
+    pinnedDay=day;Net.strict=true;Net.id='';
+    board={date:day,bots:[]};today={date:day,cleared:0};myBest={date:day,f:{}};
+    while(!boardReady())addBot();
+    out.state='reading';
+    for(let k=0;k<4&&!Net.ok;k++){await Net.pull(day);if(!Net.ok)await wait(1500)}
+    if(!Net.ok)throw new Error('the ladder could not be read');
+    out.state='checking';
+    while(Net.pending()){Net.verifyStep(40);await wait(0)}
+    Net.settle();
+    out.entries=Net.all.length;out.rejected=Net.rejected();
+    const pair=duelPair(),real=pair.filter(r=>r.player).length;
+    out.players=new Set(Net.rows.map(p=>p.id)).size;
+    if(pair.length<2||real<VIDEO_MIN){out.state='skip';out.reason=real+' proven player'+(real===1?'':'s')+' in the top two that day; '+VIDEO_MIN+' needed';return}
+    if(!(window.Broadcast&&Broadcast.supported&&Broadcast.supported()))throw new Error('this browser cannot record');
+    out.state='sound';
+    muted=false;audioOn();
+    for(let k=0;k<100&&!sfxBuf;k++){audioOn();await wait(100)}
+    out.sound=!!sfxBuf&&!!actx&&actx.state==='running';
+    out.state='recording';
+    window.__duelFile=null;
+    Broadcast.start();startDuel();
+    for(let k=0;k<3000&&!window.__duelFile;k++)await wait(100);
+    const f=window.__duelFile;
+    if(!f||!f.ok)throw new Error('the recording came out empty'+(f&&f.note?' ('+f.note+')':''));
+    const t=[typeOf(duel.a),typeOf(duel.b)],w=duel.winner;
+    out.file={name:f.name,type:f.type,size:f.blob.size,secs:f.secs,cut:!!f.cut};
+    out.duel={a:t[0],b:t[1],who:duel.who.slice(),winner:w,score:duel.score.slice(),rungs:[pair[0].cleared,pair[1].cleared],house:[!pair[0].player,!pair[1].player]};
+    out.state='done';
+  }catch(e){out.state='error';out.reason=String(e&&e.message||e)}
+}
+// hands the recorded file to the tool a slice at a time, as base64 text
+window.__duelSlice=async(from,to)=>{
+  const b=window.__duelFile&&window.__duelFile.blob;if(!b)return '';
+  const u=new Uint8Array(await b.slice(from,to).arrayBuffer());let s='';
+  for(let i=0;i<u.length;i+=8192)s+=String.fromCharCode.apply(null,u.subarray(i,i+8192));
+  return btoa(s);
+};
+if(Net.on()&&!VIDEO){
   refreshNet();
-  if(today.cleared>0){
-    Net.push(today.date,today);
-    if(!(myBest.f[today.key]&&myBest.f[today.key].cleared>=today.cleared)){      // a best climb from before fighters were kept
-      myBest.f[today.key]={cleared:today.cleared,key:today.key,str:today.str,size:today.size,name:today.name,color:today.color,ups:today.ups};
-      Net.pushFighter(today.date,today);
-    }
-  }
+  for(const k of Object.keys(myBest.f))if(myBest.f[k].proof)Net.pushClimb(myBest.date,myBest.f[k]);     // in case it never arrived (it cannot be sent twice)
 }
 // the play log: opening, leaving and coming back, and anything that goes wrong
 const openedAt=Date.now();let errs=0;
-log('open',{b:BUILD,w:window.innerWidth||0,h:window.innerHeight||0,dpr:+(window.devicePixelRatio||1).toFixed(2),touch:'ontouchstart' in window?1:0,back:step===3?1:0,f:me.key,best,today:today.cleared});
+const ENGINE=(()=>{try{const u=navigator.userAgent||'';return /Firefox\//.test(u)?'gecko':/AppleWebKit/.test(u)&&!/Chrome\/|Chromium\/|Edg\//.test(u)?'webkit':'blink'}catch(e){return ''}})();
+log('open',{b:BUILD,ru:RULES,eng:ENGINE,w:window.innerWidth||0,h:window.innerHeight||0,dpr:+(window.devicePixelRatio||1).toFixed(2),touch:'ontouchstart' in window?1:0,back:step===3?1:0,f:me.key,best,today:today.cleared});
 document.addEventListener('visibilitychange',()=>log(document.hidden?'hide':'show',{m:mode,r:run?run.rung:0,secs:Math.round((Date.now()-openedAt)/1000),fights:fightNo}));
 if(window.addEventListener){
   window.addEventListener('error',ev=>{if(errs++<10)log('err',{m:String(ev.message).slice(0,200),f:String(ev.filename||'').split('/').pop().slice(0,40),l:ev.lineno|0,c:ev.colno|0,mode})});
@@ -745,3 +784,4 @@ $('build').textContent=BUILD;
 sfxFetch();
 render();practice();
 requestAnimationFrame(frame);
+if(VIDEO)autoVideo(VIDEO);

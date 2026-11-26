@@ -135,7 +135,8 @@
     return out;
   }
   function siteLine(){
-    try{return (location.host+location.pathname).replace(/(index|duel)\.html$/,'').replace(/\/+$/,'')||'our site'}catch(e){return 'our site'}
+    // the automatic video is recorded from a copy of the game served on this computer: it still names the real site
+    try{return /^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/.test(location.host)?'playduelking.com':(location.host+location.pathname).replace(/(index|duel)\.html$/,'').replace(/\/+$/,'')||'our site'}catch(e){return 'our site'}
   }
   // the end card is a parchment scroll unrolled over the arena
   function drawEndCard(open){
@@ -309,6 +310,7 @@
     try{blob=new Blob(chunks,{type})}catch(e){}
     chunks=[];
     const ext=/mp4/i.test(type)?'mp4':'webm',name=fileName(ext),ok=blob&&blob.size>0;
+    try{window.__duelFile={ok:!!ok,blob,name,type,secs:Math.round(secs),cut:cutShort,note:failNote}}catch(e){}       // for the automatic video (see brawl-app.js)
     closeOverlay();
     const BTN='font:700 13px '+DISPLAY+';letter-spacing:.1em;text-transform:uppercase;color:'+PAPER+';text-shadow:0 1.5px 0 rgba(0,0,0,.6);background:linear-gradient(#a93543,#77202a);border:2px solid '+GOLD_C+';border-radius:4px;box-shadow:inset 0 0 0 3px #6b1a24,inset 0 0 0 4px '+GOLD_LO_C+',0 4px 0 rgba(0,0,0,.45);min-height:46px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;cursor:pointer;flex:1 1 0';
     const BTN2=BTN+';background:linear-gradient(#3a444c,#232a30);box-shadow:inset 0 0 0 3px #1d2328,inset 0 0 0 4px '+GOLD_LO_C+',0 4px 0 rgba(0,0,0,.45)';

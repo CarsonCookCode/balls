@@ -2,6 +2,39 @@
 // Pure simulation, no DOM. Two balls bounce around a square arena at constant speed; each class brings one mechanic of its own.
 // To add a class: one row in FIGHTERS, one block in BEHAVE, and (on the page side) one block in LOOKS.
 const AW=260,DT=1/60,R=24,SUDDEN=30,TIMEOUT=70,GP=13,PC=AW/GP;
+// ----- the same answers on every device -----
+// A climb is checked by playing it again somewhere else (brawl-proof.js), so a fight has to come out identical in every
+// browser. Plus, minus, times, divide and square root are exact everywhere; sine, cosine, arctangent, hypot and pow are
+// not (each browser has its own), so everything in the simulation uses these instead. Never call Math.sin, Math.cos,
+// Math.atan2, Math.hypot or Math.pow in a simulation file: `node tools/stamp.js --check` refuses them.
+const D_HPI=1.5707963267948966,D_PI=3.141592653589793;
+function dsc(x,c){                                    // sine (c=0) or cosine (c=1)
+  if(!(x-x===0))return NaN;
+  let k=Math.round(x/D_HPI);
+  const r=(x-k*1.5707963267341256)-k*6.077100506506192e-11,z=r*r;       // what is left after whole quarter turns, |r| <= pi/4
+  k=((k+c)%4+4)%4;
+  if(k===0||k===2){const s=r*(1+z*(-1/6+z*(1/120+z*(-1/5040+z*(1/362880+z*(-1/39916800+z*(1/6227020800+z*(-1/1307674368000))))))));return k?-s:s}
+  const q=1+z*(-1/2+z*(1/24+z*(-1/720+z*(1/40320+z*(-1/3628800+z*(1/479001600+z*(-1/87178291200+z*(1/20922789888000))))))));
+  return k===1?q:-q;
+}
+const dsin=x=>dsc(x,0),dcos=x=>dsc(x,1);
+function datan(x){
+  const neg=x<0;if(neg)x=-x;
+  const inv=x>1;if(inv)x=1/x;
+  x=x/(1+Math.sqrt(1+x*x));x=x/(1+Math.sqrt(1+x*x));  // halve the angle twice, so the series below converges fast
+  const z=x*x;
+  let a=4*x*(1+z*(-1/3+z*(1/5+z*(-1/7+z*(1/9+z*(-1/11+z*(1/13+z*(-1/15+z*(1/17+z*(-1/19+z*(1/21)))))))))));
+  if(inv)a=D_HPI-a;
+  return neg?-a:a;
+}
+function datan2(y,x){
+  if(x!==x||y!==y)return NaN;
+  if(x>0)return datan(y/x);
+  if(x<0)return y>=0?datan(y/x)+D_PI:datan(y/x)-D_PI;
+  return y>0?D_HPI:y<0?-D_HPI:0;
+}
+function dhyp(x,y,z){let s=x*x;if(y!==undefined)s+=y*y;if(z!==undefined)s+=z*z;return Math.sqrt(s)}
+function dpow(a,n){let r=1;for(let i=0;i<n;i++)r*=a;return r}        // whole, non-negative powers only
 // The pace of a fight. HP_SCALE multiplies every fighter's health (a class's `hp` of 100 is 140 in the arena), so fights
 // last long enough for each fighter's trick to show more than once.
 const HP_SCALE=1.4;
@@ -156,12 +189,12 @@ function segs(f){
   const out=[];
   if(f.gone)return out;
   for(const a of f.arms){
-    const an=f.ang*a.rate+a.a,c=Math.cos(an),s=Math.sin(an);
+    const an=f.ang*a.rate+a.a,c=dcos(an),s=dsin(an);
     out.push([f.x+c*f.r,f.y+s*f.r,f.x+c*(f.r+a.l),f.y+s*(f.r+a.l),a.head,a.dmg,a.extra]);
   }
   return out;
 }
-const gap=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const gap=(a,b)=>dhyp(a.x-b.x,a.y-b.y);
 const mine=(f,m,kind)=>{let n=0;for(const q of m.minions)if(q.own===f.i&&q.kind===kind)n++;return n};
 
 // What each class does beyond bouncing and (for some) swinging arms. All hooks are optional:
@@ -187,7 +220,7 @@ const BEHAVE={
       if(f.timer<=0){f.timer=D.cd/f.spdMul;if(M.length<5+2*f.sig){M.push({x:f.x,y:f.y,age:0});m.events.push({k:'mine',x:f.x,y:f.y,i:f.i})}}
       for(let i=M.length-1;i>=0;i--){
         const q=M[i];q.age+=DT;
-        if(q.age>.5&&!e.gone&&Math.hypot(q.x-e.x,q.y-e.y)<e.r+7){
+        if(q.age>.5&&!e.gone&&dhyp(q.x-e.x,q.y-e.y)<e.r+7){
           m.events.push({k:'boom',x:q.x,y:q.y});
           m.hurt(e,D.dmg*(1+.25*f.sig)*f.dmgMul*rage,f);m.knock(e,q);M.splice(i,1);
         }
@@ -201,14 +234,14 @@ const BEHAVE={
       if(f.s.acc>=.05){f.s.acc=0;T.push({x:f.x,y:f.y,t:m.t})}
       while(T.length&&m.t-T[0].t>life)T.shift();
       f.s.life=life;
-      if(f.cd<=0&&!e.gone)for(const p of T)if(m.t-p.t>.25&&Math.hypot(e.x-p.x,e.y-p.y)<e.r+3){f.cd=D.cd;m.events.push({k:'fx',n:'fire',x:p.x,y:p.y,num:6,col:f.col,i:f.i});m.hurt(e,D.dmg*f.dmgMul*rage,f);break}
+      if(f.cd<=0&&!e.gone)for(const p of T)if(m.t-p.t>.25&&dhyp(e.x-p.x,e.y-p.y)<e.r+3){f.cd=D.cd;m.events.push({k:'fx',n:'fire',x:p.x,y:p.y,num:6,col:f.col,i:f.i});m.hurt(e,D.dmg*f.dmgMul*rage,f);break}
     }},
   bramble:{
     init(f){f.s.thorns=[]},
     bounce(f,m,x,y,nx,ny){
       const T=f.s.thorns,len=26+5*f.sig;
       T.push({x,y,tx:x+nx*len,ty:y+ny*len,cd:0,born:m.t});
-      m.events.push({k:'fx',n:'leaves',x:x+nx*8,y:y+ny*8,num:5,dir:Math.atan2(ny,nx),spread:2,i:f.i});
+      m.events.push({k:'fx',n:'leaves',x:x+nx*8,y:y+ny*8,num:5,dir:datan2(ny,nx),spread:2,i:f.i});
       if(T.length>10+4*f.sig)T.shift();
     },
     tick(f,e,m,rage){
@@ -302,7 +335,7 @@ const BEHAVE={
     init(f){f.s.webs=[];f.s.last=null},
     bounce(f,m,x,y){
       const W=f.s.webs;
-      if(f.s.last&&Math.hypot(x-f.s.last.x,y-f.s.last.y)>40){W.push({x1:f.s.last.x,y1:f.s.last.y,x2:x,y2:y,t:m.t,cd:0});m.events.push({k:'fx',n:'line',x:f.s.last.x,y:f.s.last.y,x2:x,y2:y,col:'#ffffff',w:2.4,life:.35,i:f.i});if(W.length>3+2*f.sig)W.shift()}
+      if(f.s.last&&dhyp(x-f.s.last.x,y-f.s.last.y)>40){W.push({x1:f.s.last.x,y1:f.s.last.y,x2:x,y2:y,t:m.t,cd:0});m.events.push({k:'fx',n:'line',x:f.s.last.x,y:f.s.last.y,x2:x,y2:y,col:'#ffffff',w:2.4,life:.35,i:f.i});if(W.length>3+2*f.sig)W.shift()}
       f.s.last={x,y};
     },
     tick(f,e,m,rage){
@@ -359,16 +392,16 @@ function createMatch(A,B,seed){
     const slots=b.key==='twin'?[2.2,5.3,.9]:D.arms.length===1?[Math.PI,Math.PI/2,Math.PI*1.5]:D.arms.length===2?[Math.PI/2,Math.PI*1.5,Math.PI/4]:[0,Math.PI,Math.PI/2];
     for(let k=0;k<(P.blade||0)&&k<3;k++)arms.push({a:slots[k],l:28*reach,head:0,dmg:10,extra:1,rate:1});
     const uh=[];for(const id in P){const U=UPGRADES[id];if(U&&U.hooks&&P[id]>0)uh.push([U.hooks,P[id]])}
-    return {u:{},uh,p:P,key:b.key,i,x:i?AW-80:80,y:AW/2+(rnd()-.5)*80,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,r:b.r,speed:sp,base:sp,hp,max:hp,
+    return {u:{},uh,p:P,key:b.key,i,x:i?AW-80:80,y:AW/2+(rnd()-.5)*80,vx:dcos(a)*sp,vy:dsin(a)*sp,r:b.r,speed:sp,base:sp,hp,max:hp,
       dmgMul:effDmg(b),spdMul:spd,sig,ang:rnd()*6.283,dir:i?-1:1,cd:0,xcd:0,pcd:0,timer:.4+rnd()*.6,flash:0,aim:0,arms,
       spin:D.spin||(arms.length?4.5:0),label:b.name,col:b.color,stunT:0,gone:false,s:{},
-      regen:3*(P.regen||0),armor:Math.pow(.85,P.armor||0),vamp:.2*(P.vampire||0)+(D.heal?D.heal*(1+.3*sig):0),thorns:.2*(P.thorns||0),
+      regen:3*(P.regen||0),armor:dpow(.85,P.armor||0),vamp:.2*(P.vampire||0)+(D.heal?D.heal*(1+.3*sig):0),thorns:.2*(P.thorns||0),
       poison:4*(P.poison||0),frost:P.frost||0,crit:.2*(P.crit||0),ambush:P.ambush||0,last:.5*(P.laststand||0),
       shield:P.shield?8/P.shield:0,shieldT:0,revives:P.revive||0,side:P.sidearm?2/P.sidearm:0,sideT:1,poisonT:0,poisonDps:0,slowT:0};
   }
   function renorm(f){
     const sp=Math.sqrt(f.vx*f.vx+f.vy*f.vy);
-    if(sp<1){const a=rnd()*6.283;f.vx=Math.cos(a)*f.speed;f.vy=Math.sin(a)*f.speed}
+    if(sp<1){const a=rnd()*6.283;f.vx=dcos(a)*f.speed;f.vy=dsin(a)*f.speed}
     else{f.vx*=f.speed/sp;f.vy*=f.speed/sp}
   }
   function knock(v,s){
@@ -377,7 +410,7 @@ function createMatch(A,B,seed){
   }
   function spawn(f,x,y,o){
     const a=rnd()*6.283;
-    minions.push({own:f.i,kind:o.kind,x:Math.min(AW-o.r,Math.max(o.r,x)),y:Math.min(AW-o.r,Math.max(o.r,y)),vx:Math.cos(a)*o.sp,vy:Math.sin(a)*o.sp,
+    minions.push({own:f.i,kind:o.kind,x:Math.min(AW-o.r,Math.max(o.r,x)),y:Math.min(AW-o.r,Math.max(o.r,y)),vx:dcos(a)*o.sp,vy:dsin(a)*o.sp,
       r:o.r,hp:o.hp,dmg:o.dmg,sp:o.sp,home:o.home,life:o.life,wear:o.wear,cd:.35,icd:0,col:f.col});
     for(const h of f.uh)if(h[0].minion)h[0].minion(f,minions[minions.length-1],m,h[1]);
     events.push({k:'spawn',x,y,i:f.i});
@@ -422,7 +455,7 @@ function createMatch(A,B,seed){
     const D=FIGHTERS[s.key];
     for(const g of ss){
       if(g[6]?s.xcd>0:s.cd>0)continue;
-      const near=distPS(v.x,v.y,g[0],g[1],g[2],g[3])<v.r||(g[4]&&Math.hypot(v.x-g[2],v.y-g[3])<v.r+g[4]);
+      const near=distPS(v.x,v.y,g[0],g[1],g[2],g[3])<v.r||(g[4]&&dhyp(v.x-g[2],v.y-g[3])<v.r+g[4]);
       if(!near)continue;
       let dmg=g[5];
       if(D.rage&&!g[6])dmg+=D.rage*(1+.4*s.sig)*(1-Math.max(0,s.hp)/s.max);
@@ -434,7 +467,7 @@ function createMatch(A,B,seed){
   }
   function shoot(f,d){
     const an=f.aim+(rnd()-.5)*.3;
-    bullets.push({x:f.x+Math.cos(an)*f.r,y:f.y+Math.sin(an)*f.r,vx:Math.cos(an)*330,vy:Math.sin(an)*330,own:f.i,d});
+    bullets.push({x:f.x+dcos(an)*f.r,y:f.y+dsin(an)*f.r,vx:dcos(an)*330,vy:dsin(an)*330,own:f.i,d});
     for(const h of f.uh)if(h[0].shot)h[0].shot(f,bullets[bullets.length-1],m,h[1]);
     events.push({k:'shot',x:f.x,y:f.y,i:f.i});
   }
@@ -444,7 +477,7 @@ function createMatch(A,B,seed){
     const rage=m.t>SUDDEN?1+(m.t-SUDDEN)*.2:1,a=F[0],b=F[1];
     for(const f of F){
       const D=FIGHTERS[f.key],H=BEHAVE[f.key],e=F[1-f.i];
-      f.aim=Math.atan2(e.y-f.y,e.x-f.x);
+      f.aim=datan2(e.y-f.y,e.x-f.x);
       if(f.slowT>0)f.slowT-=DT;
       if(f.stunT>0)f.stunT-=DT;                          // frozen: nothing below happens
       else{
@@ -508,9 +541,9 @@ function createMatch(A,B,seed){
       q.x+=q.vx*DT;q.y+=q.vy*DT;
       let gone=q.x<0||q.x>AW||q.y<0||q.y>AW;
       if(gone)events.push({k:'ping',x:Math.min(AW,Math.max(0,q.x)),y:Math.min(AW,Math.max(0,q.y)),i:q.own});
-      if(!gone)for(const g of es)if(distPS(q.x,q.y,g[0],g[1],g[2],g[3])<5||(g[4]&&Math.hypot(q.x-g[2],q.y-g[3])<g[4]+4)){gone=true;events.push({k:'parry',x:q.x,y:q.y});break}
-      if(!gone)for(const u of minions)if(u.own!==q.own&&Math.hypot(q.x-u.x,q.y-u.y)<u.r+4){gone=true;u.hp-=q.d;break}
-      if(!gone&&!e.gone&&Math.hypot(q.x-e.x,q.y-e.y)<e.r+4){gone=true;hurt(e,q.d*F[q.own].dmgMul*rage,F[q.own])}
+      if(!gone)for(const g of es)if(distPS(q.x,q.y,g[0],g[1],g[2],g[3])<5||(g[4]&&dhyp(q.x-g[2],q.y-g[3])<g[4]+4)){gone=true;events.push({k:'parry',x:q.x,y:q.y});break}
+      if(!gone)for(const u of minions)if(u.own!==q.own&&dhyp(q.x-u.x,q.y-u.y)<u.r+4){gone=true;u.hp-=q.d;break}
+      if(!gone&&!e.gone&&dhyp(q.x-e.x,q.y-e.y)<e.r+4){gone=true;hurt(e,q.d*F[q.own].dmgMul*rage,F[q.own])}
       if(gone)bullets.splice(i,1);
     }
     // minions: bees, copies and raised bones. They bounce (or home in), hurt on touch, and wear out.

@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 48';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 49';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -114,12 +114,6 @@ function target(){
 }
 const inDuel=()=>duelPair().some(x=>x.you);
 const owner=r=>r.you?'You':r.player?r.e.name:'House';
-function netLine(){
-  if(!Net.on())return '';
-  if(!Net.ok)return 'Connecting to today\u2019s ladder\u2026';
-  const n=new Set(Net.rivals().map(p=>p.id)).size+(today.cleared>0?1:0);
-  return n?n+' player'+(n>1?'s':'')+' on today\u2019s ladder':'No players on today\u2019s ladder yet. Be the first.';
-}
 // A rival on a rung is sometimes another player's fighter, cut back to what they had at that height.
 // Players are met through every fighter they have climbed with today, not only their best one.
 // Nobody should meet the same fighter over and over: a player's fighter comes back only after FRIEND_GAP other
@@ -620,9 +614,11 @@ function boardBody(){
   };
   // The duel is not played here: it is fought once, when the day ends, and shown in the video. The way out of the
   // ladder is the Back plate in the footer.
-  return `<h2 class="ph">Today’s ladder</h2><p class="ps" id="goal">${goalLine()}</p>`+
-    `<p class="ps" id="duelNote">The duel is fought when the day ends, and shown in <a href="${CHANNEL}" target="_blank" rel="noopener">the next video</a>.</p>`+
-    (netLine()?`<p class="ps" id="netLine">${netLine()}</p>`:'')+
+  // one line above the list, no more (the user: "too much text at the top of the leader board"): what the ladder is for,
+  // or, while it is still loading, that it is loading. The top two are marked in the list itself.
+  const wait=!boardReady()?'Setting up today’s ladder…':Net.on()&&!Net.ok?'Connecting to today’s ladder…':'';
+  return `<h2 class="ph">Today’s ladder</h2>`+
+    `<p class="ps" id="duelNote">${wait||`The top two fight in <a href="${CHANNEL}" target="_blank" rel="noopener">the next video</a>.`}</p>`+
     (boardReady()?`<ol class="lb">`+rows.slice(0,80).map(row).join('')+`</ol>`:'');
 }
 function duelBody(){

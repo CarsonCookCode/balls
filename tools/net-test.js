@@ -114,7 +114,7 @@ async function look(g) {
   const why = A.ctx.__net.rejected().map(x => x.id + ' ' + x.why).sort();
   assert(why.length === 4 && why.some(w => /^zzzzzz no proof/.test(w)) && why.some(w => /^xxxxxx a copy/.test(w)) && why.some(w => /^wwwwww a copy/.test(w)) && why.some(w => /^yyyyyy /.test(w)), 'each cheat is refused for its own reason: ' + why.join(' | '));
   const html = A.els.panel.innerHTML;
-  assert(!html.includes('<img') && !html.includes('undefined') && !/sh1t|Liar|Thief|Greedy|Old|Late/.test(html) && /3 players on today/.test(html), 'ladder HTML is safe, filtered and counts three players (two others and you)');
+  assert(!html.includes('<img') && !html.includes('undefined') && !/sh1t|Liar|Thief|Greedy|Old|Late/.test(html) && new Set(A.ctx.__net.rivals().map(p => p.id)).size === 2 && / · you/.test(html), 'ladder HTML is safe and filtered, and holds two other players and you');
   assert(rows.every((r, i) => !i || rows[i - 1].cleared >= r.cleared), 'ladder sorted');
   // a phone that only checks (the setting the site starts with) still shows the entries, and records each verdict
   const D = boot('check'); await settle(); make(D, 'duck', 'Dee'); D.tick(40); await look(D);

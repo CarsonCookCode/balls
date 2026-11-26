@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 30';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 31';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -13,7 +13,7 @@ let mode='make',step=0,me={key:'blade',str:-1,size:-1,name:'',color:0,colorSet:f
 let myBest={date:'',f:{}};   // this player's best climb today with each class: {class: the fighter as it finished}
 let run=null,match=null,you=-1,loud=false,choice=[],best=0,speed=1,muted=false,last=0,acc=0,overFor=0,shake=0;
 let board={date:'',bots:[]},today={date:'',cleared:0},duel=null,backTo='make';
-const fx={floats:[],sparks:[],rings:[],bolts:[]},floats=fx.floats,sparks=fx.sparks,rings=fx.rings,bolts=fx.bolts;   // short-lived effects, shared with the video recorder
+const fx={floats:[],sparks:[],rings:[],bolts:[],live:true},floats=fx.floats,sparks=fx.sparks,rings=fx.rings,bolts=fx.bolts;   // short-lived effects, shared with the video recorder
 const newSeed=()=>(Math.random()*2147483647)|0;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cleanName=s=>String(s||'').replace(/[^A-Za-z0-9 ]/g,'').replace(/\s+/g,' ').trim().slice(0,12);
@@ -250,42 +250,47 @@ function hitSound(e){
 }
 
 // ----- effects from sim events -----
-function burst(x,y,n,lo,hi,life,col){for(let i=0;i<n&&sparks.length<260;i++){const a=Math.random()*TAU,s=lo+Math.random()*(hi-lo);sparks.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life,col})}}
+// What a moment looks like is the effects engine's business (brawl-fx.js). This keeps what the page owns: the floating
+// numbers and words, the lightning, the shake of the arena, and the sound.
 function say(x,y,txt,col,big){if(floats.length<40)floats.push({x:x+(Math.random()-.5)*20,y:y-26,txt,life:.8,col,big})}
-function ring(x,y,r0,r1,life,col,w){rings.push({x,y,r0,r1,life,max:life,col,w:w||2})}
+function bolt(x,y,x2,y2,n,jag,life){
+  const pts=[[x,y]];
+  for(let k=1;k<n;k++){const t=k/n;pts.push([x+(x2-x)*t+(Math.random()-.5)*jag,y+(y2-y)*t+(Math.random()-.5)*jag])}
+  pts.push([x2,y2]);if(bolts.length<24)bolts.push({pts,life});
+  return pts;
+}
+FX.say=say;FX.kick=n=>{shake=Math.max(shake,n)};FX.calm=calm;
 function onEvents(ev){
   for(const e of ev){
     const col=e.i>=0&&match?match.f[e.i].col:'#fff4c2';
+    FX.on(e,match);
     if(e.k==='hit'){
       say(e.x,e.y,'-'+Math.max(1,Math.round(e.dmg))+(e.crit?'!':''),e.crit?'#ffd447':'#ff5a4f',e.crit);
-      if(e.dmg>=18||e.crit)shake=Math.max(shake,Math.min(3,e.dmg*.08));
+      if(e.dmg>=18||e.crit)shake=Math.max(shake,Math.min(4,e.dmg*.09+(e.crit?1:0)));
       hitSound(e);
     }else if(e.k==='heal'){say(e.x,e.y,'+'+Math.max(1,Math.round(e.dmg)),'#7ddc5a')}
-    else if(e.k==='block'){say(e.x,e.y,'Blocked','#bcd4ff');burst(e.x,e.y,8,60,160,.25);sfx('bell',.8)}
-    else if(e.k==='revive'){say(e.x,e.y,'Second life','#ffd447',true);burst(e.x,e.y,24,60,220,.5);sfx('toll',1)}
-    else if(e.k==='parry'){burst(e.x,e.y,5,60,180,.25);sfx('clang',.55,1.12)}
+    else if(e.k==='block'){say(e.x,e.y,'Blocked','#bcd4ff');sfx('bell',.8)}
+    else if(e.k==='revive'){say(e.x,e.y,'Second life','#ffd447',true);sfx('toll',1)}
+    else if(e.k==='parry'){sfx('clang',.55,1.12)}
     else if(e.k==='bump'){sfx('soft',.4)}
     else if(e.k==='shot'){const sk=match&&e.i>=0?match.f[e.i].key:'',n=SHOT_SFX[sk]||(FIGHTERS[sk]&&FIGHTERS[sk].sfx&&FIGHTERS[sk].sfx.shot)||'whoosh';sfx(n,n==='loose'?.8:n==='gun'?.75:.6,n==='loose'?1.2:n==='gun'?1.15:1)}
     else if(e.k==='mine'){sfx('latch',.6)}
-    else if(e.k==='boom'){burst(e.x,e.y,12,80,240,.35);ring(e.x,e.y,6,34,.3,'#ffd447',3);shake=Math.max(shake,4);sfx('boom',.9)}
+    else if(e.k==='boom'){shake=Math.max(shake,4);sfx('boom',.9)}
     else if(e.k==='zap'){
-      const pts=[[e.x,e.y]],n=5;
-      for(let k=1;k<n;k++){const t=k/n;pts.push([e.x+(e.x2-e.x)*t+(Math.random()-.5)*18,e.y+(e.y2-e.y)*t+(Math.random()-.5)*18])}
-      pts.push([e.x2,e.y2]);bolts.push({pts,life:.13});
+      // a main stroke and a thinner fork that peels off it
+      const pts=bolt(e.x,e.y,e.x2,e.y2,6,18,.14),mid=pts[2+((Math.random()*2)|0)],a=Math.atan2(e.y2-e.y,e.x2-e.x)+(Math.random()<.5?.9:-.9),l=14+Math.random()*18;
+      bolt(mid[0],mid[1],mid[0]+Math.cos(a)*l,mid[1]+Math.sin(a)*l,3,8,.1);
       sfx('zap',.55);
     }
-    else if(e.k==='fade'){ring(e.x,e.y,26,6,.35,col);sfx('fall',.6)}
-    else if(e.k==='appear'){ring(e.x,e.y,6,40,.3,col,3);burst(e.x,e.y,10,60,200,.3,col);sfx('rise',.7)}
-    else if(e.k==='pull'){ring(e.x,e.y,90,20,1.05,col);sfx('hum',.7)}
-    else if(e.k==='blast'){ring(e.x,e.y,10,e.r,.3,col,4);shake=Math.max(shake,3);sfx('thump',1,.8)}
-    else if(e.k==='freeze'){say(e.x,e.y,'Frozen','#9fe0ff',true);ring(e.x,e.y,44,24,.4,'#9fe0ff',3);sfx('shatter',.9)}
-    else if(e.k==='spawn'){burst(e.x,e.y,5,30,90,.25,col);sfx('pop',.6)}
-    else if(e.k==='pop'){burst(e.x,e.y,4,30,100,.2,col);if(!(match&&e.i>=0&&match.f[e.i].key==='archer'))sfx('tick',.5)}
-    // generic effects any class can ask for without the page knowing about the class
-    else if(e.k==='ring'){ring(e.x,e.y,e.r0||6,e.r||40,e.life||.3,e.col||col,e.w||3)}
+    else if(e.k==='fade'){sfx('fall',.6)}
+    else if(e.k==='appear'){sfx('rise',.7)}
+    else if(e.k==='pull'){sfx('hum',.7)}
+    else if(e.k==='blast'){shake=Math.max(shake,3);sfx('thump',1,.8)}
+    else if(e.k==='freeze'){say(e.x,e.y,'Frozen','#9fe0ff',true);sfx('shatter',.9)}
+    else if(e.k==='spawn'){sfx('pop',.6)}
+    else if(e.k==='pop'){if(!(match&&e.i>=0&&match.f[e.i].key==='archer'))sfx('tick',.5)}
     else if(e.k==='text'){say(e.x,e.y,String(e.txt),e.col||col,e.big)}
-    else if(e.k==='burst'){burst(e.x,e.y,e.n||10,60,200,.3,e.col||col)}
-    else if(e.k==='ko'){burst(e.x,e.y,26,60,300,.6);shake=8;sfx('rumble',1);sfx('iron',1,.8)}
+    else if(e.k==='ko'){shake=9;sfx('rumble',1);sfx('iron',1,.8)}
   }
   ev.length=0;
 }
@@ -368,6 +373,8 @@ function frame(ts){
     while(acc>=DT&&n<10){snap(match);match.step();onEvents(match.events);acc-=DT;n++}
     if(n===10)acc=0;
     lerpA=match.over?1:acc/DT;
+    FX.rate=!playing||speed===1?1:speed===2?.75:.55;       // at higher speeds each moment throws fewer sparks, so the arena stays readable
+    if(mode!=='ready')FX.ambient(match,dt);
     if(match.over){
       overFor+=dt;
       if(mode==='make'&&overFor>1.2)practice();
@@ -377,8 +384,7 @@ function frame(ts){
   }
   if(!(match&&(mode==='make'||playing)))lerpA=1;
   for(let i=floats.length-1;i>=0;i--){const f=floats[i];f.life-=dt;f.y-=28*dt;if(f.life<=0)floats.splice(i,1)}
-  for(let i=sparks.length-1;i>=0;i--){const p=sparks[i];p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.life<=0)sparks.splice(i,1)}
-  for(let i=rings.length-1;i>=0;i--){rings[i].life-=dt;if(rings[i].life<=0)rings.splice(i,1)}
+  FX.update(dt);
   for(let i=bolts.length-1;i>=0;i--){bolts[i].life-=dt;if(bolts[i].life<=0)bolts.splice(i,1)}
   shake*=.78;if(shake<.3)shake=0;
   if(mode!=='ready')draw();                             // the arena is hidden behind the matchup

@@ -51,6 +51,7 @@ const SIZES=[
 //     bump(f,e,m,n)                when the two bodies touch
 //     lethal(f,e,m,n)              when its health has reached zero, before Second life; may raise f.hp to survive
 //     minion(f,q,m,n)              when it spawns a minion q; shot(f,q,m,n) when it fires a bullet q
+//   An upgrade that triggers pushes {k:'proc',id,i:f.i} (optionally x,y,n) so the page can show it; see proc() in brawl-fx.js.
 //   f.u is a scratch object for upgrade state. Upgrades in other files add to UPGRADES and PREFIX and push their ids to UP_IDS.
 // `sig` is the class's own upgrade: its name and text come from the class.
 const UPGRADES={
@@ -187,20 +188,21 @@ const BEHAVE={
       if(f.s.acc>=.05){f.s.acc=0;T.push({x:f.x,y:f.y,t:m.t})}
       while(T.length&&m.t-T[0].t>life)T.shift();
       f.s.life=life;
-      if(f.cd<=0&&!e.gone)for(const p of T)if(m.t-p.t>.25&&Math.hypot(e.x-p.x,e.y-p.y)<e.r+3){f.cd=D.cd;m.hurt(e,D.dmg*f.dmgMul*rage,f);break}
+      if(f.cd<=0&&!e.gone)for(const p of T)if(m.t-p.t>.25&&Math.hypot(e.x-p.x,e.y-p.y)<e.r+3){f.cd=D.cd;m.events.push({k:'fx',n:'fire',x:p.x,y:p.y,num:6,col:f.col,i:f.i});m.hurt(e,D.dmg*f.dmgMul*rage,f);break}
     }},
   bramble:{
     init(f){f.s.thorns=[]},
     bounce(f,m,x,y,nx,ny){
       const T=f.s.thorns,len=26+5*f.sig;
       T.push({x,y,tx:x+nx*len,ty:y+ny*len,cd:0,born:m.t});
+      m.events.push({k:'fx',n:'leaves',x:x+nx*8,y:y+ny*8,num:5,dir:Math.atan2(ny,nx),spread:2,i:f.i});
       if(T.length>10+4*f.sig)T.shift();
     },
     tick(f,e,m,rage){
       const D=FIGHTERS.bramble;
       for(const t of f.s.thorns){
         if(t.cd>0){t.cd-=DT;continue}
-        if(!e.gone&&distPS(e.x,e.y,t.x,t.y,t.tx,t.ty)<e.r){t.cd=D.cd;m.hurt(e,D.dmg*f.dmgMul*rage,f)}
+        if(!e.gone&&distPS(e.x,e.y,t.x,t.y,t.tx,t.ty)<e.r){t.cd=D.cd;m.events.push({k:'fx',n:'leaves',x:t.tx,y:t.ty,num:4,i:f.i});m.hurt(e,D.dmg*f.dmgMul*rage,f)}
       }
     }},
   bees:{
@@ -230,13 +232,15 @@ const BEHAVE={
     touch:f=>f.s.dash>0?FIGHTERS.ghost.dmg:0},
   snow:{
     init(f){f.s.grow=0},
-    bounce(f){
+    bounce(f,m,x,y){
+      if(f.s.grow<14)m.events.push({k:'fx',n:'flakes',x:x,y:y,num:6,jit:14,i:f.i});
       const g=Math.min(14,f.s.grow+.9*(1+.5*f.sig));
       f.r+=g-f.s.grow;f.s.grow=g;f.speed=f.base*(1-.012*g);
     },
     hurt(f,src,dmg,m){
       if(m.t-(f.s.chip||-9)<1.2)return;                   // a hit knocks a chunk off, but not more than once a second or so
       f.s.chip=m.t;
+      if(f.s.grow>1)m.events.push({k:'fx',n:'shatter',x:f.x,y:f.y,num:7,col:'#eef8ff',r:f.r,i:f.i});
       const lose=f.s.grow*.12;f.s.grow-=lose;f.r-=lose;f.speed=f.base*(1-.012*f.s.grow);
     },
     touch:f=>FIGHTERS.snow.dmg*(1+f.s.grow*.1)},
@@ -277,6 +281,7 @@ const BEHAVE={
     hurt(f,src,dmg,m){
       if(f.s.cd>0||mine(f,m,'copy')>=3+f.sig)return;
       f.s.cd=1.2/(1+.3*f.sig);
+      m.events.push({k:'fx',n:'shatter',x:f.x,y:f.y,num:8,col:'#e6eeff',r:f.r,i:f.i});
       m.spawn(f,f.x,f.y,{kind:'copy',r:13,hp:30,dmg:FIGHTERS.mirror.dmg*.7*(1+.2*f.sig),sp:190,home:0,life:6+f.sig,wear:10});
     },
     touch:()=>FIGHTERS.mirror.dmg},
@@ -284,7 +289,7 @@ const BEHAVE={
     init(f){f.s.webs=[];f.s.last=null},
     bounce(f,m,x,y){
       const W=f.s.webs;
-      if(f.s.last&&Math.hypot(x-f.s.last.x,y-f.s.last.y)>40){W.push({x1:f.s.last.x,y1:f.s.last.y,x2:x,y2:y,t:m.t,cd:0});if(W.length>3+2*f.sig)W.shift()}
+      if(f.s.last&&Math.hypot(x-f.s.last.x,y-f.s.last.y)>40){W.push({x1:f.s.last.x,y1:f.s.last.y,x2:x,y2:y,t:m.t,cd:0});m.events.push({k:'fx',n:'line',x:f.s.last.x,y:f.s.last.y,x2:x,y2:y,col:'#ffffff',w:2.4,life:.35,i:f.i});if(W.length>3+2*f.sig)W.shift()}
       f.s.last={x,y};
     },
     tick(f,e,m,rage){
@@ -294,7 +299,7 @@ const BEHAVE={
         if(w.cd>0)w.cd-=DT;
         if(!e.gone&&distPS(e.x,e.y,w.x1,w.y1,w.x2,w.y2)<e.r){
           e.slowT=Math.max(e.slowT,.5);
-          if(w.cd<=0){w.cd=.5;m.hurt(e,D.dmg*.35*f.dmgMul*rage,f)}
+          if(w.cd<=0){w.cd=.5;m.events.push({k:'fx',n:'wisps',x:e.x,y:e.y,num:4,col:'#ffffff',jit:e.r,i:f.i});m.hurt(e,D.dmg*.35*f.dmgMul*rage,f)}
         }
       }
     },
@@ -305,6 +310,7 @@ const BEHAVE={
     dealt(f,v,dmg,m){
       if(f.s.cd>0||mine(f,m,'bone')>=3+f.sig)return;
       f.s.cd=.8/f.spdMul;
+      m.events.push({k:'fx',n:'dark',x:v.x,y:v.y,r:22,col:f.col,i:f.i});
       m.spawn(f,v.x,v.y,{kind:'bone',r:10,hp:(6+3*f.sig)*f.max/100,dmg:FIGHTERS.necro.dmg*.5,sp:125+12*f.sig,home:400,life:9+2*f.sig,wear:3});
     }},
   painter:{tick(f,e,m,rage){
@@ -313,7 +319,7 @@ const BEHAVE={
     for(let y=Math.max(0,cy-w);y<=Math.min(GP-1,cy+w);y++)for(let x=Math.max(0,cx-w);x<=Math.min(GP-1,cx+w);x++)P[y*GP+x]=f.i;
     f.hp=Math.min(f.max,f.hp+f.max*.006*DT);              // it is always standing on its own paint
     const c=Math.min(GP-1,Math.max(0,(e.y/PC)|0))*GP+Math.min(GP-1,Math.max(0,(e.x/PC)|0));
-    if(P[c]===f.i&&f.cd<=0&&!e.gone){P[c]=-1;f.cd=D.cd;m.hurt(e,D.dmg*f.dmgMul*rage,f)}   // the rival scuffs the paint away as it burns
+    if(P[c]===f.i&&f.cd<=0&&!e.gone){P[c]=-1;f.cd=D.cd;m.events.push({k:'fx',n:'splash',x:e.x,y:e.y+e.r*.5,num:4,i:f.i});m.hurt(e,D.dmg*f.dmgMul*rage,f)}   // the rival scuffs the paint away as it burns
   }},
   clock:{
     init(f){f.s.t=3},
@@ -340,7 +346,7 @@ function createMatch(A,B,seed){
     const slots=b.key==='twin'?[2.2,5.3,.9]:D.arms.length===1?[Math.PI,Math.PI/2,Math.PI*1.5]:D.arms.length===2?[Math.PI/2,Math.PI*1.5,Math.PI/4]:[0,Math.PI,Math.PI/2];
     for(let k=0;k<(P.blade||0)&&k<3;k++)arms.push({a:slots[k],l:28*reach,head:0,dmg:10,extra:1,rate:1});
     const uh=[];for(const id in P){const U=UPGRADES[id];if(U&&U.hooks&&P[id]>0)uh.push([U.hooks,P[id]])}
-    return {u:{},uh,key:b.key,i,x:i?AW-80:80,y:AW/2+(rnd()-.5)*80,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,r:b.r,speed:sp,base:sp,hp,max:hp,
+    return {u:{},uh,p:P,key:b.key,i,x:i?AW-80:80,y:AW/2+(rnd()-.5)*80,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,r:b.r,speed:sp,base:sp,hp,max:hp,
       dmgMul:b.dmg,spdMul:b.spd,sig,ang:rnd()*6.283,dir:i?-1:1,cd:0,xcd:0,pcd:0,timer:.4+rnd()*.6,flash:0,aim:0,arms,
       spin:D.spin||(arms.length?4.5:0),label:b.name,col:b.color,stunT:0,gone:false,s:{},
       regen:2*(P.regen||0),armor:Math.pow(.85,P.armor||0),vamp:.25*(P.vampire||0)+(D.heal?D.heal*(1+.3*sig):0),thorns:.2*(P.thorns||0),
@@ -366,13 +372,13 @@ function createMatch(A,B,seed){
   // indirect = damage that is not a hit (thorns), so it cannot be blocked or trigger on-hit effects
   function hurt(v,dmg,s,indirect){
     if(v.gone)return;
-    let crit=false;
+    let crit=false,amb=false;
     if(!indirect){
       const G=BEHAVE[v.key];
       if(G&&G.guard){dmg*=G.guard(v,s,dmg,m);if(!(dmg>0))return}
       for(const h of v.uh)if(h[0].guard){dmg*=h[0].guard(v,s,dmg,m,h[1]);if(!(dmg>0))return}
       if(v.shield&&v.shieldT<=0){v.shieldT=v.shield;events.push({k:'block',x:v.x,y:v.y,i:v.i});return}
-      if(s.ambush){dmg*=3;s.ambush=0;crit=true}
+      if(s.ambush){dmg*=3;s.ambush=0;crit=true;amb=true}
       if(s.crit&&rnd()<s.crit){dmg*=2;crit=true}
       if(s.last&&s.hp<s.max*.4)dmg*=1+s.last;
       for(const h of s.uh)if(h[0].deal)dmg=h[0].deal(s,v,dmg,m,h[1]);
@@ -381,12 +387,14 @@ function createMatch(A,B,seed){
     }
     dmg*=v.armor;
     v.hp-=dmg;v.flash=.12;
-    events.push({k:'hit',x:v.x,y:v.y,dmg,i:v.i,crit,by:s.key,ind:!!indirect});
+    events.push({k:'hit',x:v.x,y:v.y,dmg,i:v.i,crit,by:s.key,ind:!!indirect,ax:s.x,ay:s.y});
+    if(v.last&&!v.lastOn&&v.hp>0&&v.hp<v.max*.4){v.lastOn=1;events.push({k:'proc',id:'laststand',i:v.i})}
     if(indirect)return;
-    if(s.vamp){const h=Math.min(dmg*s.vamp,s.max-s.hp);if(h>.05){s.hp+=h;events.push({k:'heal',x:s.x,y:s.y,dmg:h,i:s.i})}}
-    if(s.poison){v.poisonT=3;v.poisonDps=Math.max(v.poisonDps,s.poison)}
-    if(s.frost)v.slowT=Math.max(v.slowT,2);
-    if(v.thorns&&s.hp>0)hurt(s,dmg*v.thorns,v,true);
+    if(amb)events.push({k:'proc',id:'ambush',i:s.i});
+    if(s.vamp){const h=Math.min(dmg*s.vamp,s.max-s.hp);if(h>.05){s.hp+=h;events.push({k:'heal',x:s.x,y:s.y,dmg:h,i:s.i,fx:v.x,fy:v.y})}}
+    if(s.poison){v.poisonT=3;v.poisonDps=Math.max(v.poisonDps,s.poison);events.push({k:'proc',id:'poison',i:s.i})}
+    if(s.frost){v.slowT=Math.max(v.slowT,2);events.push({k:'proc',id:'frost',i:s.i})}
+    if(v.thorns&&s.hp>0){events.push({k:'proc',id:'thorns',i:v.i});hurt(s,dmg*v.thorns,v,true)}
     const Hv=BEHAVE[v.key],Hs=BEHAVE[s.key];
     if(Hv&&Hv.hurt)Hv.hurt(v,s,dmg,m);
     if(Hs&&Hs.dealt)Hs.dealt(s,v,dmg,m);
@@ -433,6 +441,8 @@ function createMatch(A,B,seed){
           if(hx)H.bounce(f,m,hx>0?0:AW,f.y,hx,0);
           if(hy)H.bounce(f,m,f.x,hy>0?0:AW,0,hy);
         }
+        if(hx)events.push({k:'wall',x:hx>0?0:AW,y:f.y,nx:hx,ny:0,i:f.i});
+        if(hy)events.push({k:'wall',x:f.x,y:hy>0?0:AW,nx:0,ny:hy,i:f.i});
         if(hx||hy)for(const h of f.uh)if(h[0].bounce){if(hx)h[0].bounce(f,m,h[1],hx>0?0:AW,f.y,hx,0);if(hy)h[0].bounce(f,m,h[1],f.x,hy>0?0:AW,0,hy)}
         let spin=f.spin*f.spdMul*(f.slowT>0?.6:1);
         if(D.rage)spin*=1+(1-Math.max(0,f.hp)/f.max)*.8;
@@ -481,6 +491,7 @@ function createMatch(A,B,seed){
       const q=bullets[i],e=F[1-q.own],es=q.own===0?sb:sa;
       q.x+=q.vx*DT;q.y+=q.vy*DT;
       let gone=q.x<0||q.x>AW||q.y<0||q.y>AW;
+      if(gone)events.push({k:'ping',x:Math.min(AW,Math.max(0,q.x)),y:Math.min(AW,Math.max(0,q.y)),i:q.own});
       if(!gone)for(const g of es)if(distPS(q.x,q.y,g[0],g[1],g[2],g[3])<5||(g[4]&&Math.hypot(q.x-g[2],q.y-g[3])<g[4]+4)){gone=true;events.push({k:'parry',x:q.x,y:q.y});break}
       if(!gone)for(const u of minions)if(u.own!==q.own&&Math.hypot(q.x-u.x,q.y-u.y)<u.r+4){gone=true;u.hp-=q.d;break}
       if(!gone&&!e.gone&&Math.hypot(q.x-e.x,q.y-e.y)<e.r+4){gone=true;hurt(e,q.d*F[q.own].dmgMul*rage,F[q.own])}

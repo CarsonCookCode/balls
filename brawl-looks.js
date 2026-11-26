@@ -17,6 +17,7 @@ let g=null;        // the context being drawn to; set at the start of drawArena
 let PX=2;          // device pixels per arena unit (shadows ignore the transform, so they need it)
 let NOW=0;         // match time, for small idle motions
 let MATCH=null;
+let LIVE=false;     // true while drawing the arena on screen (not a portrait): the effects engine joins in
 const GOLD='#c9a45c',GOLD_HI='#f0dca4',GOLD_LO='#7a5d2b',IVORY='#f3ead6',INK='#231a12',EDGE='#090b0d',CRIMSON='#8f2732',CRIMSON_LO='#5e1820',
   PARCH='#e6d6b0',PARCH_LO='#c9b487',STEEL='#d7dde2',STEEL_LO='#8b959d',WOOD='#6f4d30',LEATHER='#3a2a1e';
 const FONT="Cinzel, 'Times New Roman', serif";
@@ -654,6 +655,7 @@ const MINION_LOOKS={
 };
 function drawMinion(q,t){
   const fn=MINION_LOOKS[q.kind];
+  if(q.lead&&LIVE)FX.glow(g,q.x,q.y,q.r*2.4,GOLD_HI,.45);
   if(fn)fn(q,t);else smallMedal(q.x,q.y,q.r,q.col||GOLD,GOLD,GOLD_LO);
   g.globalAlpha=1;g.shadowBlur=0;g.shadowColor='transparent';
 }
@@ -666,6 +668,11 @@ function drawFighter(f,isYou){
   const D=FIGHTERS[f.key],L=LOOKS[f.key]||{},r=f.r,x=f.x,y=f.y,base=f.col||D.color,alpha=f.gone?.2:1;
   g.save();
   resetInk(alpha);
+  // a knock squashes the medallion and its weapons for a moment; the name and the health banner stay steady
+  const SQ=LIVE?FX.sq(f.i):null;
+  g.save();
+  if(SQ){g.translate(x,y);g.rotate(SQ.th);g.scale(1-SQ.k,1+SQ.k*.7);g.rotate(-SQ.th);g.translate(-x,-y)}
+  if(LIVE){FX.back(g,f,MATCH,alpha);resetInk(alpha)}
   // weapons, under the medallion so they seem to come out from behind the ring
   for(const A of f.arms){
     const an=f.ang*A.rate+A.a,c=Math.cos(an),s=Math.sin(an),x2=x+c*(r+A.l),y2=y+s*(r+A.l);
@@ -696,7 +703,7 @@ function drawFighter(f,isYou){
   (L.crest||plainCrest)(IVORY,col);
   g.restore();
   resetInk(alpha);
-  if(hit){g.strokeStyle='rgba(255,255,255,.85)';g.lineWidth=Math.max(.8,r*.06);disc(x,y,r+.8);g.stroke()}
+  if(hit){g.strokeStyle='rgba(255,255,255,.85)';g.lineWidth=Math.max(.8,r*.06);disc(x,y,r+.8);g.stroke();if(LIVE){FX.glow(g,x,y,r*1.7,'#fff2c4',Math.min(.6,f.flash*5));resetInk(alpha)}}
 
   // conditions
   if(f.poisonT>0){
@@ -707,6 +714,7 @@ function drawFighter(f,isYou){
   }
   if(f.slowT>0){g.strokeStyle='rgba(160,215,255,.9)';g.lineWidth=1.1;g.setLineDash(DASH_SLOW);g.lineDashOffset=NOW*7;disc(x,y,r+2.4);g.stroke();g.setLineDash(NODASH);g.lineDashOffset=0}
   if(f.stunT>0){
+    if(LIVE){FX.glow(g,x,y,r*1.9,'#9fe0ff',.4);resetInk(alpha)}
     g.fillStyle='rgba(205,238,255,.5)';disc(x,y,r*.88);g.fill();
     g.strokeStyle='rgba(255,255,255,.85)';g.lineWidth=.8;disc(x,y,r+.6);g.stroke();
     g.fillStyle='#e3f7ff';g.strokeStyle='#6fa9cb';g.lineWidth=.4;g.lineJoin='round';g.beginPath();
@@ -722,6 +730,8 @@ function drawFighter(f,isYou){
     for(let k=0;k<4;k++){const a=k/4*TAU+NOW*.9;lozenge(g,x+Math.cos(a)*(r+5),y+Math.sin(a)*(r+5),1.5,'#cfe1ff')}
   }
   if(L.over){L.over(f,MATCH);resetInk(alpha)}
+  if(LIVE){FX.front(g,f,MATCH,alpha);resetInk(alpha)}
+  g.restore();resetInk(alpha);
 
   if(!f.gone){
     // health on a small crimson banner at the foot
@@ -759,8 +769,9 @@ function deviceScale(c){
   return 2;
 }
 // fx = {floats, sparks, rings, bolts}: the short-lived effects the page keeps (damage numbers, sparks, rings, lightning).
+// When fx.live is set this is the arena on screen, and the effects engine (brawl-fx.js) draws its layers too; portraits leave it out.
 function drawArena(c,match,you,fx){
-  g=c;MATCH=match;NOW=match?match.t:0;PX=deviceScale(c);
+  g=c;MATCH=match;NOW=match?match.t:0;PX=deviceScale(c);LIVE=!!(fx&&fx.live&&typeof FX!=='undefined');
   const hot=!!(match&&match.t>SUDDEN&&!match.over);
   g.save();
   resetInk(1);
@@ -789,16 +800,18 @@ function drawArena(c,match,you,fx){
   if(match){
     // everything in play is cut off at the walls, as if it passed behind the frame
     g.save();g.beginPath();g.rect(0,0,AW,AW);g.clip();
+    if(LIVE){FX.floor(g,match);resetInk(1)}
     for(const f of match.f){const L=LOOKS[f.key];if(L&&L.under&&f.hp>0){L.under(f,match);resetInk(1)}}
     for(const q of match.minions)drawMinion(q,match.t);
     drawFighter(match.f[0],you===0);drawFighter(match.f[1],you===1);
     resetInk(1);
     // shots: a hot ball with a short streak
     for(const q of match.bullets){
-      const col=match.f[q.own]?match.f[q.own].col:'#ffcf7a';
-      g.strokeStyle=col;g.globalAlpha=.55;g.lineWidth=2.2;g.beginPath();g.moveTo(q.x-q.vx*.022,q.y-q.vy*.022);g.lineTo(q.x,q.y);g.stroke();
-      g.globalAlpha=.35;g.fillStyle='#ffb347';disc(q.x,q.y,5.2);g.fill();
-      g.globalAlpha=1;g.fillStyle='#fff1c9';g.strokeStyle=EDGE;g.lineWidth=.45;disc(q.x,q.y,2.8);g.fill();g.stroke();
+      const col=match.f[q.own]?match.f[q.own].col:'#ffcf7a',big=q.heavy?1.35:1;
+      g.strokeStyle=col;g.globalAlpha=.6;g.lineWidth=2.2*big;g.beginPath();g.moveTo(q.x-q.vx*.04,q.y-q.vy*.04);g.lineTo(q.x,q.y);g.stroke();
+      g.strokeStyle='#fff1c9';g.globalAlpha=.7;g.lineWidth=.9*big;g.beginPath();g.moveTo(q.x-q.vx*.026,q.y-q.vy*.026);g.lineTo(q.x,q.y);g.stroke();
+      if(LIVE)FX.glow(g,q.x,q.y,10*big,col,.85);else{g.globalAlpha=.35;g.fillStyle='#ffb347';disc(q.x,q.y,5.2);g.fill()}
+      g.globalAlpha=1;g.fillStyle='#fff1c9';g.strokeStyle=EDGE;g.lineWidth=.45;disc(q.x,q.y,2.8*big);g.fill();g.stroke();
     }
     for(const r of fx.rings){
       const q=1-r.life/r.max,rr=Math.max(1,r.r0+(r.r1-r.r0)*q);
@@ -820,6 +833,9 @@ function drawArena(c,match,you,fx){
       g.globalAlpha=a;g.fillStyle=p.col?shade(p.col,.45):'#ffe2a0';disc(p.x,p.y,1.2);g.fill();
     }
     g.globalAlpha=1;
+    // a class can draw over both fighters (a mark it leaves on its rival, say) with a top(f,match) in its LOOKS entry
+    for(const f of match.f){const L=LOOKS[f.key];if(L&&L.top&&f.hp>0){L.top(f,match);resetInk(1)}}
+    if(LIVE){FX.top(g,match);resetInk(1);FX.screenFlash(g,AW);resetInk(1)}
     g.restore();
   }
   Orn.frame(g,0,0,AW,AW,7,hot);
@@ -828,7 +844,8 @@ function drawArena(c,match,you,fx){
     g.textAlign='center';g.textBaseline='middle';g.lineJoin='round';
     for(const fl of fx.floats){
       const t=String(fl.txt),c0=t.charCodeAt(0),hit=c0===45||c0===8722,heal=c0===43;
-      const size=hit?(fl.big?19:14):heal?12:fl.big?13:11;
+      const age=(fl.max||.8)-fl.life,pop=1+.75*Math.max(0,1-age/.13);       // they land big and settle
+      const size=(hit?(fl.big?19:14):heal?12:fl.big?13:11)*pop;
       g.font=(hit?'900 ':'700 ')+size+'px '+FONT;
       g.globalAlpha=Math.min(1,fl.life/.3);
       const fx0=Math.min(AW-size*1.2,Math.max(size*1.2,fl.x)),fy=Math.max(size*.7,Math.min(AW-size*.6,fl.y));

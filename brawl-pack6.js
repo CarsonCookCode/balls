@@ -42,16 +42,20 @@ BEHAVE.void={
     for(const q of m.minions){
       if(q.own===f.i)continue;
       const dq=Math.hypot(f.x-q.x,f.y-q.y)||1;
-      if(dq<f.r+q.r+1){q.hp=0;m.events.push({k:'ring',x:q.x,y:q.y,r0:q.r+4,r:1,life:.25,w:2,i:f.i})}
+      if(dq<f.r+q.r+1){q.hp=0;m.events.push({k:'ring',x:q.x,y:q.y,r0:q.r+4,r:1,life:.25,w:2,i:f.i});m.events.push({k:'fx',n:'dark',x:q.x,y:q.y,r:q.r+10,col:'#b9a8ff',i:f.i});m.events.push({k:'fx',n:'seek',x:q.x,y:q.y,to:f.i,num:4,col:'#cdbfff',i:f.i})}
     }
   },
-  touch:(f,e)=>FIGHTERS.void.dmg*(1+.15*f.sig)*p6square(f,e)};
+  touch:(f,e)=>FIGHTERS.void.dmg*(1+.15*f.sig)*p6square(f,e),
+  dealt(f,v,dmg,m){                                       // effects only: light is torn off the rival and falls into the well
+    m.events.push({k:'fx',n:'wave',x:v.x,y:v.y,r0:v.r+12,r:v.r*.4,life:.26,col:'#9a86e8',w:2,i:f.i});
+    m.events.push({k:'fx',n:'seek',x:v.x,y:v.y,to:f.i,num:5,col:'#cdbfff',i:f.i});
+  }};
 
 // Echo: a tuning fork. Each hit leaves a mark where the rival stood; a second later the mark rings, and hurts if they are
 // still near it. With Reverb an echo that lands leaves a fainter mark of its own.
 BEHAVE.echo={
   init(f){f.s.q=[];f.s.mute=false;f.s.rad=52},
-  dealt(f,v,dmg){if(!f.s.mute)f.s.q.push({x:v.x,y:v.y,t:.9,d:dmg*(.7+.08*f.sig),gen:1})},
+  dealt(f,v,dmg,m){if(!f.s.mute){f.s.q.push({x:v.x,y:v.y,t:.9,d:dmg*(.7+.08*f.sig),gen:1});m.events.push({k:'fx',n:'wave',x:v.x,y:v.y,r0:3,r:16,life:.3,col:'#bff5ee',w:1.6,i:f.i});m.events.push({k:'fx',n:'stars',x:v.x,y:v.y,num:3,col:'#d7faf6',i:f.i})}},
   tick(f,e,m){
     const S=f.s,Q=S.q,rad=52+8*f.sig;
     S.rad=rad;
@@ -61,9 +65,13 @@ BEHAVE.echo={
       if(q.t>0)continue;
       Q.splice(i,1);
       m.events.push({k:'ring',x:q.x,y:q.y,r0:5,r:rad,life:.3,w:2,i:f.i});
+      m.events.push({k:'fx',n:'wave',x:q.x,y:q.y,r0:3,r:rad*.62,life:.42,col:'#ffffff',w:1.2,i:f.i});
+      m.events.push({k:'fx',n:'flash',x:q.x,y:q.y,r:16,col:'#bff5ee',i:f.i});
+      m.events.push({k:'fx',n:'stars',x:q.x,y:q.y,num:4,col:'#bff5ee',i:f.i});
       if(e.gone||Math.hypot(e.x-q.x,e.y-q.y)>rad+e.r*.5)continue;
       const before=e.hp;
       S.mute=true;m.hurt(e,q.d,f);S.mute=false;
+      if(e.hp<before){m.events.push({k:'fx',n:'line',x:q.x,y:q.y,x2:e.x,y2:e.y,col:'#d7faf6',w:2.2,life:.24,i:f.i});m.events.push({k:'fx',n:'sparks',x:e.x,y:e.y,num:6,col:'#bff5ee',i:f.i})}
       if(e.hp<before&&q.gen<1+f.sig)Q.push({x:e.x,y:e.y,t:.9,d:q.d*.7,gen:q.gen+1});
     }
     if(Q.length>12)Q.splice(0,Q.length-12);
@@ -87,6 +95,11 @@ BEHAVE.paradox={
     S.was=a;S.got=a+move;
     m.events.push({k:'appear',x:f.x,y:f.y,i:f.i});m.events.push({k:'ring',x:e.x,y:e.y,r0:6,r:40,life:.3,w:3,i:f.i});
     m.events.push({k:'text',x:f.x,y:f.y-f.r,txt:'Trade',big:true,i:f.i});
+    m.events.push({k:'fx',n:'beam',x:f.x,y:f.y,x2:e.x,y2:e.y,col:'#ffc4ee',w:3.4,life:.3,i:f.i});
+    m.events.push({k:'fx',n:'seek',x:f.x,y:f.y,to:e.i,num:8,col:'#ffc4ee',i:f.i});
+    m.events.push({k:'fx',n:'seek',x:e.x,y:e.y,to:f.i,num:8,col:'#ffffff',i:f.i});
+    m.events.push({k:'fx',n:'tele',x:e.x,y:e.y,r:e.r,col:'#ffc4ee',i:f.i});
+    m.events.push({k:'fx',n:'shake',r:3,i:f.i});
     m.hurt(e,D.dmg*P6_JOLT*(1+.2*f.sig)*f.dmgMul*rage,f);
   },
   touch:(f,e)=>FIGHTERS.paradox.dmg*.5*p6square(f,e),
@@ -105,6 +118,9 @@ BEHAVE.entropy={
     if(S.t>0)return;
     S.t=D.cd/f.spdMul;
     const grow=1+.05*m.t,own=Math.max(.08,.3-.07*f.sig);
+    m.events.push({k:'fx',n:'wave',x:f.x,y:f.y,r0:Math.max(4,S.rad-10),r:S.rad,life:.45,col:'#d6cca4',w:1.1,i:f.i});
+    m.events.push({k:'fx',n:'dust',x:f.x,y:f.y+f.r*.3,num:2,col:'#d6cca4',jit:f.r,i:f.i});
+    if(S.inside){m.events.push({k:'fx',n:'dust',x:e.x,y:e.y,num:5,col:'#d6cca4',jit:e.r*1.4,i:f.i});m.events.push({k:'fx',n:'shards',x:e.x,y:e.y,num:3,col:'#b8ae84',lo:20,hi:70,jit:e.r,i:f.i})}
     if(S.inside)m.hurt(e,D.dmg*grow*f.dmgMul*rage,f);
     f.hp-=D.dmg*grow*own*rage*f.max/100;                 // its own share, as a part of its health: not a hit, so no armour and no reaction
     for(const q of m.minions)if(q.own!==f.i&&Math.hypot(q.x-f.x,q.y-f.y)<S.rad)q.life-=D.cd;
@@ -126,6 +142,11 @@ BEHAVE.dice={
     if(n===1&&m.rnd()<.3*f.sig)n=6;
     S.face=n;S.show=1.3;
     m.events.push({k:'text',x:f.x,y:f.y-f.r-6,txt:String(n),big:n===6||n===1,i:f.i});
+    if(n===1){m.events.push({k:'fx',n:'dark',x:f.x,y:f.y,r:f.r+10,col:'#ff5a6a',i:f.i});m.events.push({k:'fx',n:'smoke',x:f.x,y:f.y,num:3,jit:f.r,i:f.i})}
+    else if(n===2)m.events.push({k:'fx',n:'stars',x:f.x,y:f.y,num:6,col:'#b5ecae',jit:f.r*1.6,grav:-50,i:f.i});
+    else if(n===3){m.events.push({k:'fx',n:'wave',x:f.x,y:f.y,r0:f.r,r:f.r+22,life:.3,col:'#fff1cf',w:2.4,i:f.i});m.events.push({k:'fx',n:'sparks',x:f.x,y:f.y,num:10,col:'#fff1cf',i:f.i})}
+    else if(n<6)m.events.push({k:'fx',n:'stars',x:f.x,y:f.y-f.r,num:n===5?5:3,col:'#f3ead6',jit:10,i:f.i});
+    else{m.events.push({k:'fx',n:'confetti',x:e.x,y:e.y,num:12,i:f.i});m.events.push({k:'fx',n:'stars',x:e.x,y:e.y,num:9,col:'#ffd76a',hi:150,i:f.i});m.events.push({k:'fx',n:'scorch',x:e.x,y:e.y,r:22,i:f.i});m.events.push({k:'fx',n:'shake',r:4,i:f.i})}
     if(n===1)m.hurt(f,D.dmg*.7,e,true);
     else if(n===2){const h=Math.min(f.max*.05,f.max-f.hp);if(h>.05){f.hp+=h;m.events.push({k:'heal',x:f.x,y:f.y,dmg:h,i:f.i})}}
     else if(n===3)S.quick=2.5;
@@ -158,6 +179,9 @@ BEHAVE.shadow={
       S.sh.push(x,y);
       if(!e.gone&&f.cd<=0&&Math.hypot(e.x-x,e.y-y)<e.r+P6_BITE){
         f.cd=D.cd/f.spdMul;S.bit=.25;S.bx=x;S.by=y;
+        m.events.push({k:'fx',n:'slash',x:e.x,y:e.y,dir:Math.atan2(e.y-y,e.x-x),r:e.r*1.4,col:'#d9dcff',life:.22,i:f.i});
+        m.events.push({k:'fx',n:'dark',x:x,y:y,r:e.r+10,col:'#9aa0e0',i:f.i});
+        m.events.push({k:'fx',n:'smoke',x:x,y:y,num:4,col:'#0b0b18',jit:e.r,i:f.i});
         m.hurt(e,D.dmg*f.dmgMul*rage,f);
       }
     }
@@ -185,6 +209,11 @@ BEHAVE.loop={
     S.cd=S.wind=8-1.1*f.sig;H.length=0;
     m.events.push({k:'appear',x:f.x,y:f.y,i:f.i});
     m.events.push({k:'text',x:f.x,y:f.y-f.r,txt:'Again',big:true,i:f.i});
+    m.events.push({k:'fx',n:'beam',x:S.fx,y:S.fy,x2:f.x,y2:f.y,col:'#bfeaff',w:3.2,life:.36,i:f.i});
+    m.events.push({k:'fx',n:'seek',x:S.fx,y:S.fy,to:f.i,num:10,col:'#bfeaff',i:f.i});
+    m.events.push({k:'fx',n:'tele',x:f.x,y:f.y,r:f.r,col:'#bfeaff',i:f.i});
+    m.events.push({k:'fx',n:'plus',x:f.x,y:f.y,num:4,jit:f.r*1.4,i:f.i});
+    m.events.push({k:'fx',n:'shake',r:3,i:f.i});
   },
   touch:(f,e)=>FIGHTERS.loop.dmg*p6square(f,e),
   dealt:p6knock.dealt};
@@ -199,13 +228,16 @@ BEHAVE.monk={
     S.calm=Math.min(S.cap,S.calm+DT*(1+.25*f.sig)*f.spdMul);
     if(S.palm>0)S.palm-=DT;
   },
-  hurt(f){f.s.calm*=.5},
+  hurt(f,src,dmg,m){if(f.s.calm>1)m.events.push({k:'fx',n:'shatter',x:f.x,y:f.y,num:Math.round(3+2*f.s.calm),col:'#ffe2aa',r:f.r,i:f.i});f.s.calm*=.5},
   touch(f){const S=f.s,c=S.calm;S.calm=0;S.strike=true;S.spent=c;return FIGHTERS.monk.dmg*(.4+c)},
   dealt(f,v,dmg,m){
     const S=f.s;
     if(!S.strike)return;
     S.strike=false;S.palm=.35;S.pa=Math.atan2(v.y-f.y,v.x-f.x);
     m.knock(v,f);
+    m.events.push({k:'fx',n:'wave',x:(f.x+v.x)/2,y:(f.y+v.y)/2,r0:4,r:14+8*S.spent,life:.3,col:'#ffe2aa',w:2+S.spent*.5,fill:.25,i:f.i});
+    m.events.push({k:'fx',n:'sparks',x:v.x,y:v.y,num:Math.round(4+4*S.spent),col:'#ffe2aa',dir:S.pa,spread:1.2,lo:90,hi:200+40*S.spent,i:f.i});
+    if(S.spent>1.5){m.events.push({k:'fx',n:'holy',x:v.x,y:v.y,r:18+5*S.spent,col:'#ffe2aa',i:f.i});m.events.push({k:'fx',n:'shake',r:Math.min(5,1.5+S.spent*.7),i:f.i})}
     if(S.spent>1.5){v.stunT=Math.max(v.stunT,.3);m.events.push({k:'blast',x:(f.x+v.x)/2,y:(f.y+v.y)/2,r:16+6*S.spent,i:f.i})}
   }};
 
@@ -219,12 +251,15 @@ BEHAVE.gravity={
     if(S.slam>0)S.slam-=DT;
     S.t-=DT;
     if(S.t<=0){
-      if(S.on){S.on=0;S.t=Math.max(.8,1.9-.35*f.sig)/f.spdMul}
+      if(S.on){S.on=0;S.t=Math.max(.8,1.9-.35*f.sig)/f.spdMul;m.events.push({k:'fx',n:'wave',x:f.x,y:f.y,r0:f.r+3,r:f.r+16,life:.32,col:'#d6f0aa',w:1.6,i:f.i})}
       else{
         let k=(m.rnd()*4)|0;if(k===S.k)k=(k+1)%4;
         S.k=k;S.gx=P6_DIRS[k][0];S.gy=P6_DIRS[k][1];S.on=1;S.t=S.dur=2.3+.3*f.sig;
         m.events.push({k:'pull',x:AW/2+S.gx*AW*.38,y:AW/2+S.gy*AW*.38,i:f.i});
         m.events.push({k:'text',x:AW/2,y:AW/2,txt:'Tilt',i:f.i});
+        m.events.push({k:'fx',n:'seek',x:AW/2,y:AW/2,x2:AW/2+S.gx*AW*.48,y2:AW/2+S.gy*AW*.48,num:14,col:'#d6f0aa',i:f.i});
+        m.events.push({k:'fx',n:'dust',x:AW/2+S.gx*AW*.47,y:AW/2+S.gy*AW*.47,num:8,jit:AW*.5,i:f.i});
+        m.events.push({k:'fx',n:'shake',r:2.5,i:f.i});
       }
     }
     if(!S.on)return;
@@ -248,7 +283,16 @@ BEHAVE.gravity={
     S.slam=.3;
     return FIGHTERS.gravity.dmg*(2.2+.45*f.sig);
   },
-  dealt(f,v,dmg,m){if(f.s.slam>.29)m.events.push({k:'blast',x:v.x,y:v.y,r:30,i:f.i})}};
+  dealt(f,v,dmg,m){
+    if(!(f.s.slam>.29))return;
+    const S=f.s,wx=v.x+S.gx*v.r,wy=v.y+S.gy*v.r,back=Math.atan2(-S.gy,-S.gx);
+    m.events.push({k:'blast',x:v.x,y:v.y,r:30,i:f.i});
+    m.events.push({k:'fx',n:'shards',x:wx,y:wy,num:9,col:'#9a958a',dir:back,spread:2.2,i:f.i});
+    m.events.push({k:'fx',n:'dust',x:wx,y:wy,num:8,jit:v.r*1.6,i:f.i});
+    m.events.push({k:'fx',n:'scorch',x:v.x,y:v.y,r:v.r*1.1,life:3,i:f.i});
+    m.events.push({k:'fx',n:'squash',i:v.i,dir:back,r:.16});
+    m.events.push({k:'fx',n:'shake',r:4.5,i:f.i});
+  }};
 
 // Mimic: remembers the hardest blow it has taken since it last touched the rival, and gives it back on the next touch,
 // with a little of its own on top. Many small hits teach it nothing; one big one is a gift, up to the most it can hold.
@@ -256,19 +300,30 @@ const P6_HOLD=36;
 BEHAVE.mimic={
   init(f){f.s.copy=0;f.s.gave=0;f.s.snap=0},
   tick(f){if(f.s.snap>0)f.s.snap-=DT},
-  hurt(f,src,dmg){const c=Math.min(dmg,P6_HOLD+12*f.sig);if(c>f.s.copy)f.s.copy=c},     // it can only swallow so big a blow
+  hurt(f,src,dmg,m){const c=Math.min(dmg,P6_HOLD+12*f.sig);if(c>f.s.copy){f.s.copy=c;m.events.push({k:'fx',n:'seek',x:src.x,y:src.y,to:f.i,num:Math.round(3+c*.12),col:'#ffce78',i:f.i});m.events.push({k:'fx',n:'wave',x:f.x,y:f.y,r0:f.r+14,r:f.r+2,life:.3,col:'#ffce78',w:2,i:f.i})}},     // it can only swallow so big a blow
   touch(f){
     const D=FIGHTERS.mimic,S=f.s,c=S.copy;
     S.copy=0;S.gave=c;if(c>0)S.snap=.3;
     // the blow comes back at the size it arrived: the Mimic's own strength adds to it only a little
     return D.dmg*.3+c*(D.dmg/10)*(1+.25*f.sig)/Math.sqrt(f.dmgMul);
   },
-  dealt:p6knock.dealt};
+  dealt(f,v,dmg,m){
+    m.knock(v,f);
+    const S=f.s,c=S.gave;
+    if(!(S.snap>.29&&c>0))return;                           // effects only: the held blow, given back
+    const a=Math.atan2(v.y-f.y,v.x-f.x);
+    m.events.push({k:'fx',n:'slash',x:v.x,y:v.y,dir:a+1.5708,r:v.r*1.3,col:'#ffecbe',life:.2,i:f.i});
+    m.events.push({k:'fx',n:'slash',x:v.x,y:v.y,dir:a-1.5708,r:v.r*1.3,col:'#ffecbe',life:.2,i:f.i});
+    m.events.push({k:'fx',n:'shatter',x:v.x,y:v.y,num:Math.round(5+c*.3),col:'#ffce78',r:v.r,i:f.i});
+    if(c>=14){m.events.push({k:'text',x:v.x,y:v.y-v.r,txt:'Returned',big:c>=26,col:'#ffce78',i:f.i});m.events.push({k:'fx',n:'shake',r:Math.min(4.5,c*.12),i:f.i})}
+  }};
 
 // ---------- art ----------
 // "Gilded": every fighter is a medallion drawn by the shared drawFighter in brawl-looks.js. These blocks add what makes
 // each class its own: crest(fg,bg) is the emblem (origin at the medallion centre, enamel field at radius 1); arm() draws
 // a weapon arm; under(f,m) / back(f) / over(f,m) put things on the floor, behind the medallion, or on top of everything.
+// top(f,m) draws over both fighters (marks left on the rival); amb(f,e,m,dt) feeds the effects engine (brawl-fx.js) with
+// whatever a class gives off continuously. The moments themselves are {k:'fx',...} events pushed from the simulation half.
 // These ten are ideas more than people, so their marks are thin, pale and a little cold. All of it draws with g.
 const P6={
   GOLD:typeof GOLD!=='undefined'?GOLD:'#c9a45c',GOLD_HI:typeof GOLD_HI!=='undefined'?GOLD_HI:'#f0dca4',
@@ -305,7 +360,13 @@ LOOKS.void={
     for(let k=0;k<4;k++){const rr=f.r+6+(R-f.r-10)*(1-((t*.35+k*.25)%1)),a=t*(.9+.2*k)+k*1.7;g.beginPath();g.arc(f.x,f.y,rr,a,a+1.5);g.stroke()}
     g.setLineDash([2,5]);g.strokeStyle='rgba(176,160,235,.4)';g.lineWidth=.8;p6disc(f.x,f.y,R-f.r*.4);g.stroke();g.setLineDash([]);
   },
-  back(f){p6glow(f.x,f.y,f.r+11,'4,3,10',.85)}};
+  back(f){p6glow(f.x,f.y,f.r+11,'4,3,10',.85)},
+  amb(f,e,m,dt){                                          // light winding into the well; more of it, torn from the rival, while it has a grip
+    if(f.gone)return;
+    const S=f.s,R=S.range||78;
+    for(let n=FX.due(f.i,'p6vw',5,dt);n>0;n--){const a=Math.random()*P6_TAU;FX.seek(f.x+Math.cos(a)*R,f.y+Math.sin(a)*R,f.i,1,'#8f7fe0',0,0,{jit:6,size:1.1,life:1.4})}
+    if(S.grip>0&&!e.gone&&gap(e,f)<R+e.r)for(let n=FX.due(f.i,'p6vg',4+9*S.grip,dt);n>0;n--)FX.seek(e.x,e.y,f.i,1,'#cdbfff',0,0,{jit:e.r*1.7,size:1.4});
+  }};
 
 LOOKS.echo={
   crest(fg){                                              // a sound, and its rings
@@ -335,6 +396,18 @@ LOOKS.echo={
       g.setLineDash([3,4]);g.strokeStyle='rgba(170,238,230,.55)';g.lineWidth=1;p6disc(q.x,q.y,R);g.stroke();g.setLineDash([]);
       g.strokeStyle='rgba(215,250,246,'+(.35+.5*(1-u)).toFixed(2)+')';g.lineWidth=1.4;p6disc(q.x,q.y,4+(R-4)*u);g.stroke();
       g.fillStyle='rgba(215,250,246,.8)';p6disc(q.x,q.y,1.8);g.fill();
+      if(typeof FX!=='undefined'&&typeof LIVE!=='undefined'&&LIVE)FX.glow(g,q.x,q.y,7+9*(1-u),'#bff5ee',.25+.45*(1-u));
+    }
+  },
+  amb(f,e,m,dt){                                          // waiting echoes shimmer; the fork hums after a hit
+    const Q=f.s.q,R=f.s.rad||52;
+    if(Q&&Q.length)for(let n=FX.due(f.i,'p6eq',Math.min(10,3*Q.length),dt);n>0;n--){
+      const q=Q[(Math.random()*Q.length)|0],a=Math.random()*P6_TAU,d=4+(R-4)*Math.max(0,Math.min(1,q.t/.9));
+      FX.stars(q.x+Math.cos(a)*d,q.y+Math.sin(a)*d,1,'#bff5ee',{lo:2,hi:14,size:2.6,life:.4});
+    }
+    if(f.cd>0&&!f.gone&&f.arms[0])for(let n=FX.due(f.i,'p6eh',9,dt);n>0;n--){
+      const A=f.arms[0],an=f.ang*A.rate+A.a,d=f.r+A.l*(.75+.25*Math.random());
+      FX.sparks(f.x+Math.cos(an)*d,f.y+Math.sin(an)*d,1,'#bff5ee',{lo:10,hi:55,life:.2,size:1});
     }
   }};
 
@@ -350,12 +423,22 @@ LOOKS.paradox={
     const S=f.s,e=p6foe(f,m),left=Math.max(0,Math.min(1,S.t/P6_TRADE));
     g.lineCap='butt';g.strokeStyle='rgba(9,11,13,.6)';g.lineWidth=3;p6disc(f.x,f.y,f.r+5);g.stroke();
     g.strokeStyle=left<.22?'#ffffff':'rgba(255,196,238,.9)';g.lineWidth=1.6;g.beginPath();g.arc(f.x,f.y,f.r+5,-1.5708,-1.5708+P6_TAU*(1-left));g.stroke();
+  },
+  top(f,m){                                               // the tie between the two as a trade nears, drawn over both of them
+    const S=f.s,e=p6foe(f,m);
     if(e&&!e.gone&&e.hp>0&&(S.t<1.2||S.flash>0)){
       const hot=S.flash>0,a=hot?.9:.35+.5*(1-S.t/1.2);
       g.setLineDash(hot?[]:[4,4]);g.strokeStyle='rgba(255,196,238,'+a.toFixed(2)+')';g.lineWidth=hot?2.4:1.2;g.lineCap='round';
       g.beginPath();g.moveTo(f.x,f.y);g.lineTo(e.x,e.y);g.stroke();g.setLineDash([]);
       g.strokeStyle='rgba(255,196,238,'+a.toFixed(2)+')';g.lineWidth=1.2;p6disc(e.x,e.y,e.r+5);g.stroke();
+      if(typeof FX!=='undefined'&&typeof LIVE!=='undefined'&&LIVE){FX.glow(g,e.x,e.y,e.r*1.7,'#ff9ee0',a*.4);FX.glow(g,f.x,f.y,f.r*1.7,'#ff9ee0',a*.4)}
     }
+  },
+  amb(f,e,m,dt){                                          // the last second before a trade: both of them start to sparkle
+    const S=f.s;
+    if(f.gone||e.gone||!(e.hp>0)||!(S.t<1.2))return;
+    for(let n=FX.due(f.i,'p6px',12,dt);n>0;n--){const v=Math.random()<.5?f:e,a=Math.random()*P6_TAU;FX.stars(v.x+Math.cos(a)*(v.r+5),v.y+Math.sin(a)*(v.r+5),1,'#ffc4ee',{lo:2,hi:16,size:2.8,life:.4})}
+    for(let n=FX.due(f.i,'p6pl',7,dt);n>0;n--){const u=Math.random();FX.sparks(f.x+(e.x-f.x)*u,f.y+(e.y-f.y)*u,1,'#ffc4ee',{lo:6,hi:30,life:.3,size:1})}
   }};
 
 LOOKS.entropy={
@@ -375,14 +458,27 @@ LOOKS.entropy={
       if(x>2&&x<AW-2&&y>2&&y<AW-2)g.fillRect(x-s/2,y-s/2,s,s);
     }
   },
-  over(f,m){                                              // whoever is crumbling sheds dust
-    const e=p6foe(f,m),t=m?m.t:0;
-    for(const v of [f,f.s.inside?e:null]){
-      if(!v||v.gone)continue;
-      g.fillStyle='rgba(226,216,180,.85)';
-      for(let k=0;k<(v===f?3:5);k++){const u=(t*1.4+k*.23)%1,s=2*(1-u);g.fillRect(v.x+Math.sin(k*2.3+v.i)*v.r*.75-s/2,v.y+v.r*.35+u*15,s,s)}
+  over(f,m){p6shed(f,m?m.t:0,3)},                         // whoever is crumbling sheds dust
+  top(f,m){const e=p6foe(f,m);if(f.s.inside&&e&&!e.gone&&e.hp>0)p6shed(e,m?m.t:0,5)},
+  amb(f,e,m,dt){
+    if(f.gone)return;
+    const S=f.s,R=S.rad||85;
+    for(let n=FX.due(f.i,'p6es',3,dt);n>0;n--)FX.dust(f.x+(Math.random()-.5)*f.r*1.6,f.y+f.r*.4,1,'#d6cca4',{dir:1.5708,spread:.6,lo:6,hi:22,size:2.2,grav:30});
+    if(S.inside&&!e.gone){
+      for(let n=FX.due(f.i,'p6ei',7,dt);n>0;n--)FX.dust(e.x+(Math.random()-.5)*e.r*1.6,e.y+e.r*.3,1,'#d6cca4',{dir:1.5708,spread:.6,lo:8,hi:26,size:2.4,grav:30});
+      for(let n=FX.due(f.i,'p6ec',2,dt);n>0;n--){const a=Math.random()*P6_TAU;FX.shards(e.x+Math.cos(a)*e.r,e.y+Math.sin(a)*e.r,1,e.col,{dir:1.5708,spread:1,lo:10,hi:40,size:1.6,life:.5})}
     }
+    for(let n=FX.due(f.i,'p6er',4,dt);n>0;n--){                // the edge of the rot smoulders as it creeps outward
+      const a=Math.random()*P6_TAU,x=f.x+Math.cos(a)*R,y=f.y+Math.sin(a)*R;
+      if(x>2&&x<AW-2&&y>2&&y<AW-2)FX.wisps(x,y,1,'#b8ae84',{life:.6,size:3.2});
+    }
+    for(const q of m.minions)if(q.own!==f.i&&Math.hypot(q.x-f.x,q.y-f.y)<R&&FX.due(f.i,'p6em',1.5,dt))FX.dust(q.x,q.y+q.r*.4,1,'#d6cca4',{lo:4,hi:14,size:1.8});
   }};
+function p6shed(v,t,n){
+  if(v.gone)return;
+  g.fillStyle='rgba(226,216,180,.85)';
+  for(let k=0;k<n;k++){const u=(t*1.4+k*.23)%1,s=2*(1-u);g.fillRect(v.x+Math.sin(k*2.3+v.i)*v.r*.75-s/2,v.y+v.r*.35+u*15,s,s)}
+}
 
 // the pips on each face of a die, on a 3 by 3 grid
 const P6_PIPS=[[],[[0,0]],[[-1,-1],[1,1]],[[-1,-1],[0,0],[1,1]],[[-1,-1],[1,-1],[-1,1],[1,1]],[[-1,-1],[1,-1],[0,0],[-1,1],[1,1]],[[-1,-1],[1,-1],[-1,0],[1,0],[-1,1],[1,1]]];
@@ -408,6 +504,19 @@ LOOKS.dice={
     g.fillStyle=n===1?'#b3313f':P6.EDGE;
     for(const p of P6_PIPS[n]){g.beginPath();g.arc(p[0]*s*.52,p[1]*s*.52,s*(n===1?.26:.17),0,P6_TAU);g.fill()}
     g.restore();
+    if(fresh>.6&&(n===6||n===1)&&typeof FX!=='undefined'&&typeof LIVE!=='undefined'&&LIVE)FX.glow(g,x,y,s*3,n===6?'#ffd76a':'#ff5a6a',Math.min(.7,(fresh-.6)*1.2));
+  },
+  amb(f,e,m,dt){
+    const S=f.s;
+    if(f.gone)return;
+    if(S.quick>0){                                        // a three: it tears along
+      const sp=Math.hypot(f.vx,f.vy)||1,bx=-f.vx/sp,by=-f.vy/sp;
+      for(let n=FX.due(f.i,'p6dq',12,dt);n>0;n--){const off=(Math.random()-.5)*f.r*1.7,x=f.x+bx*f.r*.7-by*off,y=f.y+by*f.r*.7+bx*off,l=10+Math.random()*14;FX.line(x,y,x+bx*l,y+by*l,'#fff1cf',1,.2)}
+    }
+    if(S.show>1){                                         // the die is still tumbling
+      const right=f.x<AW-f.r-18,x=f.x+(right?1:-1)*(f.r+10),y=Math.max(8,f.y-f.r*.35);
+      for(let n=FX.due(f.i,'p6dr',16,dt);n>0;n--)FX.stars(x,y,1,S.face===6?'#ffd76a':S.face===1?'#ff5a6a':'#f3ead6',{lo:10,hi:50,size:2.6,life:.35,jit:8});
+    }
   }};
 
 LOOKS.shadow={
@@ -441,6 +550,27 @@ LOOKS.shadow={
         g.fill();
       }
     }
+  },
+  top(f,m){                                               // the bite shows over the rival it closes on
+    const S=f.s,e=p6foe(f,m),er=e?e.r:22;
+    if(!(S.bit>0)||S.bx===undefined)return;
+    const x=S.bx,y=S.by,a=Math.min(1,S.bit*5);
+    g.globalAlpha=a;g.fillStyle='#ffffff';g.strokeStyle=P6.EDGE;g.lineWidth=.5;g.lineJoin='round';
+    g.beginPath();g.ellipse(x-er*.3,y-er*.12,er*.17,er*.08,.35,0,P6_TAU);g.fill();g.beginPath();g.ellipse(x+er*.3,y-er*.12,er*.17,er*.08,-.35,0,P6_TAU);g.fill();
+    g.beginPath();for(let j=0;j<5;j++){const tx=x-er*.4+j*er*.2;g.moveTo(tx-er*.09,y+er*.2);g.lineTo(tx,y+er*.5);g.lineTo(tx+er*.09,y+er*.2);g.closePath()}
+    g.fill();g.stroke();g.globalAlpha=1;
+  },
+  amb(f,e,m,dt){                                          // the shadows smoke along the floor as they walk
+    const sh=f.s.sh,er=e?e.r:22;
+    if(!sh||!sh.length)return;
+    for(let n=FX.due(f.i,'p6sh',4.5*sh.length/2,dt);n>0;n--){
+      const k=2*((Math.random()*sh.length/2)|0);
+      FX.dust(sh[k]+(Math.random()-.5)*er*1.4,sh[k+1]+(Math.random()-.5)*er*1.4,1,'#0a0a16',{lo:4,hi:18,size:3.4,life:.6});
+    }
+    for(let n=FX.due(f.i,'p6se',1.2*sh.length/2,dt);n>0;n--){
+      const k=2*((Math.random()*sh.length/2)|0);
+      FX.wisps(sh[k],sh[k+1]-er*.4,1,'#8f96e6',{life:.5,size:3});
+    }
   }};
 
 LOOKS.loop={
@@ -472,6 +602,16 @@ LOOKS.loop={
       g.lineCap='butt';g.strokeStyle='rgba(170,225,250,.55)';g.lineWidth=1.2;
       g.beginPath();g.arc(f.x,f.y,f.r+4,-1.5708,-1.5708+P6_TAU*Math.max(0,1-S.cd/(S.wind||8)));g.stroke();
     }
+  },
+  amb(f,e,m,dt){
+    const S=f.s,H=S.h;
+    if(f.gone||!H)return;
+    if(H.length>=30&&S.cd<=0){                            // armed: the moment it would return to glints
+      const o=H[0],hurt=Math.max(0,Math.min(1,(o.hp-f.hp)/(f.max*.3)));
+      for(let n=FX.due(f.i,'p6lo',3+9*hurt,dt);n>0;n--){const a=Math.random()*P6_TAU;FX.stars(o.x+Math.cos(a)*f.r,o.y+Math.sin(a)*f.r,1,'#bfeaff',{lo:2,hi:12,size:2.6,life:.4})}
+      if(hurt>.4)for(let n=FX.due(f.i,'p6lh',10*hurt,dt);n>0;n--)FX.seek(f.x,f.y,-2,1,'#bfeaff',o.x,o.y,{jit:f.r,size:1.1,life:.8});
+    }
+    if(S.jump>0)for(let n=FX.due(f.i,'p6lj',24,dt);n>0;n--){const u=Math.random();FX.sparks(S.fx+(f.x-S.fx)*u,S.fy+(f.y-S.fy)*u,1,'#bfeaff',{lo:6,hi:40,life:.3,size:1})}
   }};
 
 LOOKS.monk={
@@ -504,6 +644,12 @@ LOOKS.monk={
     g.beginPath();g.ellipse(1,-8.2,3.4,1.5,-.9,0,P6_TAU);g.fill();g.stroke();
     g.restore();
     g.globalAlpha=1;
+  },
+  amb(f,e,m,dt){                                          // calm rises off it as motes of warm light; full calm glitters
+    const S=f.s,c=S.calm||0;
+    if(f.gone||c<.3)return;
+    for(let n=FX.due(f.i,'p6mc',Math.min(11,2.2*c),dt);n>0;n--){const a=Math.random()*P6_TAU,d=f.r*(.8+.5*Math.random());FX.embers(f.x+Math.cos(a)*d,f.y+Math.sin(a)*d,1,'#ffd68c',{lo:4,hi:20,life:.8})}
+    if(c>=(S.cap||4)-.05)for(let n=FX.due(f.i,'p6mf',4,dt);n>0;n--){const a=Math.random()*P6_TAU,d=f.r+4+Math.random()*10;FX.stars(f.x+Math.cos(a)*d,f.y+Math.sin(a)*d,1,'#fff3cf',{lo:2,hi:10,size:3,life:.45})}
   }};
 
 LOOKS.gravity={
@@ -535,6 +681,17 @@ LOOKS.gravity={
     const S=f.s;
     if(!S.on)return;                                      // heavy: a weight ring that sags downhill
     g.strokeStyle='rgba(214,240,170,.8)';g.lineWidth=1.3;p6disc(f.x+S.gx*3,f.y+S.gy*3,f.r+3.5);g.stroke();
+  },
+  amb(f,e,m,dt){                                          // while the floor is tipped: grit runs downhill, the rival scrapes along, Gravity streaks as it falls
+    const S=f.s;
+    if(!S.on)return;
+    const dir=Math.atan2(S.gy,S.gx);
+    for(let n=FX.due(f.i,'p6gs',10,dt);n>0;n--)FX.sparks(Math.random()*AW,Math.random()*AW,1,'#d6f0aa',{dir,spread:.15,lo:70,hi:150,life:.5,size:1,drag:0});
+    if(!e.gone)for(let n=FX.due(f.i,'p6ge',6,dt);n>0;n--)FX.dust(e.x-S.gx*e.r+(Math.random()-.5)*e.r,e.y-S.gy*e.r+(Math.random()-.5)*e.r,1,null,{dir:dir+3.1416,spread:.8,lo:10,hi:40});
+    if(!f.gone){
+      const sp=Math.hypot(f.vx,f.vy)||1,bx=-f.vx/sp,by=-f.vy/sp;
+      for(let n=FX.due(f.i,'p6gf',8,dt);n>0;n--){const off=(Math.random()-.5)*f.r*1.7,x=f.x+bx*f.r*.7-by*off,y=f.y+by*f.r*.7+bx*off,l=10+Math.random()*14;FX.line(x,y,x+bx*l,y+by*l,'#d6f0aa',1,.2)}
+    }
   }};
 
 LOOKS.mimic={
@@ -568,4 +725,10 @@ LOOKS.mimic={
       g.strokeStyle='rgba(255,236,190,'+Math.min(1,S.snap*3).toFixed(2)+')';g.lineWidth=1.6;g.lineJoin='miter';g.lineCap='round';
       for(const s of [-1,1]){g.beginPath();for(let k=0;k<=6;k++){const x=f.x-f.r+k*f.r/3,y=f.y+s*(f.r+3+(k%2?5:0));if(k)g.lineTo(x,y);else g.moveTo(x,y)}g.stroke()}
     }
+  },
+  amb(f,e,m,dt){                                          // a held blow seethes: the bigger it is, the more it spits
+    const c=f.s.copy||0;
+    if(f.gone||c<=0)return;
+    for(let n=FX.due(f.i,'p6mh',Math.min(11,2+c*.25),dt);n>0;n--){const a=Math.random()*P6_TAU;FX.embers(f.x+Math.cos(a)*f.r,f.y+Math.sin(a)*f.r,1,'#ffce78',{lo:6,hi:28,life:.6})}
+    if(c>=20)for(let n=FX.due(f.i,'p6ms',5,dt);n>0;n--){const a=Math.random()*P6_TAU;FX.sparks(f.x+Math.cos(a)*f.r,f.y+Math.sin(a)*f.r,1,'#ffecbe',{dir:a,spread:.8,lo:40,hi:120,life:.22,size:1})}
   }};

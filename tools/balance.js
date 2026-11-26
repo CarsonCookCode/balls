@@ -65,7 +65,9 @@ function workerMain() {
         while (rung <= p.cap) {
           if (rung >= 5 && !gotShield) { gotShield = true; shield = 1; }
           if (rung > 10 && !gotLife) { gotLife = true; life = 1; }
-          const won = play(b, S.rival(rung, rnd), (rnd() * 2147483647) | 0).winner === 0;
+          const res = play(b, S.rival(rung, rnd), (rnd() * 2147483647) | 0);
+          if (res.draw && fights.length < p.cap * 6) { fights.push(0); continue; }   // a draw: a new rival on the same rung, nothing spent
+          const won = res.winner === 0 && !res.draw;
           fights.push(won ? 1 : 0);
           if (!won) { if (shield) { shield = 0; continue; } if (life) { life = 0; continue; } break; }
           const o = S.offers(b, rnd, 3);

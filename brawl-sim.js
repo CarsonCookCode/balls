@@ -335,7 +335,7 @@ const BEHAVE={
 function createMatch(A,B,seed){
   const rnd=mulberry32(seed),bullets=[],minions=[],events=[],paint=new Int8Array(GP*GP).fill(-1);
   const F=[mk(A,0),mk(B,1)];
-  const m={f:F,bullets,minions,events,paint,t:0,over:false,winner:-1,step,rnd,hurt,knock,renorm,shoot,spawn};
+  const m={f:F,bullets,minions,events,paint,t:0,over:false,winner:-1,draw:false,step,rnd,hurt,knock,renorm,shoot,spawn};
   for(const f of F){const H=BEHAVE[f.key];if(H&&H.init)H.init(f,m);for(const h of f.uh)if(h[0].init)h[0].init(f,h[1],m)}
   function mk(b,i){
     const D=FIGHTERS[b.key],P=b.p||{},sig=P.sig||0,a=rnd()*6.283,sp=D.speed*b.spd,hp=D.hp*b.hp,reach=1+.3*(P.reach||0);
@@ -522,9 +522,11 @@ function createMatch(A,B,seed){
     }
     for(const f of F)if(f.hp<=0)for(const h of f.uh)if(h[0].lethal&&f.hp<=0)h[0].lethal(f,F[1-f.i],m,h[1]);
     for(const f of F)if(f.hp<=0&&f.revives>0){f.revives--;f.hp=f.max*.15;f.poisonT=0;events.push({k:'revive',x:f.x,y:f.y,i:f.i})}
-    if(a.hp<=0||b.hp<=0){m.over=true;m.winner=a.hp<=0&&b.hp<=0?(a.hp>=b.hp?0:1):a.hp<=0?1:0}
+    // Both down in the same instant is a draw (m.draw). m.winner is still set, to whoever fell less far, for callers
+    // that must name one; the page treats a draw as its own result.
+    if(a.hp<=0||b.hp<=0){m.over=true;m.draw=a.hp<=0&&b.hp<=0;m.winner=m.draw?(a.hp>=b.hp?0:1):a.hp<=0?1:0}
     else if(m.t>TIMEOUT){m.over=true;m.winner=a.hp/a.max>=b.hp/b.max?0:1}
-    if(m.over)events.push({k:'ko',x:F[1-m.winner].x,y:F[1-m.winner].y,i:1-m.winner});
+    if(m.over){events.push({k:'ko',x:F[1-m.winner].x,y:F[1-m.winner].y,i:1-m.winner});if(m.draw)events.push({k:'ko',x:F[m.winner].x,y:F[m.winner].y,i:m.winner,draw:true})}
   }
   return m;
 }

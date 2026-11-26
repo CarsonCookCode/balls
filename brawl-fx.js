@@ -18,8 +18,8 @@ const FX=(()=>{
   const SQ=[{t:9,k:0,th:0},{t:9,k:0,th:0}];    // squash per fighter
   const ACC=[{},{}];                           // pacing for continuous effects, per fighter
   const SAID={};
-  let q=1,rate=1,clock=0,lastM=null,screen=0,screenCol='255,255,255',cheer=null,slowDt=.016;
-  const api={say:null,kick:null,calm:false};
+  let q=1,rate=1,clock=0,lastM=null,screen=0,screenCol='255,255,255',cheer=null,slowDt=.016,entered=false,sdOn=false;
+  const api={say:null,kick:null,calm:false,errors:0,lastError:''};
   const STEEL='#cfd8e6',GOLDC='#ffd76a',HOT='#fff2c4',ICE='#dff6ff',BLOOD='#ff5a6e',VENOM='#8be05a',EDGEC='#090b0d';
 
   // ----- colour and sprites -----
@@ -185,8 +185,9 @@ const FX=(()=>{
       }
       if(e.ind){sparks(ix,iy,3,sc,{lo:40,hi:120,life:.24});flash(ix,iy,7,sc,.1);return}
       flash(ix,iy,9+15*big+(e.crit?10:0),HOT,.13);
-      sparks(ix,iy,5+10*big,sc,{dir,spread,lo:80,hi:190+170*big,life:.24+.2*big,size:1.3+.5*big});
-      sparks(ix,iy,2+3*big,'#ffffff',{dir,spread:spread*.7,lo:60,hi:160,life:.18,size:1});
+      sparks(ix,iy,8+13*big,sc,{dir,spread,lo:80,hi:200+180*big,life:.28+.22*big,size:1.3+.5*big});
+      sparks(ix,iy,3+5*big,'#ffffff',{dir,spread:spread*.7,lo:60,hi:170,life:.2,size:1});
+      if(big>.3)embers(ix,iy,2+4*big,sc,{lo:10,hi:50,life:.5});
       if(e.dmg>=7)shards(ix,iy,1+3*big,v.col,{dir,spread:2.6,lo:50,hi:160,size:2+big});
       if(big>.45||e.crit)wave(ix,iy,4,18+28*big,.26,sc,2+big);
       if(s&&s.arms&&s.arms.length&&e.dmg>=4)slash(ix,iy,dir+3.1416,v.r*(.8+.5*big),'#ffffff',.16);
@@ -222,7 +223,7 @@ const FX=(()=>{
       sparks(e.x,e.y,8,'#ffe2a0',{lo:90,hi:260,life:.3,grav:200});
     }
     else if(k==='bump'){
-      sparks(e.x,e.y,3,'#fff1cf',{lo:50,hi:130,life:.18,size:1});wave(e.x,e.y,3,13,.18,'#fff1cf',1.2);
+      sparks(e.x,e.y,6,'#fff1cf',{lo:50,hi:150,life:.22,size:1});wave(e.x,e.y,3,15,.2,'#fff1cf',1.4);flash(e.x,e.y,7,'#fff1cf',.1);
       const a=m.f[0],b=m.f[1],th=Math.atan2(b.y-a.y,b.x-a.x);squash(0,th,.07);squash(1,th,.07);
     }
     else if(k==='wall'){
@@ -230,14 +231,17 @@ const FX=(()=>{
       const sp=Math.min(2.2,Math.hypot(own.vx,own.vy)/170),big=own.r/24,al=Math.atan2(e.ny,e.nx);
       // dust rolls out along the wall both ways, chips fly back into the arena
       dust(e.x,e.y,2.2*big*sp,null,{dir:al+1.5708,spread:.5,lo:30,hi:80*sp});dust(e.x,e.y,2.2*big*sp,null,{dir:al-1.5708,spread:.5,lo:30,hi:80*sp});
-      sparks(e.x+e.nx*2,e.y+e.ny*2,2+2.5*sp*big,'#ffe2a0',{dir:al,spread:2.4,lo:50,hi:120+90*sp,life:.24,size:1.1});
-      sparks(e.x+e.nx*2,e.y+e.ny*2,1.5*sp,own.col,{dir:al,spread:2.2,lo:40,hi:150,life:.26});
-      const p=put('line',1,1,e.x-e.ny*own.r*.75,e.y+e.nx*own.r*.75,0,0,.16,2.4,'#fff1cf');if(p){p.x2=e.x+e.ny*own.r*.75;p.y2=e.y-e.nx*own.r*.75}
+      sparks(e.x+e.nx*2,e.y+e.ny*2,3+3.5*sp*big,'#ffe2a0',{dir:al,spread:2.4,lo:50,hi:130+90*sp,life:.28,size:1.1});
+      sparks(e.x+e.nx*2,e.y+e.ny*2,1+2*sp,own.col,{dir:al,spread:2.2,lo:40,hi:160,life:.3});
+      wave(e.x,e.y,2,8+6*big*sp,.2,'#ffe2a0',1.2);
+      const p=put('line',1,1,e.x+e.nx-e.ny*own.r*.7,e.y+e.ny+e.nx*own.r*.7,0,0,.14,1.5,'#ffd9a0');if(p){p.x2=e.x+e.nx+e.ny*own.r*.7;p.y2=e.y+e.ny-e.nx*own.r*.7}
       squash(own.i,al,.07+.05*Math.min(1.5,sp));
     }
     else if(k==='ping'){sparks(e.x,e.y,3,col,{lo:40,hi:130,life:.2,size:1});flash(e.x,e.y,6,col,.1)}
     else if(k==='shot'){
       if(!own)return;
+      if(e.quiet)return;
+      if(Math.hypot(e.x-own.x,e.y-own.y)>own.r*.6){flash(e.x,e.y,8,HOT,.09);flash(e.x,e.y,6,col,.14);sparks(e.x,e.y,3,col,{lo:60,hi:160,life:.16});return}
       const a=own.aim||0,x=own.x+Math.cos(a)*own.r,y=own.y+Math.sin(a)*own.r;
       flash(x,y,10,HOT,.09);flash(x,y,7,col,.14);sparks(x,y,5,col,{dir:a,spread:.8,lo:130,hi:300,life:.16});
       smoke(x,y,.6,'#6b6258',{lo:4,hi:14});
@@ -252,7 +256,7 @@ const FX=(()=>{
     }
     else if(k==='pull'){
       wave(e.x,e.y,96,18,1,col,2.2);wave(e.x,e.y,70,14,.8,'#ffffff',1);
-      for(let i=cnt(18);i>0;i--){const a=R()*TAU,d=60+R()*50,p=put('seek',1,1,e.x+Math.cos(a)*d,e.y+Math.sin(a)*d,-Math.sin(a)*50,Math.cos(a)*50,1.05,1.5,col);if(p){p.to=own?own.i:-2;p.x2=e.x;p.y2=e.y;p.grow=90}}
+      for(let i=cnt(18);i>0;i--){const a=R()*TAU,d=60+R()*50,p=put('seek',1,1,e.x+Math.cos(a)*d,e.y+Math.sin(a)*d,-Math.sin(a)*50,Math.cos(a)*50,1.05,1.5,col);if(p){p.to=own&&Math.hypot(e.x-own.x,e.y-own.y)<own.r?own.i:-2;p.x2=e.x;p.y2=e.y;p.grow=90}}
     }
     else if(k==='blast'){
       const r=e.r||60;
@@ -272,13 +276,13 @@ const FX=(()=>{
     else if(k==='ko'){
       if(!own)return;
       const r=own.r,win=m.f[1-own.i];
-      flash(e.x,e.y,r*5,'#ffffff',.3);flash(e.x,e.y,r*3.2,col,.5);
+      flash(e.x,e.y,r*3.6,'#ffffff',.2);flash(e.x,e.y,r*3.4,col,.55);
       wave(e.x,e.y,r*.5,r*3.4,.5,col,5,.45);wave(e.x,e.y,r*.4,r*5,.75,'#ffffff',2);wave(e.x,e.y,r*.3,r*7,1,GOLDC,1.4);
       shards(e.x,e.y,20,col,{lo:90,hi:330,life:.9,size:3.4,jit:r});shards(e.x,e.y,14,'#c9a45c',{lo:90,hi:300,life:.9,size:2.8,jit:r});
       sparks(e.x,e.y,36,GOLDC,{lo:120,hi:420,life:.6,size:1.6,grav:120});sparks(e.x,e.y,14,'#ffffff',{lo:90,hi:300,life:.4});
       embers(e.x,e.y,16,col,{jit:r*2,lo:10,hi:70,life:1.1});smoke(e.x,e.y,6,null,{jit:r});
       scorch(e.x,e.y,r*1.5,'#000000',6);
-      if(!api.calm){screen=.5;screenCol='255,246,220'}
+      if(!api.calm){screen=.38;screenCol='255,246,220'}
       if(win&&win.hp>0)cheer={i:win.i,t:1.5};
     }
     else if(k==='proc')proc(e,m);
@@ -340,12 +344,22 @@ const FX=(()=>{
     if(!m||api.calm)return;
     if(m!==lastM){lastM=m;reset(false)}
     const sudden=typeof SUDDEN==='number'&&m.t>SUDDEN&&!m.over,A=typeof AW==='number'?AW:360;
+    if(!entered){                                           // the fighters arrive with a flourish
+      entered=true;
+      if(m.t<1.5)for(const f of m.f){wave(f.x,f.y,f.r*2.6,f.r,.36,f.col,2.4);wave(f.x,f.y,f.r*.6,f.r*2.1,.46,'#ffffff',1.2);sparks(f.x,f.y,10,f.col,{lo:60,hi:190,life:.36});stars(f.x,f.y,4,GOLDC,{jit:f.r*1.6});dust(f.x,f.y+f.r*.6,4,null,{jit:f.r})}
+    }
+    if(sudden&&!sdOn){                                      // the moment the arena turns on both of them
+      sdOn=true;const c=A/2;
+      if(api.say)api.say(c,c+26,'Sudden death','#ff6a4a',true);
+      wave(c,c,10,A*.75,.8,'#ff4a2a',4,.2);wave(c,c,6,A*.5,.6,'#ffb347',2);kick(4);
+      for(const f of m.f)embers(f.x,f.y,10,'#ff5a2a',{jit:f.r*2});
+    }
     if(sudden){for(let n=due(0,'sd',9,dt);n>0;n--){const side=(R()*4)|0,t=R()*A;embers(side===0?t:side===1?t:side===2?3:A-3,side===0?A-3:side===1?3:t,1,'#ff5a2a',{life:1.1,lo:6,hi:30})}}
     for(const f of m.f){
       if(!(f.hp>0)){continue}
       const e=m.f[1-f.i],p=f.p||{},u=f.u||{},ep=e.p||{},eu=e.u||{},i=f.i,r=f.r,gone=f.gone;
       const L=typeof LOOKS!=='undefined'&&LOOKS[f.key];
-      if(L&&L.amb){try{L.amb(f,e,m,dt)}catch(err){}}
+      if(L&&L.amb){try{L.amb(f,e,m,dt)}catch(err){api.errors++;if(!api.lastError)api.lastError=f.key+': '+(err&&err.message||err)}}
       if(gone||m.over)continue;
       const sp=Math.hypot(f.vx,f.vy)||1,bx=-f.vx/sp,by=-f.vy/sp;      // "behind" the fighter
       const around=()=>{const a=R()*TAU;return rim(f,a,.75+R()*.4)};
@@ -391,7 +405,7 @@ const FX=(()=>{
   // ----- per-frame bookkeeping -----
   function reset(soft){
     if(!soft){P.length=0;W.length=0;DEC.length=0}
-    SQ[0].t=SQ[1].t=9;ACC[0]={};ACC[1]={};cheer=null;
+    SQ[0].t=SQ[1].t=9;ACC[0]={};ACC[1]={};cheer=null;entered=false;sdOn=false;
     for(const k in SAID)delete SAID[k];
   }
   function update(dt){
@@ -654,3 +668,40 @@ const FX=(()=>{
   return api;
 })();
 if(typeof module!=='undefined')module.exports=FX;
+
+// ----- the first twenty classes: what their own tricks look like while they last -----
+// (classes in the packs keep theirs beside their art; these live here so brawl-looks.js stays pure drawing)
+if(typeof LOOKS!=='undefined'){
+  const R=Math.random,TAU=6.2832,ring=(f,k)=>{const a=R()*TAU;return [f.x+Math.cos(a)*f.r*(k||1),f.y+Math.sin(a)*f.r*(k||1)]};
+  const amb=(key,fn)=>{if(LOOKS[key]&&!LOOKS[key].amb)LOOKS[key].amb=fn};
+  // Berserker: the closer to death, the more it burns
+  amb('fury',(f,e,m,dt)=>{const k=1-Math.max(0,f.hp)/f.max;if(k<.15||f.gone)return;for(let n=FX.due(f.i,'fury',16*k,dt);n>0;n--){const c=ring(f,.9);FX.embers(c[0],c[1],1,k>.6?'#ff5a3a':'#ff9a4a')}});
+  // Comet: embers shed along its burning trail
+  amb('comet',(f,e,m,dt)=>{
+    const T=f.s&&f.s.trail;if(f.gone)return;
+    for(let n=FX.due(f.i,'comet',14,dt);n>0;n--)FX.embers(f.x+(R()-.5)*f.r,f.y+(R()-.5)*f.r,1,R()<.4?'#ffe27a':f.col,{life:.5});
+    if(T&&T.length)for(let n=FX.due(f.i,'comet2',9,dt);n>0;n--){const p=T[(R()*T.length)|0];FX.embers(p.x+(R()-.5)*6,p.y+(R()-.5)*6,1,'#ff8a3a',{life:.6,lo:2,hi:14})}
+  });
+  // Ghost: mist while it is away, streaks as it strikes
+  amb('ghost',(f,e,m,dt)=>{
+    if(f.gone)for(let n=FX.due(f.i,'ghost',9,dt);n>0;n--){const c=ring(f,R()*1.1);FX.wisps(c[0],c[1],1,f.col,{life:.7})}
+    else if(f.s&&f.s.dash>0)for(let n=FX.due(f.i,'ghost2',26,dt);n>0;n--){const c=ring(f,R());FX.sparks(c[0],c[1],1,f.col,{lo:4,hi:30,life:.3})}
+  });
+  // Snowball: sheds snow as it rolls, more the bigger it has grown
+  amb('snow',(f,e,m,dt)=>{if(f.gone)return;for(let n=FX.due(f.i,'snow',2+(f.s&&f.s.grow||0)*.6,dt);n>0;n--){const c=ring(f,.9);FX.flakes(c[0],c[1],1)}});
+  // Tesla: the coil crackles
+  amb('tesla',(f,e,m,dt)=>{if(f.gone)return;for(let n=FX.due(f.i,'tesla',7,dt);n>0;n--){const c=ring(f,1.05),a=R()*TAU,l=3+R()*7;FX.line(c[0],c[1],c[0]+Math.cos(a)*l,c[1]+Math.sin(a)*l,'#bff4ff',1,.12)}});
+  // Magnet: while it pulls, filings stream in from the rival
+  amb('magnet',(f,e,m,dt)=>{if(f.gone||!(f.s&&f.s.pull>0)||e.gone)return;for(let n=FX.due(f.i,'magnet',22,dt);n>0;n--)FX.seek(e.x,e.y,f.i,1,R()<.5?f.col:'#dfe6f2',0,0,{jit:e.r*1.6,size:1.3,life:.7})});
+  // Mirror: glints
+  amb('mirror',(f,e,m,dt)=>{if(f.gone)return;for(let n=FX.due(f.i,'mirror',2.2,dt);n>0;n--){const c=ring(f,.2+R()*.75);FX.stars(c[0],c[1],1,'#ffffff',{lo:0,hi:5,size:3.6,life:.35})}});
+  // Necromancer: grave-mist
+  amb('necro',(f,e,m,dt)=>{if(f.gone)return;for(let n=FX.due(f.i,'necro',4,dt);n>0;n--){const c=ring(f,1);FX.wisps(c[0],c[1],1,f.col,{life:.6})}});
+  // Painter: drips
+  amb('painter',(f,e,m,dt)=>{if(f.gone)return;for(let n=FX.due(f.i,'paint',6,dt);n>0;n--)FX.drops(f.x+(R()-.5)*f.r*1.4,f.y+f.r*.5,1,f.col,{dir:1.57,spread:.9,lo:10,hi:50})});
+  // Clockmaker: in the last half-second before a freeze, time visibly gathers on the rival
+  amb('clock',(f,e,m,dt)=>{if(f.gone||e.gone||!(f.s&&f.s.t<.55))return;for(let n=FX.due(f.i,'clock',24,dt);n>0;n--)FX.seek(f.x,f.y,e.i,1,'#ffe9b0',0,0,{jit:f.r,size:1.2,life:.6})});
+  // Urchin, Beekeeper, Sapper, Spider: small signs of life
+  amb('spider',(f,e,m,dt)=>{if(f.gone||!(e.slowT>0))return;for(let n=FX.due(f.i,'spider',6,dt);n>0;n--){const c=ring(e,1);FX.wisps(c[0],c[1],1,'#ffffff',{life:.45,size:2.6})}});
+  amb('leech',(f,e,m,dt)=>{if(f.gone||f.hp>f.max*.5)return;for(let n=FX.due(f.i,'leech',5,dt);n>0;n--){const c=ring(f,.9);FX.drops(c[0],c[1],1,'#d8324a',{dir:1.57,spread:.8,lo:8,hi:30})}});
+}

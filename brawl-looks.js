@@ -703,7 +703,7 @@ function drawFighter(f,isYou){
   (L.crest||plainCrest)(IVORY,col);
   g.restore();
   resetInk(alpha);
-  if(hit){g.strokeStyle='rgba(255,255,255,.85)';g.lineWidth=Math.max(.8,r*.06);disc(x,y,r+.8);g.stroke();if(LIVE){FX.glow(g,x,y,r*1.7,'#fff2c4',Math.min(.6,f.flash*5));resetInk(alpha)}}
+  if(hit){g.strokeStyle='rgba(255,255,255,.85)';g.lineWidth=Math.max(.8,r*.06);disc(x,y,r+.8);g.stroke();if(LIVE){FX.glow(g,x,y,r*1.6,'#fff2c4',Math.min(.42,f.flash*3.5));resetInk(alpha)}}
 
   // conditions
   if(f.poisonT>0){
@@ -848,7 +848,7 @@ function drawArena(c,match,you,fx){
       const size=(hit?(fl.big?19:14):heal?12:fl.big?13:11)*pop;
       g.font=(hit?'900 ':'700 ')+size+'px '+FONT;
       g.globalAlpha=Math.min(1,fl.life/.3);
-      const fx0=Math.min(AW-size*1.2,Math.max(size*1.2,fl.x)),fy=Math.max(size*.7,Math.min(AW-size*.6,fl.y));
+      const hw=Math.max(size*1.2,t.length*size*.36+2),fx0=Math.min(AW-hw,Math.max(hw,fl.x)),fy=Math.max(size*.7,Math.min(AW-size*.6,fl.y));
       g.lineWidth=size*.24;g.strokeStyle=hit&&fl.big?'rgba(60,8,0,.88)':'rgba(0,0,0,.82)';g.strokeText(t,fx0,fy);
       g.fillStyle=hit?(fl.big?'#ffb04a':'#ffe2a0'):heal?'#b5ecae':fl.col||IVORY;g.fillText(t,fx0,fy);
     }

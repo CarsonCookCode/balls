@@ -290,7 +290,7 @@ function onEvents(ev){
     else if(e.k==='spawn'){sfx('pop',.6)}
     else if(e.k==='pop'){if(!(match&&e.i>=0&&match.f[e.i].key==='archer'))sfx('tick',.5)}
     else if(e.k==='text'){say(e.x,e.y,String(e.txt),e.col||col,e.big)}
-    else if(e.k==='ko'){shake=9;sfx('rumble',1);sfx('iron',1,.8)}
+    else if(e.k==='ko'){shake=9;if(e.draw)say(AW/2,AW/2+20,'Double knockout','#ffd447',true);else{sfx('rumble',1);sfx('iron',1,.8)}}
   }
   ev.length=0;
 }
@@ -410,6 +410,7 @@ function startClimb(){
 // A climb earns two second chances: a shield on reaching rung SHIELD_RUNG, which the player may raise before one fight
 // of their choosing (lose that fight and the climb goes on), and an extra life after clearing rung LIFE_RUNG, which is
 // spent by itself on the next loss. Either way a saved loss brings a new rival on the same rung, and no boon.
+// A draw (both fall in the same instant) does the same and spends nothing.
 const SHIELD_RUNG=5,LIFE_RUNG=10;
 function nextFight(note){
   run.rival=pickRival(run.rung);run.seed=newSeed();run.armed=false;run.note=note||'';tip=null;
@@ -464,10 +465,17 @@ function readyBody(){
 }
 function fightDone(){
   const left=f=>+Math.max(0,f.hp/f.max).toFixed(2);
-  const saved=match.winner===0?'':run.armed?'shield':run.life>0?'life':'';
-  log('fight',{r:run.rung,win:match.winner===0?1:0,sh:run.armed?1:0,saved,t:+match.t.toFixed(1),hp:[left(match.f[0]),left(match.f[1])],seed:run.seed,sp:speed,
+  const draw=!!match.draw,won=!draw&&match.winner===0;
+  const saved=won||draw?'':run.armed?'shield':run.life>0?'life':'';
+  log('fight',{r:run.rung,win:won?1:0,dr:draw?1:0,sh:run.armed?1:0,saved,t:+match.t.toFixed(1),hp:[left(match.f[0]),left(match.f[1])],seed:run.seed,sp:speed,
     fps:fps.t>0?Math.round(fps.n/fps.t):0,slow:fps.slow,me:logBuild(run.build),vs:Object.assign(logBuild(run.rival),{o:run.rival.owner||''})});
-  if(match.winner===0){
+  if(draw){                                               // both fell at once: nobody wins, nothing is spent, a new rival steps up
+    if(run.armed)run.shield=1;
+    sfx('bell',.9,.8,true);
+    nextFight('A draw: you both fell at once. A new rival steps up.');
+    return;
+  }
+  if(won){
     choice=offers(run.build,Math.random,3);
     if(!choice.length){run.rung++;nextFight();return}      // nothing left to take: just keep climbing
     mode='pick';
@@ -509,6 +517,7 @@ function startDuel(){
 }
 function duelRound(){begin(createMatch(duel.a,duel.b,newSeed()),duel.you,'Today’s duel · round '+duel.round,true);render()}
 function duelDone(){
+  if(match.draw){duelRound();return}                      // a double knockout settles nothing: the round is fought again
   duel.score[match.winner]++;
   if(duel.score[match.winner]>=2){duel.done=true;duel.winner=match.winner;log('duelend',{score:duel.score,win:duel.winner});if(window.Broadcast&&Broadcast.finish)Broadcast.finish();sfx('toll',1,1,true);sfx('coins',.8,1,true);render()}
   else{duel.round++;duelRound()}

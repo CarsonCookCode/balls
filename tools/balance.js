@@ -8,6 +8,7 @@
 //   node tools/balance.js stacks                               what each extra copy of a stackable upgrade is worth
 //   node tools/balance.js pairs                                upgrades that are far stronger together than apart
 //   node tools/balance.js climb [--n 30]                       real climbs: random picks vs a player who tests every offer first
+//   node tools/balance.js styles [--n 6]                       ways of playing against each other (burst, tank, sustain, tricks, speed...): how far each climbs, how long its fights last
 //   node tools/balance.js all                                  everything, with the red flags gathered at the end
 // Common options: --with file.js (also load a file that duel.html does not list yet), --workers N, --seed N, --json out.json
 //
@@ -15,7 +16,7 @@
 const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
 const fs = require('fs'), path = require('path'), os = require('os');
 const ROOT = path.join(__dirname, '..');
-const EXPORT = ';return {FIGHTERS,ROSTER,UPGRADES,UP_IDS,STRENGTHS,SIZES,makeBuild,canTake,addUpgrade,offers,rival,createMatch,mulberry32,typeOf,upName};';
+const EXPORT = ';return {FIGHTERS,ROSTER,UPGRADES,UP_IDS,STRENGTHS,SIZES,makeBuild,canTake,addUpgrade,offers,rival,createMatch,mulberry32,typeOf,upName,effHp,effDmg,effSpd};';
 
 function simFiles(extra) {
   const html = fs.readFileSync(path.join(ROOT, 'duel.html'), 'utf8');
@@ -58,7 +59,7 @@ function workerMain() {
       const out = [];
       for (const seed of p.seeds) {
         const rnd = S.mulberry32(seed), b = build(p.spec), fights = []; let rung = 1; const p0 = count;
-        const off = {}, got = {};
+        const off = {}, got = {}; let secs = 0, quick = 0, played = 0; const late = [0, 0];
         // the two second chances a player gets: a shield from rung 5 and an extra life after rung 10. The shield is the
         // player's to place; here it is simply spent on the first loss, which is the least it is worth.
         let shield = 0, life = 0, gotShield = false, gotLife = false;
@@ -66,6 +67,7 @@ function workerMain() {
           if (rung >= 5 && !gotShield) { gotShield = true; shield = 1; }
           if (rung > 10 && !gotLife) { gotLife = true; life = 1; }
           const res = play(b, S.rival(rung, rnd), (rnd() * 2147483647) | 0);
+          secs += res.t; played++; if (res.t < 3) quick++; if (rung >= 8) { late[0] += res.t; late[1]++; }
           if (res.draw && fights.length < p.cap * 6) { fights.push(0); continue; }   // a draw: a new rival on the same rung, nothing spent
           const won = res.winner === 0 && !res.draw;
           fights.push(won ? 1 : 0);
@@ -82,13 +84,14 @@ function workerMain() {
                 if (w > best) { best = w; pick = id; }
               }
             } else if (p.policy && p.policy.prefer && o.includes(p.policy.prefer)) pick = p.policy.prefer;
+            else if (p.policy && p.policy.prefs) { const w = p.policy.prefs.find(id => o.includes(id)); if (w) pick = w; }
             for (const id of o) off[id] = (off[id] || 0) + 1;
             got[pick] = (got[pick] || 0) + 1;
             S.addUpgrade(b, pick);
           }
           rung++;
         }
-        out.push({ r: rung - 1, fights, off, got, ups: b.ups.slice(), capped: rung > p.cap, n: count - p0 });
+        out.push({ r: rung - 1, fights, off, got, ups: b.ups.slice(), capped: rung > p.cap, n: count - p0, secs, quick, played, late });
       }
       return out;
     },
@@ -327,6 +330,36 @@ async function main() {
     report.pairs = out.slice(0, 40).map(x => ({ a: x.a, b: x.b, alone: [+x.da.toFixed(3), +x.db.toFixed(3)], together: +x.dab.toFixed(3) }));
   }
 
+  // ----- styles: does one way of playing beat the rest?
+  const STYLES = {
+    'burst (the one-hit build)': ['glass', 'ambush', 'revive', 'shield', 'sig', 'bloodpact', 'sharper', 'blitz', 'crit', 'dodge', 'heavyhit', 'execute'],
+    'tank': ['tougher', 'armor', 'bulk', 'colossus', 'plating', 'brace', 'shield', 'revive', 'barrier', 'clutch', 'regen', 'sig'],
+    'sustain': ['vampire', 'regen', 'siphon', 'mending', 'sig', 'tougher', 'armor', 'decay', 'thorns', 'barrier'],
+    'tricks': ['sig', 'frost', 'icyskin', 'poison', 'concuss', 'decay', 'sunder', 'static', 'thorns', 'nova', 'shoulder', 'hornet', 'sidearm', 'packlead', 'rounds'],
+    'speed': ['faster', 'shrink', 'pocket', 'momentum', 'combo', 'whirlwind', 'adrenaline', 'lunge', 'sig', 'blitz', 'ricochet', 'keepaway'],
+    'own upgrade first': ['sig'],
+    'random picks': [],
+  };
+  async function styles(n, focus) {
+    const CAP = 60, rows = [];
+    for (const name in STYLES) {
+      const jobs = (focus || K).map((key, ci) => { const seeds = []; for (let q = 0; q < n; q++) seeds.push(hash(ci, q, 77)); return pool.run('climbs', { dmg, spec: { k: key, s: hash(ci, 77, 1) % 3, z: hash(ci, 77, 2) % 3 }, policy: { prefs: STYLES[name] }, seeds, cap: CAP, K: 0 }); });
+      const res = (await Promise.all(jobs)).flat(); for (const x of res) played += x.n;
+      const v = res.map(x => x.r).sort((a, b) => a - b), sum = k => res.reduce((a, x) => a + x[k], 0);
+      const late = res.reduce((a, x) => [a[0] + x.late[0], a[1] + x.late[1]], [0, 0]);
+      rows.push({ name, mean: v.reduce((a, b) => a + b, 0) / v.length, med: v[v.length >> 1], p90: v[Math.floor(v.length * .9)], max: v[v.length - 1], secs: sum('secs') / sum('played'), quick: sum('quick') / sum('played'), late: late[1] ? late[0] / late[1] : 0 });
+    }
+    console.log('\nSTYLES: ' + n + ' climbs per class for each way of playing (a wish list of upgrades, taken whenever offered)');
+    console.log(pad('style', 28) + 'rungs: mean  middle  top-tenth  best    fight: seconds  from rung 8  under 3s');
+    for (const x of rows) console.log(pad(x.name, 28) + lpad(x.mean.toFixed(1), 11) + lpad(x.med, 8) + lpad(x.p90, 11) + lpad(x.max, 6) + lpad(x.secs.toFixed(1), 18) + lpad(x.late ? x.late.toFixed(1) : '-', 13) + lpad(pct(x.quick), 10));
+    const means = rows.filter(x => x.name !== 'random picks').map(x => x.mean).sort((a, b) => a - b), mid = means[means.length >> 1];
+    for (const x of rows) {
+      if (x.name !== 'random picks' && x.mean > mid * 1.5 && x.mean - mid > 2) flag('one way to play beats the rest', x.name + ' climbs ' + x.mean.toFixed(1) + ' rungs on average; the middle style manages ' + mid.toFixed(1));
+      if (x.max >= CAP) flag('unbeatable style', x.name + ' reached rung ' + CAP);
+      if (x.quick > .2) flag('fights over in a blink', pct(x.quick) + ' of the fights of ' + x.name + ' end in under 3 seconds');
+    }
+    report.styles = rows.map(x => ({ name: x.name, mean: +x.mean.toFixed(2), best: x.max, secs: +x.secs.toFixed(1), quick: +x.quick.toFixed(3) }));
+  }
   // ----- climb: the real game loop
   async function climb(n, K2) {
     const CAP = 60, run = async (policy, keys, count, salt) => {
@@ -401,7 +434,8 @@ async function main() {
   else if (mode === 'stacks') await stacks(+opt('ctx', 40), +opt('m', 8));
   else if (mode === 'pairs') await pairs(+opt('ctx', 24), +opt('m', 6));
   else if (mode === 'climb') await climb(+opt('n', 30), +opt('k', 9));
-  else if (mode === 'all') { await classes(+opt('n', 12), null); await boons(+opt('reps', 3), 8); await sig(K, 12, 8); await stacks(40, 8); await pairs(24, 6); await climb(+opt('n', 30), 9); }
+  else if (mode === 'styles') await styles(+opt('n', 6), focus);
+  else if (mode === 'all') { await classes(+opt('n', 12), null); await boons(+opt('reps', 3), 8); await sig(K, 12, 8); await stacks(40, 8); await pairs(24, 6); await climb(+opt('n', 30), 9); await styles(6); }
   else { console.log('unknown mode ' + mode + '; see the top of tools/balance.js'); }
   console.log('\nRED FLAGS (' + flags.length + ')' + (flags.length ? '' : ': none'));
   for (const f of flags.sort()) console.log('  ' + f);

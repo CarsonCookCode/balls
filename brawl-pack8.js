@@ -229,7 +229,7 @@ BEHAVE.bowler={
       if(b.x<-b.r||b.x>AW+b.r||b.y<-b.r||b.y>AW+b.r){
         m.events.push({k:'fx',n:'poof',x:Math.min(AW-2,Math.max(2,b.x)),y:Math.min(AW-2,Math.max(2,b.y)),r:b.r+5,i:f.i});   // into the pit
         m.events.push({k:'fx',n:'sparks',x:Math.min(AW-2,Math.max(2,b.x)),y:Math.min(AW-2,Math.max(2,b.y)),num:5,col:'#ffe2a0',lo:50,hi:150,life:.24,i:f.i});
-        S.ball=null;S.t=D.cd/(1+.2*f.sig)/f.spdMul;
+        S.ball=null;S.t=D.cd/(1+.1*f.sig)/f.spdMul;
       }
       return;
     }
@@ -237,7 +237,7 @@ BEHAVE.bowler={
       const sp=300;
       S.lane.t-=DT;S.lane.an=p8lead(f,e,sp,.75);
       if(S.lane.t<=0||e.gone){
-        const an=S.lane.an,r=9+2.5*f.sig;
+        const an=S.lane.an,r=9+1.5*f.sig;
         S.ball={x:f.x+Math.cos(an)*f.r,y:f.y+Math.sin(an)*f.r,vx:Math.cos(an)*sp,vy:Math.sin(an)*sp,r,rot:0,hit:0};
         S.lane=null;
         m.events.push({k:'shot',x:f.x,y:f.y,i:f.i});
@@ -627,7 +627,7 @@ LOOKS.bowler={
       for(let n=FX.due(f.i,'roll',18,dt);n>0;n--)FX.dust(b.x+p8rnd()*b.r,b.y+p8rnd()*b.r,1,null,{lo:4,hi:20,life:.4,size:3});
       for(let n=FX.due(f.i,'rollsp',7,dt);n>0;n--)FX.sparks(b.x,b.y,1,'#ffe2a0',{dir:Math.atan2(-b.vy,-b.vx),spread:1,lo:20,hi:80,life:.2,size:1});
     }else if(L&&!f.gone){                                 // sighting: lights run down the lane
-      const c=Math.cos(L.an),s=Math.sin(L.an),w=10+2.5*f.sig;
+      const c=Math.cos(L.an),s=Math.sin(L.an),w=10+1.5*f.sig;
       for(let n=FX.due(f.i,'lane',10,dt);n>0;n--){const d=f.r+Math.random()*150,k=Math.random()<.5?-1:1;FX.stars(f.x+c*d-s*w*k,f.y+s*d+c*w*k,1,'#f3ead6',{lo:0,hi:5,size:2.2,life:.25})}
     }
   },
@@ -641,7 +641,7 @@ LOOKS.bowler={
   under(f){                                               // the lane it is sighting down
     const L=f.s.lane;
     if(!L)return;
-    const c=Math.cos(L.an),s=Math.sin(L.an),w=10+2.5*f.sig,len=AW*1.5,p=Math.max(0,Math.min(1,1-L.t/.45));
+    const c=Math.cos(L.an),s=Math.sin(L.an),w=10+1.5*f.sig,len=AW*1.5,p=Math.max(0,Math.min(1,1-L.t/.45));
     g.fillStyle='rgba(243,234,214,'+(.05+.1*p).toFixed(3)+')';
     g.beginPath();g.moveTo(f.x-s*w,f.y+c*w);g.lineTo(f.x-s*w+c*len,f.y+c*w+s*len);g.lineTo(f.x+s*w+c*len,f.y-c*w+s*len);g.lineTo(f.x+s*w,f.y-c*w);g.closePath();g.fill();
     g.strokeStyle='rgba(243,234,214,'+(.25+.4*p).toFixed(3)+')';g.lineWidth=.8;g.setLineDash([5,4]);

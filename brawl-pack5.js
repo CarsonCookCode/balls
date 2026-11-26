@@ -12,9 +12,9 @@ FIGHTERS.glitch   ={name:'Glitch',     color:'#c23bd4',hp:100,speed:175,spin:0, 
 FIGHTERS.laser    ={name:'Laser',      color:'#d43b3b',hp:100,speed:170,spin:0,  dmg:12.71, cd:1.5,arms:[],desc:'Stops, charges, then burns a beam right across the arena.',sig:['Overcharge','A wider beam that burns for longer'],sfx:{hit:''}};
 FIGHTERS.railgun  ={name:'Railgun',    color:'#3f6fd8',hp:100,speed:160,spin:0,  dmg:44.62,cd:2.55,arms:[],desc:'Takes aim for a second, then one shot that really hurts.',sig:['Capacitors','Reloads sooner and locks on later'],sfx:{hit:'iron',shot:'gun'}};
 FIGHTERS.engineer ={name:'Engineer',   color:'#d98a2b',hp:100,speed:165,spin:4.4,dmg:16.58,cd:.5, arms:[{a:0,l:16,d:.6}],desc:'Builds little turrets. Run them over to get rid of them.',sig:['Better turrets','One more turret, and they all shoot faster'],sfx:{hit:'metal',shot:'pop'}};
-FIGHTERS.battery  ={name:'Battery',    color:'#8fbf2f',hp:100,speed:185,spin:0,  dmg:20.72,cd:.5, arms:[],desc:'Stores every hit it takes and gives it back on the next touch.',sig:['Bigger cells','A stronger discharge'],sfx:{hit:'punch'}};
+FIGHTERS.battery  ={name:'Battery',    color:'#8fbf2f',hp:100,speed:185,spin:0,  dmg:24.35,cd:.5, arms:[],desc:'Stores every hit it takes and gives it back on the next touch.',sig:['Bigger cells','A stronger discharge'],sfx:{hit:'punch'}};
 FIGHTERS.chainsaw ={name:'Chainsaw',   color:'#c9562e',hp:100,speed:165,spin:0,  dmg:7.49, cd:.5, arms:[],desc:'Cuts faster the longer it stays on you. A hard hit knocks it loose.',sig:['Bigger engine','Revs up sooner and cuts faster'],sfx:{hit:'tin'}};
-FIGHTERS.roomba   ={name:'Roomba',     color:'#8e9aa6',hp:100,speed:175,spin:0,  dmg:14.75,cd:.45,arms:[],desc:'Bumps and turns. Its vacuum eats traps, shots and minions to heal.',sig:['Stronger suction','Pulls harder, reaches further and heals more'],sfx:{hit:'thump'}};
+FIGHTERS.roomba   ={name:'Roomba',     color:'#8e9aa6',hp:100,speed:175,spin:0,  dmg:14.75,cd:.45,arms:[],desc:'Bumps and turns. Its vacuum eats traps, shots and minions to heal.',sig:['Stronger suction','Pulls harder, reaches further, heals more and bumps harder'],sfx:{hit:'thump'}};
 ROSTER.push('netrunner','drone','mech','glitch','laser','railgun','engineer','battery','chainsaw','roomba');
 
 const P5_TAU=6.2832;
@@ -260,7 +260,7 @@ BEHAVE.engineer={
     if(S.t<=0){
       S.t=.5;
       let near=false;for(const q of T)if(Math.hypot(q.x-f.x,q.y-f.y)<46)near=true;
-      if(T.length<2+f.sig&&!near){S.t=(2.4-.3*f.sig)/f.spdMul;T.push({x:p5clamp(f.x,8),y:p5clamp(f.y,8),t:.7,life:9+2*f.sig,an:f.aim});m.events.push({k:'mine',x:f.x,y:f.y,i:f.i});
+      if(T.length<2+f.sig&&!near){S.t=(2.4-.15*f.sig)/f.spdMul;T.push({x:p5clamp(f.x,8),y:p5clamp(f.y,8),t:.7,life:9+f.sig,an:f.aim});m.events.push({k:'mine',x:f.x,y:f.y,i:f.i});
         m.events.push({k:'fx',n:'sparks',x:f.x,y:f.y,num:9,col:'#ffd27a',lo:60,hi:180,life:.3,grav:220,i:f.i});m.events.push({k:'fx',n:'poof',x:f.x,y:f.y,r:10,i:f.i})}
     }
     for(let i=T.length-1;i>=0;i--){
@@ -274,7 +274,7 @@ BEHAVE.engineer={
         T.splice(i,1);continue;
       }
       q.t-=DT;
-      if(q.t<=0&&!e.gone){q.t=1.15/(1+.2*f.sig)/f.spdMul;p5shot(f,m,q.x+Math.cos(q.an)*8,q.y+Math.sin(q.an)*8,q.an+(m.rnd()-.5)*.16,D.dmg*.55)}
+      if(q.t<=0&&!e.gone){q.t=1.15/(1+.08*f.sig)/f.spdMul;p5shot(f,m,q.x+Math.cos(q.an)*8,q.y+Math.sin(q.an)*8,q.an+(m.rnd()-.5)*.16,D.dmg*.55)}
     }
   }};
 
@@ -410,7 +410,7 @@ BEHAVE.roomba={
       if(h>.05){f.hp+=h;m.events.push({k:'heal',x:f.x,y:f.y,dmg:h,i:f.i})}
     }
   },
-  touch:()=>FIGHTERS.roomba.dmg,
+  touch:f=>FIGHTERS.roomba.dmg*(1+.12*f.sig),
   dealt(f,v,dmg,m){m.knock(v,f)}};
 
 // ---------- art ----------

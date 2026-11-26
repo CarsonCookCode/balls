@@ -593,7 +593,7 @@ const FX=(()=>{
       for(let k=0;k<N;k++){const a=k/N*TAU+.6;g.beginPath();g.arc(x+Math.cos(a)*r*.955,y+Math.sin(a)*r*.955,Math.max(.8,r*.05),0,TAU);g.fill();g.stroke()}
     }
     if(u.bar>0){                                            // the barrier: a gold dome that thins as it is spent
-      const k=Math.min(1,u.bar/30);
+      const k=Math.min(1,u.bar/40);
       g.globalAlpha=alpha*(.1+.1*k);g.fillStyle=GOLDC;g.beginPath();g.arc(x,y,r+7,0,TAU);g.fill();
       g.globalAlpha=alpha*(.5+.4*k);g.strokeStyle=GOLDC;g.lineWidth=1.1+.9*k;g.stroke();
       g.globalAlpha=alpha*.8;g.strokeStyle='#fff6d8';g.lineWidth=.5;g.beginPath();g.arc(x,y,r+7,-2.3+Math.sin(clock*2)*.3,-1.2+Math.sin(clock*2)*.3);g.stroke();

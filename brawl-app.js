@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 31';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 32';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -70,7 +70,7 @@ function summary(b){
 function dayKey(){const d=new Date();return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0')}
 // the play log (see Net.log): every fight, boon and tap, so play can be reviewed afterwards
 const log=(ev,d)=>{try{Net.log(dayKey(),ev,d)}catch(e){}};
-const logBuild=b=>({k:b.key,s:b.str,z:b.size,u:b.ups,hp:Math.round(b.hp),d:+b.dmg.toFixed(2)});
+const logBuild=b=>({k:b.key,s:b.str,z:b.size,u:b.ups,hp:Math.round(effHp(b)),d:+effDmg(b).toFixed(2)});
 function daySeed(s){let h=2166136261;for(let i=0;i<s.length;i++)h=Math.imul(h^s.charCodeAt(i),16777619);return h>>>0}
 const boardReady=()=>board.bots.length>=BOTS;
 function addBot(){
@@ -456,7 +456,7 @@ function readyBody(){
     `<div class="duo"><div class="side"><canvas data-face="0" width="${FACE}" height="${FACE}"></canvas><small>You</small><b>${typeOf(a)}</b></div><span class="vs">vs</span>`+
       `<div class="side"><canvas data-face="1" width="${FACE}" height="${FACE}"></canvas><small>${b.owner?esc(b.owner):'House'}</small><b>${typeOf(b)}</b></div></div>`+
     `<div class="mu">`+
-      row('Health',FIGHTERS[a.key].hp*a.hp,FIGHTERS[b.key].hp*b.hp,1)+row('Damage',a.dmg*100,b.dmg*100,2)+row('Speed',a.spd*100,b.spd*100,2)+row('Size',sizeWord(a.r),sizeWord(b.r),0)+
+      row('Health',effHp(a),effHp(b),1)+row('Damage',effDmg(a)*100,effDmg(b)*100,2)+row('Speed',effSpd(a)*100,effSpd(b)*100,2)+row('Size',sizeWord(a.r),sizeWord(b.r),0)+
     `</div>`+(a.ups.length||b.ups.length?`<p class="stepn sub">Upgrades · tap one to read it</p>`:'')+
     `<div class="mu2"><div class="chips">${chips(a,0,compact)}</div><div class="chips">${chips(b,1,compact)}</div></div>`+tipLine(a,b)+
     (run.shield>0?`<button type="button" id="btnArm" class="arm" data-act="arm" aria-pressed="${run.armed}">${run.armed?'Shield raised: lose this fight and you climb on':'Raise your shield for this fight'}</button>`:'')+

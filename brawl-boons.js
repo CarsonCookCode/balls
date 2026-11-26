@@ -27,15 +27,15 @@ const bnHeal=(f,h,m)=>{h=Math.min(h,f.max-f.hp);if(h>.05){f.hp+=h;if(h>=1)m.even
 
 Object.assign(UPGRADES,{
   // ----- damage with a price or a condition
-  glass:    {name:'Glass cannon', text:'45% more damage, 20% less health',max:2,apply:b=>{b.dmg*=1.45;b.hp*=.8}},
-  heavyhit: {name:'Heavy hands',  text:'30% more damage, but 15% slower at everything',max:2,apply:b=>{b.dmg*=1.3;b.spd*=.85}},
-  bloodpact:{name:'Blood pact',   text:'35% more damage; every hit you land costs you 2% of your health',max:2,apply:b=>{b.dmg*=1.35},
+  glass:    {name:'Glass cannon', text:'+60% damage, -15% health',max:2,apply:b=>{b.ad+=.6;b.ah-=.15}},
+  heavyhit: {name:'Heavy hands',  text:'+30% damage, -15% speed at everything',max:2,apply:b=>{b.ad+=.3;b.as-=.15}},
+  bloodpact:{name:'Blood pact',   text:'+50% damage; every hit you land costs you 2% of your health',max:2,apply:b=>{b.ad+=.5},
     hooks:{hit(f,v,dmg,m,n){f.hp=Math.max(1,f.hp-f.max*.02*n);m.events.push({k:'proc',id:'bloodpact',i:f.i})}}},
   wild:     {name:'Wild swings',  text:'Every hit deals anywhere from 40% to 200% of its damage',max:1,
     hooks:{deal(f,v,dmg,m){const k=.4+1.6*m.rnd();m.events.push({k:'proc',id:'wild',i:f.i,n:k});return dmg*k}}},
-  execute:  {name:'Executioner',  text:'70% more damage to a rival below 40% health',max:2,
+  execute:  {name:'Executioner',  text:'+70% damage to a rival below 40% health',max:2,
     hooks:{deal(f,v,dmg,m,n){if(!(v.hp<v.max*.4))return dmg;m.events.push({k:'proc',id:'execute',i:f.i});return dmg*(1+.7*n)}}},
-  blitz:    {name:'Blitz',        text:'50% more damage for the first 6 seconds of a fight',max:2,
+  blitz:    {name:'Blitz',        text:'+50% damage for the first 6 seconds of a fight',max:2,
     hooks:{deal(f,v,dmg,m,n){if(!(m.t<6))return dmg;m.events.push({k:'proc',id:'blitz',i:f.i});return dmg*(1+.5*n)}}},
   slowburn: {name:'Slow burn',    text:'6% more damage for every 2 seconds the fight lasts, up to 60%',max:2,
     hooks:{deal:(f,v,dmg,m,n)=>dmg*(1+Math.min(.6,.06*Math.floor(m.t/2))*n)}},
@@ -49,8 +49,8 @@ Object.assign(UPGRADES,{
     hooks:{deal(f,v,dmg,m,n){const k=Math.min(.5,Math.max(0,1.1*(f.speed/170-1)));if(k>.05)m.events.push({k:'proc',id:'momentum',i:f.i});return dmg*(1+k*n)}}},
   bully:    {name:'Bully',        text:'50% more damage to a rival smaller than you',max:2,
     hooks:{deal(f,v,dmg,m,n){if(!(v.r<f.r-.5))return dmg;m.events.push({k:'proc',id:'bully',i:f.i});return dmg*(1+.5*n)}}},
-  underdog: {name:'Underdog',     text:'45% more damage to a rival bigger than you',max:2,
-    hooks:{deal(f,v,dmg,m,n){if(!(v.r>f.r+.5))return dmg;m.events.push({k:'proc',id:'underdog',i:f.i});return dmg*(1+.45*n)}}},
+  underdog: {name:'Underdog',     text:'+60% damage to a rival bigger than you',max:2,
+    hooks:{deal(f,v,dmg,m,n){if(!(v.r>f.r+.5))return dmg;m.events.push({k:'proc',id:'underdog',i:f.i});return dmg*(1+.6*n)}}},
   ricochet: {name:'Ricochet',     text:'Your next hit within 0.6 seconds of a wall bounce deals 45% more',max:2,
     hooks:{bounce(f,m){f.u.rcT=m.t+.6},deal(f,v,dmg,m,n){if(m.t<(f.u.rcT||0)){f.u.rcT=0;m.events.push({k:'proc',id:'ricochet',i:f.i});return dmg*(1+.45*n)}return dmg}}},
   // ----- answers to a rival that stacked one thing
@@ -79,8 +79,8 @@ Object.assign(UPGRADES,{
     hooks:{bounce(f,m){f.u.rbT=m.t+.5},take(f,s,dmg,m,n){if(!(m.t<(f.u.rbT||0)))return dmg;m.events.push({k:'proc',id:'rebound',i:f.i});return dmg*(1-.35*n*(n>1?.85:1))}}},
   clutch:   {name:'Clutch',       text:'Below 30% health, take 50% less damage',max:2,
     hooks:{take(f,s,dmg,m,n){if(!(f.hp<f.max*.3))return dmg;m.events.push({k:'proc',id:'clutch',i:f.i});return dmg*(n>1?.35:.5)}}},
-  barrier:  {name:'Barrier',      text:'Start every fight behind a barrier that soaks up 30 damage',max:2,
-    hooks:{init(f,n){f.u.bar=30*n},take(f,s,dmg,m){const u=f.u;if(!(u.bar>0))return dmg;const a=Math.min(u.bar,dmg);u.bar-=a;m.events.push({k:'proc',id:'barrier',i:f.i,n:u.bar>0?u.bar:0});if(!(u.bar>0))m.events.push({k:'text',x:f.x,y:f.y-f.r,txt:'Barrier down'});return dmg-a}}},
+  barrier:  {name:'Barrier',      text:'Start every fight behind a barrier that soaks up 40 damage',max:2,
+    hooks:{init(f,n){f.u.bar=40*n},take(f,s,dmg,m){const u=f.u;if(!(u.bar>0))return dmg;const a=Math.min(u.bar,dmg);u.bar-=a;m.events.push({k:'proc',id:'barrier',i:f.i,n:u.bar>0?u.bar:0});if(!(u.bar>0))m.events.push({k:'text',x:f.x,y:f.y-f.r,txt:'Barrier down'});return dmg-a}}},
   // ----- hitting back, healing, last gasps
   static:   {name:'Static',       text:'When you are hit, zap the attacker for 4.5 (once a second)',max:3,
     hooks:{hurt(f,s,dmg,m,n){if(m.t<(f.u.stT||0)||s.hp<=0)return;f.u.stT=m.t+1;m.events.push({k:'zap',x:f.x,y:f.y,x2:s.x,y2:s.y,i:f.i});m.events.push({k:'proc',id:'static',i:f.i});m.hurt(s,4.5*n*f.dmgMul,f,true)}}},
@@ -117,8 +117,8 @@ Object.assign(UPGRADES,{
   concuss:  {name:'Concussion',   text:'Every 5 seconds, your next hit dazes the rival for 0.6 seconds',max:1,
     hooks:{hit(f,v,dmg,m){if(m.t<(f.u.ccT===undefined?2:f.u.ccT)||v.hp<=0)return;f.u.ccT=m.t+5;v.stunT=Math.max(v.stunT,.6);m.events.push({k:'text',x:v.x,y:v.y-v.r,txt:'Dazed'});m.events.push({k:'proc',id:'concuss',i:f.i})}}},
   // ----- size
-  pocket:   {name:'Pocket-sized', text:'Much smaller and 20% faster, with 15% less health',max:1,apply:b=>{b.r=Math.max(13,b.r*.74);b.hp*=.85;b.spd*=1.2}},
-  colossus: {name:'Colossus',     text:'Much bigger with 50% more health, but 15% slower',max:1,apply:b=>{b.r=Math.min(40,b.r*1.3);b.hp*=1.5;b.spd*=.85}},
+  pocket:   {name:'Pocket-sized', text:'Much smaller, +20% speed, -15% health',max:1,apply:b=>{b.r=Math.max(13,b.r*.74);b.ah-=.15;b.as+=.2}},
+  colossus: {name:'Colossus',     text:'Much bigger, +50% health, -15% speed',max:1,apply:b=>{b.r=Math.min(40,b.r*1.3);b.ah+=.5;b.as-=.15}},
   // ----- weapons, minions and shots
   whirlwind:{name:'Whirlwind',    text:'Your blades spin 40% faster and hit 12% harder',max:2,needsArm:true,
     hooks:{init(f,n){f.spin*=1+.4*n;for(const a of f.arms)a.dmg*=1+.12*n}}},

@@ -2,6 +2,10 @@
 // Pure simulation, no DOM. Two balls bounce around a square arena at constant speed; each class brings one mechanic of its own.
 // To add a class: one row in FIGHTERS, one block in BEHAVE, and (on the page side) one block in LOOKS.
 const AW=260,DT=1/60,R=24,SUDDEN=30,TIMEOUT=70,GP=13,PC=AW/GP;
+// The pace of a fight. HP_SCALE multiplies every fighter's health (a class's `hp` of 100 is 140 in the arena), so fights
+// last long enough for each fighter's trick to show more than once. HIT_CAP is the most of a fighter's health one blow
+// can take: nothing dies to a single hit.
+const HP_SCALE=1.4,HIT_CAP=.5;
 // dmg is the class's one damage dial: everything the class does scales from it, so the balance test can tune a single number.
 const FIGHTERS={
   blade:  {name:'Knight',     color:'#ff6a4d',hp:100,speed:170,spin:5.0,dmg:27.88,  cd:.35,arms:[{a:0,l:36}],desc:'A long sword that never stops spinning.',sig:['Greatsword','A longer sword that hits harder']},
@@ -13,16 +17,16 @@ const FIGHTERS={
   twin:   {name:'Ninja',      color:'#ff6ac1',hp:100,speed:170,spin:6.0,dmg:15.45,cd:.22,arms:[{a:0,l:24},{a:Math.PI,l:24}],desc:'Two short blades, twice the spin.',sig:['Another blade','One more blade in the whirl']},
   fury:   {name:'Berserker',  color:'#2fd6b5',hp:100,speed:170,spin:4.5,dmg:19.79,  cd:.35,arms:[{a:0,l:30}],rage:17,desc:'Hits harder the closer it is to losing.',sig:['Blood rage','Its rage builds 40% higher']},
   comet:  {name:'Comet',      color:'#ff9d2e',hp:100,speed:215,spin:0,  dmg:6.39,   cd:.3, arms:[],desc:'Leaves a burning trail that hurts to cross.',sig:['Long tail','The trail burns for longer']},
-  bramble:{name:'Bramble',    color:'#4fbf5b',hp:100,speed:185,spin:0,  dmg:12.65,  cd:.7, arms:[],desc:'Every wall it touches grows thorns.',sig:['Overgrowth','More thorns, and longer ones']},
+  bramble:{name:'Bramble',    color:'#4fbf5b',hp:100,speed:185,spin:0,  dmg:10.86,  cd:.7, arms:[],desc:'Every wall it touches grows thorns.',sig:['Overgrowth','More thorns, and longer ones']},
   bees:   {name:'Beekeeper',  color:'#f2c230',hp:100,speed:160,spin:0,  dmg:8.48,   cd:1.0,arms:[],desc:'Releases bees that chase the rival.',sig:['Angry swarm','Faster bees that each sting once more']},
   ghost:  {name:'Ghost',      color:'#cfd6ff',hp:100,speed:165,spin:0,  dmg:30.71,  cd:.5, arms:[],desc:'Fades out of reach, then strikes as it returns.',sig:['Haunting','Fades out more often']},
   snow:   {name:'Snowball',   color:'#dff3ff',hp:100,speed:190,spin:0,  dmg:9.84,   cd:.5, arms:[],desc:'Grows with every bounce: bigger, slower, harder hitting.',sig:['Avalanche','Grows faster']},
   tesla:  {name:'Tesla',      color:'#7fe7ff',hp:100,speed:165,spin:0,  dmg:6.06,   cd:.45,arms:[],desc:'Arcs lightning to the rival whenever they get close.',sig:['High voltage','Lightning reaches further']},
   magnet: {name:'Magnet',     color:'#e2526f',hp:100,speed:160,spin:0,  dmg:30.91,  cd:1.4,arms:[],desc:'Drags the rival in, then blasts them away.',sig:['Stronger field','A bigger, harder blast, more often']},
   mirror: {name:'Mirror',     color:'#a9b8d9',hp:100,speed:175,spin:0,  dmg:11.3,   cd:.5, arms:[],desc:'Splits off a copy of itself whenever it is hit.',sig:['Hall of mirrors','More copies, sooner, and they hit harder']},
-  spider: {name:'Spider',     color:'#8a6bd1',hp:100,speed:195,spin:0,  dmg:8.88,   cd:.5, arms:[],desc:'Strings webs between walls that slow whoever crosses.',sig:['More silk','More webs at once']},
-  necro:  {name:'Necromancer',color:'#6fd3a0',hp:100,speed:160,spin:4.6,dmg:14.67,  cd:.45,arms:[{a:0,l:30}],desc:'Every wound it deals raises a minion.',sig:['Horde','More minions, tougher and quicker']},
-  painter:{name:'Painter',    color:'#ff7fd0',hp:100,speed:200,spin:0,  dmg:3.59, cd:.25,arms:[],desc:'Paints the floor. Its paint heals it and hurts the rival.',sig:['Wide brush','Paints a wider stripe']},
+  spider: {name:'Spider',     color:'#8a6bd1',hp:100,speed:195,spin:0,  dmg:8.84,   cd:.5, arms:[],desc:'Strings webs between walls that slow whoever crosses.',sig:['More silk','More webs at once']},
+  necro:  {name:'Necromancer',color:'#6fd3a0',hp:100,speed:160,spin:4.6,dmg:12.33,  cd:.45,arms:[{a:0,l:30}],desc:'Every wound it deals raises a minion.',sig:['Horde','More minions, tougher and quicker']},
+  painter:{name:'Painter',    color:'#ff7fd0',hp:100,speed:200,spin:0,  dmg:3.14, cd:.25,arms:[],desc:'Paints the floor. Its paint heals it and hurts the rival.',sig:['Wide brush','Paints a wider stripe']},
   clock:  {name:'Clockmaker', color:'#d9b36c',hp:100,speed:160,spin:4.2,dmg:21.34,  cd:.4, arms:[{a:0,l:34},{a:Math.PI,l:20,d:.6,rate:.4}],desc:'Freezes the rival for a moment every few seconds.',sig:['Slow time','Longer freezes, more often']},
 };
 const ROSTER=Object.keys(FIGHTERS);
@@ -36,7 +40,11 @@ const SIZES=[
   {label:'Medium',text:'No tricks, no weak spots',r:24,hp:1},
   {label:'Big',   text:'Extra health, easy to hit',r:31,hp:1.12},
 ];
-// Upgrades picked during a climb. Every pick is counted in build.p. An upgrade can have:
+// Upgrades picked during a climb. Every pick is counted in build.p.
+// Percentages ADD: a build keeps ah, ad and as (health, damage and speed bonuses, as fractions) and two +25% make +50%,
+// not +56%. Bonuses to one hit (first hit, critical, a `deal` hook) join the damage pool the same way. This is what keeps
+// a long climb from snowballing: the ladder grows steadily, so the player must too.
+// An upgrade can have:
 //   apply(b)   changes the build's numbers when it is picked
 //   only(b)    false when this build cannot take it
 //   hooks      functions the match calls for a fighter that has it; n is how many times it was picked:
@@ -56,23 +64,23 @@ const SIZES=[
 // `sig` is the class's own upgrade: its name and text come from the class.
 const UPGRADES={
   sig:      {name:'Signature',  text:'',max:3},
-  tougher:  {name:'Tougher',    text:'25% more health',max:9,apply:b=>{b.hp*=1.25}},
-  sharper:  {name:'Sharper',    text:'25% more damage',max:9,apply:b=>{b.dmg*=1.25}},
-  faster:   {name:'Faster',     text:'Move, spin and strike 20% faster',max:4,apply:b=>{b.spd*=1.2}},
-  bulk:     {name:'Bulk up',    text:'Bigger body, 35% more health',max:2,apply:b=>{b.r=Math.min(40,b.r*1.2);b.hp*=1.35}},
-  shrink:   {name:'Shrink',     text:'Smaller body, harder to hit, 10% quicker',max:2,apply:b=>{b.r=Math.max(14,b.r*.84);b.spd*=1.1}},
+  tougher:  {name:'Tougher',    text:'+25% health',max:9,apply:b=>{b.ah+=.25}},
+  sharper:  {name:'Sharper',    text:'+25% damage',max:9,apply:b=>{b.ad+=.25}},
+  faster:   {name:'Faster',     text:'+20% speed: move, spin and strike faster',max:4,apply:b=>{b.as+=.2}},
+  bulk:     {name:'Bulk up',    text:'Bigger body, +35% health',max:2,apply:b=>{b.r=Math.min(40,b.r*1.2);b.ah+=.35}},
+  shrink:   {name:'Shrink',     text:'Smaller body, harder to hit, +10% speed',max:2,apply:b=>{b.r=Math.max(14,b.r*.84);b.as+=.1}},
   blade:    {name:'Extra blade',text:'One more spinning blade',max:3},
   reach:    {name:'Long reach', text:'Blades and chains 30% longer',max:2,needsArm:true},
   sidearm:  {name:'Sidearm',    text:'Fires a shot every 2 seconds',max:3},
-  vampire:  {name:'Vampire',    text:'Heal for 25% of the damage you deal',max:3},
-  regen:    {name:'Regrowth',   text:'Heal 2 health every second',max:3},
+  vampire:  {name:'Vampire',    text:'Heal for 20% of the damage you deal',max:3},
+  regen:    {name:'Regrowth',   text:'Heal 3 health every second',max:3},
   armor:    {name:'Armour',     text:'Take 15% less damage',max:4},
   thorns:   {name:'Thorns',     text:'Attackers take 20% of their damage back',max:3},
   poison:   {name:'Poison',     text:'Hits poison for 4 damage a second',max:3},
   frost:    {name:'Frost',      text:'Hits slow the rival for 2 seconds',max:1},
-  crit:     {name:'Critical',   text:'20% chance to deal double damage',max:3},
-  ambush:   {name:'Ambush',     text:'Your first hit deals triple damage',max:1},
-  laststand:{name:'Last stand', text:'50% more damage below 40% health',max:2},
+  crit:     {name:'Critical',   text:'20% chance of +100% damage',max:3},
+  ambush:   {name:'Ambush',     text:'Your first hit deals +200% damage',max:1},
+  laststand:{name:'Last stand', text:'+50% damage below 40% health',max:2},
   shield:   {name:'Shield',     text:'Blocks one hit every 8 seconds',max:2},
   revive:   {name:'Second life',text:'Come back once with 15% health',max:1},
 };
@@ -96,10 +104,14 @@ function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a
 
 // A build is everything a match needs to know about one fighter.
 function makeBuild(key,str,size,name,color){
-  const z=SIZES[size>=0?size:1],b={key,str:str>=0?str:-1,size:size>=0?size:1,hp:z.hp,dmg:1,spd:1,r:z.r,p:{},ups:[],name:name||FIGHTERS[key].name,color:color||FIGHTERS[key].color};
+  const z=SIZES[size>=0?size:1],b={key,str:str>=0?str:-1,size:size>=0?size:1,hp:z.hp,dmg:1,spd:1,ah:0,ad:0,as:0,r:z.r,p:{},ups:[],name:name||FIGHTERS[key].name,color:color||FIGHTERS[key].color};
   if(str>=0)b[STRENGTHS[str].k]*=STRENGTHS[str].mul;
   return b;
 }
+// what a build's numbers come to: its base (class, strength, size, the ladder's scaling) times one plus its added bonuses
+const effHp=b=>FIGHTERS[b.key].hp*HP_SCALE*b.hp*Math.max(.3,1+(b.ah||0));
+const effDmg=b=>b.dmg*Math.max(.2,1+(b.ad||0));
+const effSpd=b=>b.spd*Math.max(.4,1+(b.as||0));
 function canTake(b,id){
   const U=UPGRADES[id];let n=0;
   for(const x of b.ups)if(x===id)n++;
@@ -338,7 +350,7 @@ function createMatch(A,B,seed){
   const m={f:F,bullets,minions,events,paint,t:0,over:false,winner:-1,draw:false,step,rnd,hurt,knock,renorm,shoot,spawn};
   for(const f of F){const H=BEHAVE[f.key];if(H&&H.init)H.init(f,m);for(const h of f.uh)if(h[0].init)h[0].init(f,h[1],m)}
   function mk(b,i){
-    const D=FIGHTERS[b.key],P=b.p||{},sig=P.sig||0,a=rnd()*6.283,sp=D.speed*b.spd,hp=D.hp*b.hp,reach=1+.3*(P.reach||0);
+    const D=FIGHTERS[b.key],P=b.p||{},sig=P.sig||0,a=rnd()*6.283,spd=effSpd(b),sp=D.speed*spd,hp=effHp(b),reach=1+.3*(P.reach||0);
     const arms=D.arms.map(o=>({a:o.a,l:o.l*reach,head:o.head||0,dmg:D.dmg*(o.d||1),extra:0,rate:o.rate||1}));
     if(b.key==='blade')for(const o of arms){o.l*=1+.25*sig;o.dmg*=1+.15*sig}
     if(b.key==='mace')for(const o of arms){o.head+=3*sig;o.dmg*=1+.2*sig}
@@ -347,9 +359,9 @@ function createMatch(A,B,seed){
     for(let k=0;k<(P.blade||0)&&k<3;k++)arms.push({a:slots[k],l:28*reach,head:0,dmg:10,extra:1,rate:1});
     const uh=[];for(const id in P){const U=UPGRADES[id];if(U&&U.hooks&&P[id]>0)uh.push([U.hooks,P[id]])}
     return {u:{},uh,p:P,key:b.key,i,x:i?AW-80:80,y:AW/2+(rnd()-.5)*80,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,r:b.r,speed:sp,base:sp,hp,max:hp,
-      dmgMul:b.dmg,spdMul:b.spd,sig,ang:rnd()*6.283,dir:i?-1:1,cd:0,xcd:0,pcd:0,timer:.4+rnd()*.6,flash:0,aim:0,arms,
+      dmgMul:effDmg(b),pool:Math.max(.2,1+(b.ad||0)),spdMul:spd,sig,ang:rnd()*6.283,dir:i?-1:1,cd:0,xcd:0,pcd:0,timer:.4+rnd()*.6,flash:0,aim:0,arms,
       spin:D.spin||(arms.length?4.5:0),label:b.name,col:b.color,stunT:0,gone:false,s:{},
-      regen:2*(P.regen||0),armor:Math.pow(.85,P.armor||0),vamp:.25*(P.vampire||0)+(D.heal?D.heal*(1+.3*sig):0),thorns:.2*(P.thorns||0),
+      regen:3*(P.regen||0),armor:Math.pow(.85,P.armor||0),vamp:.2*(P.vampire||0)+(D.heal?D.heal*(1+.3*sig):0),thorns:.2*(P.thorns||0),
       poison:4*(P.poison||0),frost:P.frost||0,crit:.2*(P.crit||0),ambush:P.ambush||0,last:.5*(P.laststand||0),
       shield:P.shield?8/P.shield:0,shieldT:0,revives:P.revive||0,side:P.sidearm?2/P.sidearm:0,sideT:1,poisonT:0,poisonDps:0,slowT:0};
   }
@@ -378,14 +390,18 @@ function createMatch(A,B,seed){
       if(G&&G.guard){dmg*=G.guard(v,s,dmg,m);if(!(dmg>0))return}
       for(const h of v.uh)if(h[0].guard){dmg*=h[0].guard(v,s,dmg,m,h[1]);if(!(dmg>0))return}
       if(v.shield&&v.shieldT<=0){v.shieldT=v.shield;events.push({k:'block',x:v.x,y:v.y,i:v.i});return}
-      if(s.ambush){dmg*=3;s.ambush=0;crit=true;amb=true}
-      if(s.crit&&rnd()<s.crit){dmg*=2;crit=true}
-      if(s.last&&s.hp<s.max*.4)dmg*=1+s.last;
-      for(const h of s.uh)if(h[0].deal)dmg=h[0].deal(s,v,dmg,m,h[1]);
+      // every bonus to this hit joins the attacker's damage pool: they add up, they do not multiply
+      let add=0;
+      if(s.ambush){add+=2;s.ambush=0;crit=true;amb=true}
+      if(s.crit&&rnd()<s.crit){add+=1;crit=true}
+      if(s.last&&s.hp<s.max*.4)add+=s.last;
+      for(const h of s.uh)if(h[0].deal)add+=h[0].deal(s,v,dmg,m,h[1])/dmg-1;
+      if(add)dmg*=Math.max(.1,(s.pool+add)/s.pool);
       for(const h of v.uh)if(h[0].take)dmg=h[0].take(v,s,dmg,m,h[1]);
       if(!(dmg>0))return;
     }
     dmg*=v.armor;
+    if(!indirect&&dmg>v.max*HIT_CAP)dmg=v.max*HIT_CAP;      // no single blow takes more than half a fighter's health
     v.hp-=dmg;v.flash=.12;
     events.push({k:'hit',x:v.x,y:v.y,dmg,i:v.i,crit,by:s.key,ind:!!indirect,ax:s.x,ay:s.y});
     if(v.last&&!v.lastOn&&v.hp>0&&v.hp<v.max*.4){v.lastOn=1;events.push({k:'proc',id:'laststand',i:v.i})}

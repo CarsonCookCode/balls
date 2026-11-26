@@ -81,21 +81,28 @@ button[aria-pressed="false"].tog{color:var(--ash);text-decoration:line-through}
              conic-gradient(from 45deg at 50% 50%,var(--ink) 0 100%) center bottom / 7px 7px no-repeat}
 .ps{margin:0;font:italic 500 16px/1.25 var(--text);color:var(--ink-2);text-align:center;text-wrap:balance}
 .ps a{color:var(--crimson);text-decoration:underline;text-underline-offset:2px}
-/* your fighter: a small round portrait button in the corner of the boon screen, and the sheet it opens */
-button.mebtn{position:absolute;top:8px;right:10px;width:50px;height:50px;min-height:0;padding:0;border-radius:50%;border:2px solid var(--gold);background:#161d22;box-shadow:0 3px 0 rgba(0,0,0,.4);overflow:hidden;z-index:2}
-button.mebtn canvas{width:100%;height:100%;display:block}
-button.mebtn:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.4)}
-button.side.mine{min-height:0;padding:0;background:none;border:0;box-shadow:none;text-shadow:none;color:inherit;text-transform:none;letter-spacing:normal;font:inherit;display:flex;flex-direction:column;align-items:center}
-button.side.mine small{text-decoration:underline;text-underline-offset:2px}
-.sheettop{display:flex;align-items:center;gap:12px;justify-content:center}
-.sheettop canvas{flex:0 0 auto;width:84px;height:84px;border-radius:50%;border:2px solid var(--gold);background:#161d22;box-shadow:0 3px 0 rgba(0,0,0,.35)}
-.sheettop .ph{padding-bottom:6px;background:none;text-align:left}
-.sheettop .ps{text-align:left}
+/* Your fighter on the boon screen: a strip across the top that opens the sheet. */
+button.mecard{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;width:100%;min-height:0;padding:6px 12px 6px 6px;text-align:left;text-transform:none;letter-spacing:normal;text-shadow:none;color:var(--ink);background:rgba(60,40,15,.08);border:1px solid rgba(60,40,15,.35);border-radius:4px;box-shadow:none}
+button.mecard:active{transform:none;background:rgba(143,39,50,.12)}
+button.mecard canvas{width:54px;height:54px;display:block}
+button.mecard span{display:flex;flex-direction:column;gap:2px;min-width:0}
+button.mecard b{font:700 15.5px/1.1 var(--display);letter-spacing:.06em;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+button.mecard small{font:italic 500 15px/1.1 var(--text);color:var(--ink-2)}
+button.mecard i{font:700 22px/1 var(--display);font-style:normal;color:var(--crimson)}
+/* The sheet. */
+.hero{display:flex;flex-direction:column;align-items:center;gap:2px;flex:0 0 auto}
+.hero canvas{width:118px;height:118px;display:block}
+.hero .ph{padding-bottom:9px}
+.made{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex:0 0 auto}
+.made span{display:flex;flex-direction:column;gap:2px;padding:6px 8px;border-left:3px solid var(--gold-lo);background:rgba(60,40,15,.06);font:italic 500 14.5px/1.15 var(--text);color:var(--ink-2)}
+.made b{font:700 12px/1 var(--display);font-style:normal;letter-spacing:.1em;text-transform:uppercase;color:var(--ink)}
+.ps.what.does{font-size:17px;color:var(--ink)}
+.card.still{display:flex;align-items:center;gap:8px;flex:0 0 auto;position:relative;min-height:44px;cursor:default;border-bottom:1px solid rgba(60,40,15,.2)}
+.card.still:active{transform:none;background:none}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;padding:4px 0}
 .stats span{display:flex;flex-direction:column;gap:2px;padding:6px 2px;background:rgba(60,40,15,.08);border-radius:3px}
 .stats b{font:900 18px/1 var(--display);font-variant-numeric:tabular-nums lining-nums}
 .stats i{font:700 9px/1 var(--display);font-style:normal;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2)}
-.ps.boon{text-align:left;border-top:0;border-left:4px solid var(--k,transparent)}
 .ps b{font-style:normal;font-weight:700;color:var(--ink)}
 .stepn{margin:0;font:700 10.5px/1 var(--display);letter-spacing:.2em;text-transform:uppercase;color:var(--ink-2);text-align:center}
 /* a choice is a line on the scroll, not a boxed button */
@@ -108,7 +115,7 @@ button.side.mine small{text-decoration:underline;text-underline-offset:2px}
 .card::before{content:"";flex:0 0 auto;width:9px;height:9px;background:var(--crimson);transform:rotate(45deg);margin:0 3px}
 /* a fighter's card on the first screen: its picture in place of the bullet */
 .card.face::before{display:none}
-.card.face canvas{flex:0 0 auto;width:58px;height:58px;border-radius:50%;border:2px solid var(--gold-lo);box-shadow:0 2px 4px rgba(0,0,0,.35);margin:-3px 2px -3px -4px}
+.card.face canvas{flex:0 0 auto;width:60px;height:60px;margin:-4px 2px -4px -6px}
 .card i{flex:0 0 auto;width:24px;height:24px;border-radius:50%;border:2.5px solid var(--gold);outline:1px solid #090b0d;box-shadow:inset 0 0 0 1.5px #090b0d,inset 2px 3px 4px rgba(255,255,255,.3);margin-left:-4px}
 .card:has(i)::before{display:none}
 .card span{display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -155,7 +162,7 @@ body[data-mode="fight"] #panel,body[data-mode="duel"] #panel{max-height:32%;padd
 .roster{display:grid;grid-template-columns:repeat(4,1fr);gap:8px 4px;padding:2px 0 4px}
 button.pick{min-height:0;padding:0;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:0;box-shadow:none;text-shadow:none;color:var(--ink)}
 button.pick:active{transform:none;box-shadow:none;background:rgba(143,39,50,.12)}
-button.pick canvas{width:100%;max-width:78px;aspect-ratio:1;border-radius:50%;border:2px solid var(--gold-lo);box-shadow:0 2px 4px rgba(0,0,0,.35)}
+button.pick canvas{width:100%;max-width:78px;aspect-ratio:1}
 button.pick span{font:700 10.5px/1.1 var(--display);letter-spacing:.05em;text-transform:uppercase;text-align:center}
 .ps.what{font-style:normal}
 .ps.what b{font-family:var(--display);letter-spacing:.05em}
@@ -199,7 +206,7 @@ body[data-mode="ready"] #panel{flex:1 1 auto;max-height:none;gap:6px;padding:10p
 body[data-mode="ready"] #btnFight{margin-top:auto}
 .duo{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center}
 .duo .side{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0;text-align:center}
-.duo canvas{width:min(24vw,13vh,104px);aspect-ratio:1;border-radius:50%;border:2px solid var(--gold-lo);box-shadow:0 2px 5px rgba(0,0,0,.4);margin-bottom:3px}
+.duo canvas{width:min(26vw,14vh,112px);aspect-ratio:1;margin-bottom:1px}
 .duo small{font:italic 500 13.5px/1 var(--text);color:var(--ink-2)}
 .duo b{font:700 13.5px/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--ink);text-wrap:balance}
 .duo .vs{font:900 20px/1 var(--display);font-style:italic;letter-spacing:.04em;color:var(--crimson);text-shadow:0 1px 0 rgba(255,246,223,.6);padding:0 2px 26px}

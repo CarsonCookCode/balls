@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 43';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 44';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -40,7 +40,7 @@ for(const [kind,ids] of Object.entries({
 const kindOf=id=>KINDS[UP_KIND[id]||'atk'];                 // anything not listed is an attack upgrade
 const kindIcon=K=>`<svg viewBox="0 0 16 16" aria-hidden="true">${K.icon}</svg>`;
 // a fighter's upgrades as small coloured tags; each can be tapped to read what it does (side 0 is you, 1 the rival)
-let tip=null,sheet=false;     // sheet: the panel is showing your own fighter's sheet (from the boon screen or the matchup)
+let tip=null,sheet=false;     // sheet: the panel is showing your own fighter's sheet (opened from the boon screen)
 // With many upgrades the tags shrink to icon discs (compact), so the matchup still fits one screen; the name is a tap away.
 function chips(b,side,compact){
   if(!b.ups.length)return '<span class="chip none">no upgrades</span>';
@@ -463,21 +463,27 @@ function startFight(){
 // The matchup fills the screen in place of the arena: the two fighters are drawn side by side at the top of the scroll,
 // each cut out of the real match that is about to start, so size, colour and extra weapons all show.
 const FACE=176;
+// Puts fighter i of match m on a canvas, alone, framed around its body and the weapons it carries.
+function picture(el,m,i){
+  const c=el.getContext('2d'),f=m.f[i];
+  let x0=f.x-f.r,x1=f.x+f.r,y0=f.y-f.r,y1=f.y+f.r;
+  for(const A of f.arms||[]){
+    const an=f.ang*A.rate+A.a,d=f.r+A.l+(A.head||0)*.6,tx=f.x+Math.cos(an)*d,ty=f.y+Math.sin(an)*d;
+    x0=Math.min(x0,tx);x1=Math.max(x1,tx);y0=Math.min(y0,ty);y1=Math.max(y1,ty);
+  }
+  const span=Math.max(x1-x0,y1-y0,f.r*2.3)+8,z=Math.min(el.width,el.height)/span;
+  c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,el.width,el.height);
+  c.setTransform(z,0,0,z,el.width/2-(x0+x1)/2*z,el.height/2-(y0+y1)/2*z);
+  drawPortrait(c,m,i);
+  c.setTransform(1,0,0,1,0,0);
+}
 function faces(){
   const P=$('panel');
   if(!P.querySelectorAll||!match)return;
   for(const el of P.querySelectorAll('canvas[data-face]')){
     const f=match.f[+el.dataset.face];
     if(!f)continue;
-    const lab=f.label;
-    try{
-      const c=el.getContext('2d'),span=Math.max(62,f.r*2.7),z=el.width/span;
-      f.label='';
-      c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,el.width,el.height);
-      c.setTransform(z,0,0,z,el.width/2-f.x*z,el.height/2-(f.y+2)*z);
-      drawArena(c,match,-1,{floats:[],sparks:[],rings:[],bolts:[]});
-    }catch(e){}
-    f.label=lab;
+    try{picture(el,match,+el.dataset.face)}catch(e){}
   }
 }
 const sizeWord=r=>r<21?'Small':r<28?'Medium':r<36?'Big':'Huge';
@@ -486,7 +492,7 @@ function readyBody(){
   const row=(label,x,y,num)=>`<b class="${num&&x>y?'hi':''}">${num?Math.round(x):x}${num===2?'%':''}</b><i>${label}</i><b class="${num&&y>x?'hi':''}">${num?Math.round(y):y}${num===2?'%':''}</b>`;
   return `<p class="stepn">Rung ${run.rung} · the matchup</p>`+
     (run.note?`<p class="ps note">${run.note}</p>`:'')+
-    `<div class="duo"><button type="button" class="side mine" id="btnSheet" data-act="sheet" aria-label="Your fighter's sheet"><canvas data-face="0" width="${FACE}" height="${FACE}"></canvas><small>You · tap for your sheet</small><b>${typeOf(a)}</b></button><span class="vs">vs</span>`+
+    `<div class="duo"><div class="side"><canvas data-face="0" width="${FACE}" height="${FACE}"></canvas><small>You</small><b>${typeOf(a)}</b></div><span class="vs">vs</span>`+
       `<div class="side"><canvas data-face="1" width="${FACE}" height="${FACE}"></canvas><small>${b.owner?esc(b.owner):'House'}</small><b>${typeOf(b)}</b></div></div>`+
     `<div class="mu">`+
       row('Health',effHp(a),effHp(b),1)+row('Damage',effDmg(a)*100,effDmg(b)*100,2)+row('Speed',effSpd(a)*100,effSpd(b)*100,2)+row('Size',sizeWord(a.r),sizeWord(b.r),0)+
@@ -639,7 +645,7 @@ function render(){
   $('btnSpeed').hidden=!(mode==='fight'||mode==='duel'||mode==='ready');
   $('btnBoard').hidden=!(mode==='make'||mode==='over'||mode==='board');
   $('btnBoard').textContent=mode==='board'?'Back':'Ladder';          // the same plate opens the ladder and leaves it
-  if(sheet&&run&&(mode==='pick'||mode==='ready')){P.innerHTML=sheetBody();portraits();return}
+  if(sheet&&run&&mode==='pick'){P.innerHTML=sheetBody();portraits();return}
   if(mode==='make'){P.innerHTML=makeBody();if(step===0)thumbsFill()}
   else if(mode==='board')P.innerHTML=boardBody();
   else if(mode==='duel')P.innerHTML=duelBody();
@@ -648,8 +654,8 @@ function render(){
     P.innerHTML=(run.armed?`<p class="ps keep">Shield raised: you survive a loss here.</p>`:run.life>0?`<p class="ps keep">You hold an extra life.</p>`:'')+`<p class="ps"><b>You, ${typeOf(run.build)}:</b> ${summary(run.build)}</p><p class="ps"><b>${whose(run.rival)}:</b> ${FIGHTERS[run.rival.key].desc}${run.rival.ups.length?' ('+summary(run.rival)+')':''}</p>`;
   }else if(mode==='pick'){
     const have=id=>{let n=0;for(const x of run.build.ups)if(x===id)n++;return n};
-    P.innerHTML=`<button type="button" class="mebtn" id="btnSheet" data-act="sheet" aria-label="Your fighter's sheet"><canvas data-me width="96" height="96"></canvas></button>`+
-      head('Rung '+run.rung+' cleared · you are a '+typeOf(run.build),'Claim a boon')+
+    P.innerHTML=`<button type="button" class="mecard" id="btnSheet" data-act="sheet"><canvas data-me width="132" height="132" aria-hidden="true"></canvas><span><b>${typeOf(run.build)}</b><small>Rung ${run.rung} cleared · see your fighter</small></span><i aria-hidden="true">›</i></button>`+
+      `<h2 class="ph">Claim a boon</h2>`+
       choice.map(id=>upCard(run.build,id,have(id))).join('');
     portraits();
   }else{
@@ -667,10 +673,9 @@ let thumbBusy=false;
 function thumbMake(key){
   const cv2=document.createElement('canvas');cv2.width=cv2.height=THUMB;
   try{
-    const c=cv2.getContext('2d'),m=createMatch(makeBuild(key,-1,1),makeBuild(key,-1,1),7),f=m.f[0],z=THUMB/66;
-    f.x=80;f.y=AW/2;f.ang=-.6;f.label='';m.f[1].x=AW-40;m.f[1].y=30;
-    c.setTransform(z,0,0,z,THUMB/2-f.x*z,THUMB/2-(f.y+3)*z);
-    drawArena(c,m,-1,{floats:[],sparks:[],rings:[],bolts:[]});
+    const m=createMatch(makeBuild(key,-1,1),makeBuild(key,-1,1),7),f=m.f[0];
+    f.x=AW/2;f.y=AW/2;f.ang=-.6;
+    picture(cv2,m,0);
   }catch(e){}
   return cv2;
 }
@@ -697,30 +702,32 @@ function portraits(){
   if(!P.querySelectorAll||!run)return;
   for(const el of P.querySelectorAll('canvas[data-me]')){
     try{
-      const c=el.getContext('2d'),m=createMatch(run.build,makeBuild('turtle',-1,1),7),f=m.f[0],span=Math.max(62,f.r*2.7),z=el.width/span;
-      f.x=80;f.y=AW/2;f.ang=-.6;f.label='';m.f[1].x=AW+200;m.f[1].y=-200;
-      c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,el.width,el.height);
-      c.setTransform(z,0,0,z,el.width/2-f.x*z,el.height/2-(f.y+2)*z);
-      drawArena(c,m,-1,{floats:[],sparks:[],rings:[],bolts:[]});
+      const m=createMatch(run.build,makeBuild('turtle',-1,1),7),f=m.f[0];
+      f.x=AW/2;f.y=AW/2;f.ang=-.6;
+      picture(el,m,0);
     }catch(e){}
   }
 }
-// The sheet: what your class does, its numbers as they stand now, and every boon it carries, each with what it does.
+// The sheet: the fighter large, the two choices it was made with, its numbers as they stand now, what its class does,
+// its own boon and how far that has been taken, every boon it carries with what each does, and the chances it holds.
 function sheetBody(){
   const b=run.build,F=FIGHTERS[b.key],n={};
   for(const id of b.ups)n[id]=(n[id]||0)+1;
   const stat=(v,label)=>`<span><b>${v}</b><i>${label}</i></span>`;
-  const boon=id=>{const K=kindOf(id);return `<p class="ps tipline boon" style="--k:${K.col}"><b>${upName(b,id)}${n[id]>1?' ×'+n[id]:''}</b><em>${K.label}</em>${upText(b,id)}${n[id]>1?' (each)':''}</p>`};
-  const held=(run.shield>0?'A shield is held. ':'')+(run.life>0?'An extra life is held.':'');
+  const row=(K,title,tag,text)=>`<div class="card up still" style="--k:${K.col}"><i class="ic">${kindIcon(K)}</i><span><b>${title}<em class="kd">${tag}</em></b><small>${text}</small></span></div>`;
+  const boon=id=>{const K=kindOf(id);return row(K,upName(b,id)+(n[id]>1?' ×'+n[id]:''),K.label,upText(b,id)+(n[id]>1?' (each)':''))};
+  const made=[b.str>=0&&STRENGTHS[b.str]?`<span><b>${STRENGTHS[b.str].label}</b>${STRENGTHS[b.str].text}</span>`:'',SIZES[b.size]?`<span><b>${SIZES[b.size].label}</b>${SIZES[b.size].text}</span>`:''].join('');
+  const sigMax=UPGRADES.sig?UPGRADES.sig.max:0,held=[run.shield>0?'A shield, to raise before a fight of your choosing':'',run.life>0?'An extra life, spent the next time you lose':''].filter(Boolean);
+  const rest=Object.keys(n).filter(id=>id!=='sig');
   return `<p class="stepn">Your fighter · rung ${run.rung}</p>`+
-    `<div class="sheettop"><canvas data-me width="${FACE}" height="${FACE}"></canvas><div><h2 class="ph">${typeOf(b)}</h2><p class="ps">${esc(b.name)}</p></div></div>`+
-    `<p class="ps what"><b>${F.name}.</b> ${F.desc}</p>`+
-    `<p class="ps what"><b>Its own boon, ${F.sig[0]}:</b> ${F.sig[1]}${n.sig?' (taken'+(n.sig>1?' ×'+n.sig:'')+')':' (not taken yet)'}</p>`+
+    `<div class="hero"><canvas data-me width="220" height="220" aria-hidden="true"></canvas><h2 class="ph">${typeOf(b)}</h2><p class="ps">${esc(b.name)}</p></div>`+
     `<div class="stats">`+stat(Math.round(effHp(b)),'Health')+stat(Math.round(effDmg(b)*100)+'%','Damage')+stat(Math.round(effSpd(b)*100)+'%','Speed')+stat(sizeWord(b.r),'Size')+`</div>`+
-    (held?`<p class="ps keep">${held}</p>`:'')+
-    `<p class="stepn sub">${b.ups.length?'Boons · '+b.ups.length:'No boons yet'}</p>`+
-    Object.keys(n).map(boon).join('')+
-    `<button type="button" id="btnSheetBack" class="go" data-act="sheet">Back</button>`;
+    (made?`<div class="made">${made}</div>`:'')+
+    `<p class="stepn sub">What a ${F.name} does</p><p class="ps what does">${F.desc}</p>`+
+    `<p class="stepn sub">Its own boon</p>`+row(KINDS.sig,F.sig[0],n.sig?'taken '+n.sig+(sigMax?' of '+sigMax:''):'not taken yet',F.sig[1])+
+    `<p class="stepn sub">${rest.length?'Boons · '+rest.reduce((a,id)=>a+n[id],0):'No other boons yet'}</p>`+rest.map(boon).join('')+
+    (held.length?`<p class="stepn sub">Held in reserve</p>`+held.map(t=>`<p class="ps keep">${t}</p>`).join(''):'')+
+    `<button type="button" id="btnSheetBack" class="go" data-act="sheet">Back to the boons</button>`;
 }
 function save(){try{localStorage.setItem('brawl.fighter',JSON.stringify(me))}catch(e){}}
 $('panel').addEventListener('click',e=>{
@@ -741,7 +748,7 @@ $('panel').addEventListener('click',e=>{
   else if(act==='start')startClimb();
   else if(act==='fight')startFight();
   else if(act==='tip'){const side=+b.dataset.side,id=b.dataset.key;tip=tip&&tip.side===side&&tip.id===id?null:{side,id};if(mode==='ready')render()}
-  else if(act==='sheet'){if(run&&(mode==='pick'||mode==='ready')){sheet=!sheet;tip=null;render()}}
+  else if(act==='sheet'){if(run&&mode==='pick'){sheet=!sheet;tip=null;render()}}
   else if(act==='arm'){if(mode==='ready'&&run.shield>0){run.armed=!run.armed;render()}}
   else if(act==='up'){
     if(mode!=='pick'||!choice.includes(b.dataset.key))return;

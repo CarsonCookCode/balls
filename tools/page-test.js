@@ -77,15 +77,15 @@ for (let n = 0; n < 30; n++) {
         assert(g.els.panel.innerHTML.includes('id="tipLine"') && g.els.panel.innerHTML.includes(g.ctx.__text(R.build, id)) && clean(g.els.panel.innerHTML), 'tapping a tag shows what the upgrade does');
         g.click('tip', { side: '0', key: id }); assert(!g.els.panel.innerHTML.includes('id="tipLine"'), 'tapping it again closes it'); tips++;
       }
-      if ((guard + n) % 11 === 0) { g.click('sheet'); assert(g.els.panel.innerHTML.includes('id="btnSheetBack"') && !g.els.panel.innerHTML.includes('btnFight'), 'the matchup opens the sheet too'); g.click('sheet'); assert(g.els.panel.innerHTML.includes('btnFight'), 'and returns'); sheets++; }
+      if ((guard + n) % 11 === 0) { g.click('sheet'); assert(g.els.panel.innerHTML.includes('btnFight') && !g.els.panel.innerHTML.includes('btnSheet'), 'the matchup has no sheet'); }
       g.click('fight');
     } else if (p.mode === 'pick') {
-      assert(count(g.els.panel.innerHTML, 'data-act="up"') === p.choice.length && count(g.els.panel.innerHTML, 'class="ic"') === p.choice.length && /you are a /.test(g.els.panel.innerHTML) && clean(g.els.panel.innerHTML), 'upgrade screen drawn');
+      assert(count(g.els.panel.innerHTML, 'data-act="up"') === p.choice.length && count(g.els.panel.innerHTML, 'class="ic"') === p.choice.length && /see your fighter/.test(g.els.panel.innerHTML) && clean(g.els.panel.innerHTML), 'upgrade screen drawn');
       if (!sheets || (guard + n) % 9 === 0) {
-        assert(g.els.panel.innerHTML.includes('class="mebtn"'), 'the boon screen has the portrait button');
+        assert(g.els.panel.innerHTML.includes('class="mecard"') && g.els.panel.innerHTML.includes('see your fighter'), 'the boon screen opens with your fighter, which leads to the sheet');
         g.click('sheet');
         const h = g.els.panel.innerHTML, R = g.p().run;
-        assert(h.includes('id="btnSheetBack"') && h.includes('Health') && h.includes('Its own boon') && h.includes(g.ctx.__type(R.build)) && !h.includes('data-act="up"') && clean(h), 'the sheet shows the class, its numbers and its own boon');
+        assert(h.includes('id="btnSheetBack"') && h.includes('Health') && h.includes('Its own boon') && h.includes('What a ') && h.includes(g.ctx.__type(R.build)) && !h.includes('data-act="up"') && clean(h), 'the sheet shows the class, its numbers and its own boon');
         for (const id of new Set(R.build.ups)) assert(h.includes(g.ctx.__text(R.build, id)), 'the sheet explains every boon: ' + id);
         g.click('sheet'); assert(count(g.els.panel.innerHTML, 'data-act="up"') === p.choice.length, 'Back returns to the boons'); sheets++;
       }

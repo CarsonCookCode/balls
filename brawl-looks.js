@@ -17,6 +17,7 @@ let g=null;        // the context being drawn to; set at the start of drawArena
 let PX=2;          // device pixels per arena unit (shadows ignore the transform, so they need it)
 let NOW=0;         // match time, for small idle motions
 let MATCH=null;
+let PORTRAIT=false; // true while drawing a fighter's picture: no name, no crown, no health banner
 let LIVE=false;     // true while drawing the arena on screen (not a portrait): the effects engine joins in
 const GOLD='#c9a45c',GOLD_HI='#f0dca4',GOLD_LO='#7a5d2b',IVORY='#f3ead6',INK='#231a12',EDGE='#090b0d',CRIMSON='#8f2732',CRIMSON_LO='#5e1820',
   PARCH='#e6d6b0',PARCH_LO='#c9b487',STEEL='#d7dde2',STEEL_LO='#8b959d',WOOD='#6f4d30',LEATHER='#3a2a1e';
@@ -733,7 +734,7 @@ function drawFighter(f,isYou){
   if(LIVE){FX.front(g,f,MATCH,alpha);resetInk(alpha)}
   g.restore();resetInk(alpha);
 
-  if(!f.gone){
+  if(!f.gone&&!PORTRAIT){
     // health on a small crimson banner at the foot
     const pw=Math.max(r*1.02,15),ph=Math.max(r*.42,6.4),py=y+r*.78,lw=Math.max(.35,r*.028),hp=String(Math.max(0,Math.ceil(f.hp)));
     g.fillStyle=CRIMSON_LO;g.strokeStyle=EDGE;g.lineWidth=lw;g.lineJoin='miter';
@@ -762,6 +763,14 @@ function drawFighter(f,isYou){
   g.globalAlpha=1;
 }
 
+// ---------- a fighter's picture ----------
+// One fighter on its own: nothing behind it, no name and no health banner. Used on the cards, the matchup and the sheet.
+// The caller sets the transform (in arena units); the fighter is drawn where it stands in its match.
+function drawPortrait(c,match,i){
+  g=c;MATCH=match;NOW=match?match.t:0;PX=deviceScale(c);LIVE=false;PORTRAIT=true;
+  g.save();resetInk(1);
+  try{drawFighter(match.f[i],false)}finally{PORTRAIT=false;g.restore();g.globalAlpha=1}
+}
 // ---------- the arena ----------
 let FLOOR=null,floorTried=false;
 function deviceScale(c){

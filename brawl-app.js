@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 41';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 42';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -232,8 +232,8 @@ const HIT_SFX={blade:'slash',twin:'slash',leech:'slash',pirate:'slash',clock:'me
   blaster:'punch',archer:'twig',miner:'',volcano:'',comet:'tick',bramble:'twig',bees:'tin',ghost:'thump',snow:'thump',tesla:'',magnet:'',mirror:'glass',spider:'soft',
   necro:'wood',painter:'tick',hunter:'wood',beacon:'tick',drum:'thump',wizard:'glass'};
 const HIT_VOL={archer:.7,blaster:.8};
-// each ranged weapon has a voice of its own (these come before a class's own sfx.shot): a crack for the Gunner, a deeper
-// bang for the Cowboy's revolver, a charged shot for the Railgun, a soft release for the bow
+// each ranged weapon has a voice of its own (these come before a class's own sfx.shot): a pistol for the Gunner, a revolver for
+// the Cowboy, an energy pulse for the Railgun, a soft release for the bow
 const SHOT_SFX={blaster:'gun',cowboy:'revolver',railgun:'rail',archer:'loose',wizard:'cast',hunter:'whoosh',pirate:'whoosh'};
 const UI_SFX={weapon:'place',str:'place',size:'place',others:'page',back:'page',col:'click',new:'page',start:'page',up:'coins',fight:'draw',arm:'latch',tip:'page',duel:'draw',recduel:'draw',board:'open',closeboard:'page'};
 function hitSound(e){
@@ -292,7 +292,7 @@ function onEvents(ev){
     else if(e.k==='revive'){say(e.x,e.y,'Second life','#ffd447',true);sfx('toll',1)}
     else if(e.k==='parry'){sfx('clang',.55,1.12)}
     else if(e.k==='bump'){sfx('soft',.4)}
-    else if(e.k==='shot'){const sk=match&&e.i>=0?match.f[e.i].key:'',n=SHOT_SFX[sk]||(FIGHTERS[sk]&&FIGHTERS[sk].sfx&&FIGHTERS[sk].sfx.shot)||'whoosh';sfx(n,n==='loose'?.8:n==='gun'||n==='revolver'||n==='rail'?.75:.6,n==='loose'?1.2:n==='gun'?1.15:1)}
+    else if(e.k==='shot'){const sk=match&&e.i>=0?match.f[e.i].key:'',n=SHOT_SFX[sk]||(FIGHTERS[sk]&&FIGHTERS[sk].sfx&&FIGHTERS[sk].sfx.shot)||'whoosh';sfx(n,n==='loose'?.8:n==='gun'||n==='revolver'||n==='rail'?.75:.6,n==='loose'?1.2:1)}
     else if(e.k==='mine'){sfx('latch',.6)}
     else if(e.k==='boom'){shake=Math.max(shake,4);sfx('boom',.9)}
     else if(e.k==='zap'){

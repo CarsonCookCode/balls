@@ -62,6 +62,7 @@ const GROUPS = {
   touch:   { g: .4,  cap: .2,  gap: .09, files: sn('User Interaction', 'Select Middle') },       // Duck, Firefly, Candle, Painter, Pharaoh, Comet, Lighthouse
   wave:    { g: .55, cap: .8,  gap: .2,  files: og('combat-150', 'Water Spell Impact*') },       // Tide's wave
   block:   { g: .7,  cap: .7,  gap: .25, files: sn('Melee Weapons', 'Shield Block', 5) },        // a shield stops a hit
+  wall:    { g: .4,  cap: .16, gap: .1,  files: ['impact-sounds/footstep_concrete_000', 'impact-sounds/footstep_concrete_001', 'impact-sounds/footstep_concrete_002', 'impact-sounds/footstep_concrete_003', 'impact-sounds/footstep_concrete_004'] },   // a fighter bounces off a wall: a soft, short thud (my choice, unheard)
   // launching, casting and the larger events
   gun:     { g: .5,  cap: .35, gap: .12, files: sn('Desert Eagle', '4m Left', 4) },   // the Gunner
   revolver:{ g: .55, cap: .55, gap: .12, files: sn('Smith & Wesson', '3m Behind', 4) },   // the Cowboy

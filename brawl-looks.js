@@ -615,7 +615,6 @@ Object.assign(LOOKS,{
 
 // ---------- minions ----------
 function smallMedal(x,y,r,col,ring,ringLo){
-  g.fillStyle='rgba(0,0,0,.4)';g.beginPath();g.ellipse(x+r*.06,y+r*.18,r,r*.96,0,0,TAU);g.fill();
   g.fillStyle=ring;g.strokeStyle=EDGE;g.lineWidth=Math.max(.4,r*.05);disc(x,y,r);g.fill();g.stroke();
   g.strokeStyle=ringLo;g.lineWidth=Math.max(.3,r*.05);disc(x,y,r*.9);g.stroke();
   g.fillStyle=EDGE;disc(x,y,r*.82);g.fill();
@@ -644,7 +643,6 @@ const MINION_LOOKS={
   // a raised skull with green light in its sockets
   bone(q,t){
     const r=q.r,x=q.x,y=q.y;
-    g.fillStyle='rgba(0,0,0,.4)';g.beginPath();g.ellipse(x+.5,y+r*.3,r*.9,r*.8,0,0,TAU);g.fill();
     g.fillStyle=rad(g,x-r*.25,y-r*.4,r*.1,x,y,r,[0,'#fbf6e8',.7,'#ddd3bb',1,'#a89d84']);g.strokeStyle=EDGE;g.lineWidth=.5;g.lineJoin='round';
     rrect(g,x-r*.5,y+r*.2,r,r*.72,r*.16);g.fill();g.stroke();
     disc(x,y-r*.12,r*.84);g.fill();g.stroke();
@@ -689,7 +687,6 @@ function drawFighter(f,isYou){
 
   // the medallion: gold ring, dark seat, enamel, crest
   const hit=f.flash>0,col=hit?shade(base,.4):base;      // a hit flashes the enamel pale; the crest must still read
-  g.fillStyle='rgba(0,0,0,.5)';g.beginPath();g.ellipse(x+r*.05,y+r*.17,r*1.02,r*.98,0,0,TAU);g.fill();
   if(RING){g.fillStyle=lin(g,x-r,y-r,x+r,y+r,[0,GOLD_HI,.45,GOLD,1,GOLD_LO]);g.strokeStyle=EDGE;g.lineWidth=Math.max(.45,r*.035);disc(x,y,r);g.fill();g.stroke();}
   else{g.fillStyle=EDGE;disc(x,y,r);g.fill()}                 // no ring: a thin dark rim and the enamel right to the edge
   if(RING&&r>=11){

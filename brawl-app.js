@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 45';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 46';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -302,6 +302,7 @@ function onEvents(ev){
       hitSound(e);
     }else if(e.k==='heal'){say(e.x,e.y,'+'+Math.max(1,Math.round(e.dmg)),'#7ddc5a')}
     else if(e.k==='block'){say(e.x,e.y,'Blocked','#bcd4ff');sfx('block',.8)}
+    else if(e.k==='wall'){sfx('wall',.5)}
     else if(e.k==='revive'){say(e.x,e.y,'Second life','#ffd447',true);sfx('toll',1)}
     else if(e.k==='parry'){sfx('clang',.55,1.12)}
     else if(e.k==='bump'){sfx('soft',.4)}
@@ -465,9 +466,9 @@ const FACE=176;
 // Puts fighter i of match m on a canvas: its circle only, filling the canvas, so every picture is the same size
 // whatever the fighter's own size.
 function picture(el,m,i){
-  const c=el.getContext('2d'),f=m.f[i],z=Math.min(el.width,el.height)/(f.r*2.28);
+  const c=el.getContext('2d'),f=m.f[i],z=Math.min(el.width,el.height)/(f.r*2.06);
   c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,el.width,el.height);
-  c.setTransform(z,0,0,z,el.width/2-(f.x+f.r*.02)*z,el.height/2-(f.y+f.r*.07)*z);
+  c.setTransform(z,0,0,z,el.width/2-f.x*z,el.height/2-f.y*z);
   drawPortrait(c,m,i);
   c.setTransform(1,0,0,1,0,0);
 }
@@ -578,7 +579,7 @@ function duelDone(){
 const head=(n,title)=>`<p class="stepn">${n}</p><h2 class="ph">${title}</h2>`;
 const card=(id,act,data,title,text,dot,tag)=>`<button type="button" class="card" id="${id}" data-act="${act}" ${data}>${dot?`<i style="background:${dot}"></i>`:''}<span><b>${title}${tag?`<em>${tag}</em>`:''}</b><small>${text}</small></span></button>`;
 // an upgrade card: a stripe and an icon in its kind's colour, and the kind named beside the title
-const upCard=(b,id,n)=>{const K=kindOf(id);return `<button type="button" class="card up" id="up-${id}" data-act="up" data-key="${id}" style="--k:${K.col}"><i class="ic">${kindIcon(K)}</i><span><b>${upName(b,id)}<em class="kd">${K.label}</em>${n?`<em>you have ${n}</em>`:''}</b><small>${upText(b,id)}</small></span></button>`};
+const upCard=(b,id,n)=>{const K=kindOf(id);return `<button type="button" class="card up" id="up-${id}" data-act="up" data-key="${id}" style="--k:${K.col}"><i class="ic">${kindIcon(K)}</i><span><b>${upName(b,id)}<em class="kd">${K.label}</em>${n?`<em>have ${n}</em>`:''}</b><small>${upText(b,id)}</small></span></button>`};
 function makeBody(){
   if(step===0&&browse){
     return head(ROSTER.length+' fighters','Choose your champion')+
@@ -638,6 +639,8 @@ function render(){
   if(B&&B.dataset)B.dataset.mode=mode;                 // the stylesheet gives the arena more room while a fight is on
   $('btnSpeed').hidden=!(mode==='fight'||mode==='duel'||mode==='ready');
   $('btnBoard').hidden=!(mode==='make'||mode==='over'||mode==='board');
+  $('lnkVideos').hidden=!(mode==='make'||mode==='over'||mode==='board');   // the channel link only where you are between runs
+  $('btnSound').hidden=mode==='pick';                                      // the upgrade screen has no footer at all
   $('btnBoard').textContent=mode==='board'?'Back':'Ladder';          // the same plate opens the ladder and leaves it
   const SH=$('sheet');SH.hidden=mode!=='pick';
   if(mode==='pick'){SH.innerHTML=sheetBody();portraits()}else if(SH.innerHTML)SH.innerHTML='';

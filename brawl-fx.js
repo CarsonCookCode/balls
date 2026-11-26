@@ -1,4 +1,4 @@
-// Ball Brawl effects: everything short-lived and showy that the arena draws on top of the simulation.
+// Duel King effects: everything short-lived and showy that the arena draws on top of the simulation.
 // Glowing sparks, embers, dust, shards, stars, shockwaves, scorch marks, blade trails, squash on impact, and the auras
 // that show a fighter's conditions and upgrades. Nothing here feeds back into the simulation: it listens to the match's
 // events and reads the fighters' state, and it uses Math.random freely because a different sparkle changes no result.

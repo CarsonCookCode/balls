@@ -1,4 +1,4 @@
-// Shared ladder for Ball Brawl, stored in a Firebase Realtime Database through its plain web address (no library).
+// Shared ladder for Duel King, stored in a Firebase Realtime Database through its plain web address (no library).
 // With NET.url empty the game is offline: the ladder holds house fighters and your own climb only.
 //   ladder/<UTC day>/<player id> = {n:name, k:class, s:strength, z:size, c:colour, u:[upgrade ids], r:rungs cleared, t:server time}
 //   fighters/<UTC day>/<player id>/<class> = the same shape: that player's best climb today with each class they tried.

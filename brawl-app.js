@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 33';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 34';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -556,12 +556,13 @@ function makeBody(){
     `<p class="ps" id="goal">${goalLine()}</p>`+
     `<button type="button" id="btnNew" class="alt" data-act="new">Make a different fighter</button>`;
 }
+const CROWN='<svg class="crown" viewBox="0 0 20 16" width="19" height="15" role="img" aria-label="1"><path d="M3 14.5h14l1.8-10-5 3.8L10 1.5 6.2 8.3l-5-3.8z" fill="#c9a45c" stroke="#3c280f" stroke-width="1.3" stroke-linejoin="round"/></svg>';
 function boardBody(){
   const rows=standings(),pair=[],seen=new Set();
   for(const r of rows){if(seen.has(r.who))continue;seen.add(r.who);pair.push(r);if(pair.length===2)break}
   const row=(r,i)=>{
     const b=rebuild(r.e);
-    return `<li class="${r.you?'me':''}${pair.includes(r)?' in':''}"><span class="rk">${i+1}</span><i style="background:${b.color}"></i>`+
+    return `<li class="${r.you?'me':''}${pair.includes(r)?' in':''}"><span class="rk">${i?i+1:CROWN}</span><i style="background:${b.color}"></i>`+
       `<span class="nm"><b>${typeOf(b)}</b><small>${r.you?esc(b.name)+' · you':r.player?esc(b.name):'house fighter'}</small></span><span class="rg">${r.cleared}</span></li>`;
   };
   return `<button type="button" id="btnClose" class="alt backtop" data-act="closeboard">‹ Back</button><h2 class="ph">Today’s ladder</h2><p class="ps" id="goal">${goalLine()}</p>`+(netLine()?`<p class="ps" id="netLine">${netLine()}</p>`:'')+
@@ -575,7 +576,7 @@ function duelBody(){
   const t=[typeOf(duel.a),typeOf(duel.b)];
   return `<p class="stepn">Today’s duel · best of three</p>`+
     `<p class="duelrow"><span>${t[0]}<small>${esc(duel.who[0])}</small></span><b>${duel.score[0]} – ${duel.score[1]}</b><span>${t[1]}<small>${esc(duel.who[1])}</small></span></p>`+
-    (duel.done?`<h2 class="ph">${t[duel.winner]} wins today’s duel</h2>`+
+    (duel.done?`<h2 class="ph">${t[duel.winner]} is today’s Duel King</h2>`+
       `<button type="button" id="btnToBoard" class="go" data-act="board">Back to the ladder</button>`
       :`<button type="button" id="btnLeave" class="quiet" data-act="board">Leave the duel</button>`);
 }

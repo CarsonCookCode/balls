@@ -1,4 +1,4 @@
-// Video recorder for Ball Brawl. Defines window.Broadcast; the game works without it.
+// Video recorder for Duel King. Defines window.Broadcast; the game works without it.
 // It records today's duel as a 1080x1920 video with everything a Short needs drawn into the frame:
 // title, score, the arena, health bars, round stings and an end card with the day's ladder.
 // The page calls start() before the duel, onFrame(dt) after each of its own frames, and finish() when the duel is decided.
@@ -144,7 +144,7 @@
     Orn.scroll(c,x,y,w,h);
     const wt=titles[duel.winner===1?1:0];
     text(wt.toUpperCase(),540,y+98,90,w-130,{fill:'#8f2732',weight:900});
-    text('WINS TODAY’S DUEL',540,y+182,42,w-130,{fill:INK});
+    text('IS TODAY’S DUEL KING',540,y+182,42,w-130,{fill:INK});
     c.fillStyle='rgba(60,40,15,.6)';c.fillRect(x+150,y+230,w-300,3);
     c.save();c.translate(540,y+231);c.rotate(Math.PI/4);c.fillStyle=INK;c.fillRect(-8,-8,16,16);c.restore();
     text('TODAY’S LADDER',x+60,y+282,24,400,{fill:'#5a4630',align:'left'});
@@ -290,7 +290,7 @@
   function slug(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'fighter'}
   function fileName(ext){
     let day='';try{day=dayKey()}catch(e){const d=new Date();day=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
-    return 'ball-brawl-'+day+'-'+slug(titles[0])+'-vs-'+slug(titles[1])+'.'+ext;
+    return 'duel-king-'+day+'-'+slug(titles[0])+'-vs-'+slug(titles[1])+'.'+ext;
   }
   function el(tag,id,css,txt){const e=document.createElement(tag);if(id)e.id=id;if(css)e.style.cssText=css;if(txt!==undefined)e.textContent=txt;return e}
   function closeOverlay(){

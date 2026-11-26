@@ -1,4 +1,4 @@
-// Ball Brawl balance lab. Plays very many simulated fights and climbs and reports what is too strong, too weak or never worth taking.
+// Duel King balance lab. Plays very many simulated fights and climbs and reports what is too strong, too weak or never worth taking.
 // The rule it checks: nothing should be better than something else in every situation.
 //
 //   node tools/balance.js classes [--n 12] [--focus key,key]   every class against every other: win rates, counters, one-sided pairings
@@ -425,7 +425,7 @@ async function main() {
     report.signatures = out;
   }
 
-  console.log('Ball Brawl balance lab: ' + K.length + ' classes, ' + U.length + ' upgrades (' + files.join(', ') + '), ' + workers + ' workers');
+  console.log('Duel King balance lab: ' + K.length + ' classes, ' + U.length + ' upgrades (' + files.join(', ') + '), ' + workers + ' workers');
   const focus = opt('focus', '') ? opt('focus', '').split(',') : null;
   if (mode === 'classes') await classes(+opt('n', 12), focus);
   else if (mode === 'tune') await tune(String(opt('keys', '')).split(',').filter(Boolean), +opt('rounds', 5), +opt('n', 10), has('write'));

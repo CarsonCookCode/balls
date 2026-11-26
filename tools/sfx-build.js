@@ -1,4 +1,4 @@
-// Builds Ball Brawl's sound file from the sound library kept on this PC (outside the repo).
+// Builds Duel King's sound file from the sound library kept on this PC (outside the repo).
 //   node tools/sfx-build.js
 // Output: sfx/brawl.mp3 (every sound end to end, with silence between) and brawl-sfx.js (where each one starts, and a
 // fingerprint of the file so a phone never plays new positions against an old cached copy).

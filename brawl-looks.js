@@ -1,4 +1,4 @@
-// Ball Brawl drawing, "gilded": a dungeon floor in a gold frame, and every fighter a medallion (worked gold ring, enamel
+// Duel King drawing, "gilded": a dungeon floor in a gold frame, and every fighter a medallion (worked gold ring, enamel
 // in the fighter's colour, an ivory crest) with its own weapon. The frame and materials are fantasy; the crest and the
 // weapon say what the fighter is, so a fighter can be anything.
 //

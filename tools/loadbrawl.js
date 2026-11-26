@@ -1,4 +1,4 @@
-// Shared by the tests: returns Ball Brawl's scripts as one string, in the order duel.html loads them.
+// Shared by the tests: returns Duel King's scripts as one string, in the order duel.html loads them.
 const fs = require('fs');
 const R = 'C:/repos/balls/';
 function files() {

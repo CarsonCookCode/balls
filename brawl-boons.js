@@ -1,4 +1,4 @@
-// Forty more upgrades for Ball Brawl. Pure simulation: loads in Node with only brawl-sim.js before it.
+// Forty more upgrades for Duel King. Pure simulation: loads in Node with only brawl-sim.js before it.
 // Every upgrade here works through the hooks described above UPGRADES in brawl-sim.js; none of them is read by createMatch itself.
 // The rule they are built to: nothing is better than something else in every situation. Each one is strong for some
 // fighters, sizes, speeds or moments of a fight and weak for others, and anything that multiplies is capped.

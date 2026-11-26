@@ -1,4 +1,4 @@
-// Reads Ball Brawl's play log for one day and prints what happened, so play can be reviewed.
+// Reads Duel King's play log for one day and prints what happened, so play can be reviewed.
 //   node tools/review-log.js              today (UTC)
 //   node tools/review-log.js 2026-11-25   that day
 //   node tools/review-log.js 2026-11-25 full    also list every fight

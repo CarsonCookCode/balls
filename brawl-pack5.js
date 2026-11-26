@@ -1,4 +1,4 @@
-// Fifth pack of fighter classes for Ball Brawl: machines and cyberpunk. Each class adds a row to FIGHTERS, a block to
+// Fifth pack of fighter classes for Duel King: machines and cyberpunk. Each class adds a row to FIGHTERS, a block to
 // BEHAVE and its art to LOOKS. The first half is pure simulation (it loads in Node with only brawl-sim.js before it);
 // the second half is drawing and only runs when the page asks for it. Every top-level name starts with p5/P5.
 

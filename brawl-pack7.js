@@ -1,4 +1,4 @@
-// Seventh pack of fighter classes for Ball Brawl: elements and nature. Same layout as brawl-pack2.js: the first half is pure
+// Seventh pack of fighter classes for Duel King: elements and nature. Same layout as brawl-pack2.js: the first half is pure
 // simulation (it loads in Node with only brawl-sim.js before it), the second half is drawing and only runs when the page
 // asks for it. Every top-level name here starts with p7/P7 so it cannot clash with the other files.
 

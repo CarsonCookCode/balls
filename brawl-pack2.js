@@ -1,4 +1,4 @@
-// Second pack of fighter classes for Ball Brawl. Each class adds a row to FIGHTERS, a block to BEHAVE and its art to LOOKS.
+// Second pack of fighter classes for Duel King. Each class adds a row to FIGHTERS, a block to BEHAVE and its art to LOOKS.
 // The first half is pure simulation (it loads in Node with only brawl-sim.js before it); the second half is drawing and
 // only runs when the page asks for it. Every top-level name here starts with p2/P2 so it cannot clash with the other files.
 

@@ -1,4 +1,4 @@
-/* Ball Brawl: "gilded". Meant to read as a fantasy game screen, not a web page: aged leather backdrop,
+/* Duel King: "gilded". Meant to read as a fantasy game screen, not a web page: aged leather backdrop,
    a parchment scroll for every choice, crimson ribbons for titles, carved plates for buttons, gold trim.
    Layout: one phone screen. Names and health on top, the arena, the scroll, a row of plates. */
 :root{
@@ -112,6 +112,7 @@ input::placeholder{color:rgba(90,70,48,.6);font-style:italic;font-weight:500}
 .lb li.in{background:rgba(143,39,50,.13);box-shadow:inset 3px 0 0 var(--crimson)}
 .lb li.me{outline:1.5px solid var(--gold-lo);outline-offset:-2px}
 .lb .rk{font:700 15px/1 var(--display);text-align:right;color:var(--ink-2)}
+.lb .rk .crown{display:block;margin-left:auto}
 .lb i{width:20px;height:20px;border-radius:50%;border:2px solid var(--gold);outline:1px solid #090b0d;box-shadow:inset 0 0 0 1px #090b0d,inset 2px 2px 3px rgba(255,255,255,.3)}
 .lb .nm{display:flex;flex-direction:column;min-width:0}
 .lb .nm b{font:700 14.5px/1.15 var(--display);letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

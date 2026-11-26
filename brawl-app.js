@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 47';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 48';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -636,7 +636,7 @@ function duelBody(){
 }
 function render(){
   const P=$('panel'),B=document.body;
-  if(B&&B.dataset)B.dataset.mode=mode;                 // the stylesheet gives the arena more room while a fight is on
+  if(B&&B.dataset){B.dataset.grid=mode==='make'&&step===0&&browse?'1':'0';B.dataset.mode=mode}                 // the stylesheet gives the arena more room while a fight is on
   $('btnSpeed').hidden=!(mode==='fight'||mode==='duel'||mode==='ready');
   $('btnBoard').hidden=!(mode==='make'||mode==='over'||mode==='board');
   $('lnkVideos').hidden=!(mode==='make'||mode==='over'||mode==='board');   // the channel link only where you are between runs

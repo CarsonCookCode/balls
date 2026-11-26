@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Duel King channel art</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cormorant+Garamond:ital,wght@0,500;0,700;1,500&display=swap">
+</head>
+<body style="margin:0;background:#000">
+<canvas id="cv"></canvas>
+<script src="../../brawl-sim.js"></script>
+<script src="../../brawl-looks.js"></script>
+<script src="../../brawl-fx.js"></script>
+<script src="../../brawl-pack2.js"></script>
+<script src="../../brawl-pack3.js"></script>
+<script src="../../brawl-pack4.js"></script>
+<script src="../../brawl-pack5.js"></script>
+<script src="../../brawl-pack6.js"></script>
+<script src="../../brawl-pack7.js"></script>
+<script src="../../brawl-pack8.js"></script>
+<script src="../../brawl-boons.js"></script>
+<script>
+// Channel art for Duel King, drawn with the game's own ornaments and fighters.  ?w=avatar | banner
+const QS=new URLSearchParams(location.search),SA=+(QS.get('sa')||-1.2),RA=+(QS.get('ra')||3.6);
+const which=new URLSearchParams(location.search).get('w')||'avatar';
+const cv=document.getElementById('cv'),c=cv.getContext('2d');
+const TEXTF="'Cormorant Garamond', Georgia, serif";
+
+// a gold crown in a unit box (-1..1 wide, about -.8..+.6 tall), filled with the current fill style
+function crownPath(k){
+  k.beginPath();
+  k.moveTo(-1,.6);k.lineTo(-1,-.42);k.lineTo(-.5,.06);k.lineTo(0,-.8);k.lineTo(.5,.06);k.lineTo(1,-.42);k.lineTo(1,.6);k.closePath();
+}
+function goldCrown(x,y,s){
+  c.save();c.translate(x,y);c.scale(s,s);
+  c.lineJoin='round';
+  c.fillStyle='rgba(0,0,0,.45)';c.save();c.translate(.04,.1);crownPath(c);c.fill();c.restore();
+  const gr=c.createLinearGradient(0,-.8,0,.6);gr.addColorStop(0,GOLD_HI);gr.addColorStop(.55,GOLD);gr.addColorStop(1,GOLD_LO);
+  c.fillStyle=gr;c.strokeStyle=EDGE;c.lineWidth=.07;crownPath(c);c.fill();c.stroke();
+  c.fillStyle=GOLD_LO;c.fillRect(-.93,.28,1.86,.09);
+  c.fillStyle=GOLD_HI;c.fillRect(-.93,.22,1.86,.04);
+  for(const [px,py] of [[-1,-.42],[0,-.8],[1,-.42]]){c.fillStyle=GOLD_HI;c.strokeStyle=EDGE;c.lineWidth=.05;c.beginPath();c.arc(px,py,.13,0,7);c.fill();c.stroke()}
+  for(const [px,col] of [[-.55,'#3f6fd8'],[0,'#b3313f'],[.55,'#3f6fd8']]){c.fillStyle=EDGE;c.beginPath();c.arc(px,.44,.115,0,7);c.fill();c.fillStyle=col;c.beginPath();c.arc(px,.44,.085,0,7);c.fill();c.fillStyle='rgba(255,255,255,.55)';c.beginPath();c.arc(px-.03,.41,.028,0,7);c.fill()}
+  c.restore();
+}
+// a duelling sword from (0,0) pointing along +x, length L
+function sword(x,y,an,L,w){
+  c.save();c.translate(x,y);c.rotate(an);c.lineJoin='round';
+  // blade
+  const gr=c.createLinearGradient(0,-w,0,w);gr.addColorStop(0,'#f4f7fa');gr.addColorStop(.5,'#c3ccd4');gr.addColorStop(1,'#7f8a93');
+  c.fillStyle=gr;c.strokeStyle=EDGE;c.lineWidth=w*.22;
+  c.beginPath();c.moveTo(0,-w);c.lineTo(L-w*2.6,-w);c.lineTo(L,0);c.lineTo(L-w*2.6,w);c.lineTo(0,w);c.closePath();c.fill();c.stroke();
+  c.strokeStyle='rgba(60,70,80,.55)';c.lineWidth=w*.14;c.beginPath();c.moveTo(w,0);c.lineTo(L-w*3,0);c.stroke();
+  // guard, grip, pommel
+  const gg=c.createLinearGradient(0,-w*4,0,w*4);gg.addColorStop(0,GOLD_HI);gg.addColorStop(.5,GOLD);gg.addColorStop(1,GOLD_LO);
+  c.fillStyle=gg;c.strokeStyle=EDGE;c.lineWidth=w*.22;
+  c.beginPath();c.roundRect(-w*1.1,-w*4.2,w*2.2,w*8.4,w*.8);c.fill();c.stroke();
+  c.fillStyle='#3a2a1e';c.beginPath();c.rect(-w*6.4,-w*.95,w*5.4,w*1.9);c.fill();c.stroke();
+  c.strokeStyle='rgba(201,164,92,.8)';c.lineWidth=w*.2;for(let i=1;i<5;i++){c.beginPath();c.moveTo(-w*(1.2+i*1.05),-w*.9);c.lineTo(-w*(1.7+i*1.05),w*.9);c.stroke()}
+  c.fillStyle=gg;c.strokeStyle=EDGE;c.lineWidth=w*.22;c.beginPath();c.arc(-w*7.3,0,w*1.5,0,7);c.fill();c.stroke();
+  c.restore();
+}
+// the game's medallion (gold ring, dark seat, enamel) at any size, with a crest drawn by `crest(c)` in a unit box
+function medallion(x,y,r,col,crest){
+  c.save();
+  c.fillStyle='rgba(0,0,0,.5)';c.beginPath();c.ellipse(x+r*.02,y+r*.07,r*1.02,r*1.0,0,0,7);c.fill();
+  let gr=c.createLinearGradient(x-r,y-r,x+r,y+r);gr.addColorStop(0,GOLD_HI);gr.addColorStop(.45,GOLD);gr.addColorStop(1,GOLD_LO);
+  c.fillStyle=gr;c.strokeStyle=EDGE;c.lineWidth=r*.035;c.beginPath();c.arc(x,y,r,0,7);c.fill();c.stroke();
+  c.strokeStyle='rgba(60,42,12,.75)';c.lineWidth=r*.03;c.beginPath();
+  for(let k=0;k<36;k++){const a=k/36*6.2832;c.moveTo(x+Math.cos(a)*(r*.975),y+Math.sin(a)*(r*.975));c.lineTo(x+Math.cos(a+.04)*(r*.925),y+Math.sin(a+.04)*(r*.925))}
+  c.stroke();
+  c.fillStyle=EDGE;c.beginPath();c.arc(x,y,r*.9,0,7);c.fill();
+  gr=c.createRadialGradient(x-r*.25,y-r*.3,r*.1,x,y,r*.9);gr.addColorStop(0,shade(col,.28));gr.addColorStop(.55,col);gr.addColorStop(1,shade(col,-.4));
+  c.fillStyle=gr;c.beginPath();c.arc(x,y,r*.86,0,7);c.fill();
+  c.strokeStyle='rgba(240,220,164,.35)';c.lineWidth=r*.012;c.beginPath();c.arc(x,y,r*.8,0,7);c.stroke();
+  // a soft highlight, like light on enamel
+  gr=c.createRadialGradient(x-r*.3,y-r*.42,0,x-r*.3,y-r*.42,r*.6);gr.addColorStop(0,'rgba(255,255,255,.22)');gr.addColorStop(1,'rgba(255,255,255,0)');
+  c.fillStyle=gr;c.beginPath();c.arc(x,y,r*.86,0,7);c.fill();
+  if(crest){c.save();c.translate(x,y);c.scale(r,r);crest(c);c.restore()}
+  c.restore();
+}
+function glow(x,y,r,col,a){
+  const gr=c.createRadialGradient(x,y,0,x,y,r);gr.addColorStop(0,col);gr.addColorStop(1,'rgba(0,0,0,0)');
+  c.save();c.globalCompositeOperation='lighter';c.globalAlpha=a;c.fillStyle=gr;c.fillRect(x-r,y-r,r*2,r*2);c.restore();
+}
+// one of the game's real fighters, drawn by the game, k times arena size, turned so its weapons point at `ang`
+function fighter(key,px,py,k,ang,col){
+  const m=createMatch(makeBuild(key,-1,1),makeBuild('turtle',-1,1),11),f=m.f[0];
+  f.x=130;f.y=130;f.ang=ang;f.label='';f.aim=ang;if(col)f.col=col;
+  m.f[1].x=px>1280?20:240;m.f[1].y=130;
+  c.save();c.translate(px-130*k,py-130*k);c.scale(k,k);
+  g=c;MATCH=m;NOW=0;PX=k;LIVE=false;
+  try{const L=LOOKS[key];if(L&&L.under){L.under(f,m);resetInk(1)}drawFighter(f,false)}catch(e){document.title='ERR '+key+' '+e.message}
+  c.restore();
+}
+function ivoryCrown(k){
+  // the crest: a crown in ivory with a drop shadow, the way the game's crests are cut
+  k.save();k.translate(0,.02);k.scale(.5,.5);
+  k.shadowColor='rgba(0,0,0,.5)';k.shadowOffsetY=cv.width*.012;k.shadowBlur=0;
+  k.fillStyle=IVORY;k.lineJoin='round';crownPath(k);k.fill();
+  k.shadowColor='transparent';
+  for(const [px,py] of [[-1,-.42],[0,-.8],[1,-.42]]){k.beginPath();k.arc(px,py,.14,0,7);k.fill()}
+  k.fillStyle=CRIMSON;k.fillRect(-.82,.2,1.64,.1);
+  for(const px of [-.5,0,.5]){k.beginPath();k.arc(px,.25,.0,0,7);k.fill()}
+  k.restore();
+}
+
+function avatar(){
+  const W=800;cv.width=cv.height=W;
+  Orn.backdrop(c,0,0,W,W);
+  // a warm light behind the medallion
+  glow(400,400,430,'rgba(255,196,110,.5)',.5);
+  glow(400,400,300,'rgba(190,50,60,.6)',.35);
+  // crossed swords behind, points up
+  const d=176;
+  sword(400+d,404+d,-Math.PI*3/4,596,15);
+  sword(400-d,404+d,-Math.PI/4,596,15);
+  medallion(400,404,196,CRIMSON,ivoryCrown);
+}
+
+function banner(){
+  const W=2560,H=1440;cv.width=W;cv.height=H;
+  Orn.backdrop(c,0,0,W,H);
+  // the band every device shows part of: a strip of the arena's flagstones between gold rails
+  const by=470,bh=500,t=bh/2;
+  c.save();c.beginPath();c.rect(0,by,W,bh);c.clip();
+  for(let x=-40;x<W;x+=t*6)for(let j=0;j<1;j++){const o=document.createElement('canvas');o.width=t*6;o.height=t*6;Orn.floor(o.getContext('2d'),0,0,t*6,6);c.drawImage(o,0,0,t*6,bh,x,by,t*6,bh)}
+  // darker towards the ends and edges, lit in the middle
+  let gr=c.createRadialGradient(W/2,by+bh/2,120,W/2,by+bh/2,W*.62);gr.addColorStop(0,'rgba(255,205,140,.10)');gr.addColorStop(.55,'rgba(0,0,0,.25)');gr.addColorStop(1,'rgba(0,0,0,.78)');
+  c.fillStyle=gr;c.fillRect(0,by,W,bh);
+  gr=c.createLinearGradient(0,by,0,by+bh);gr.addColorStop(0,'rgba(0,0,0,.55)');gr.addColorStop(.18,'rgba(0,0,0,0)');gr.addColorStop(.82,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(0,0,0,.55)');
+  c.fillStyle=gr;c.fillRect(0,by,W,bh);
+  c.restore();
+  for(const y of [by-14,by+bh]){
+    c.fillStyle=EDGE;c.fillRect(0,y-3,W,20);
+    const gg=c.createLinearGradient(0,y,0,y+14);gg.addColorStop(0,GOLD_HI);gg.addColorStop(.4,GOLD);gg.addColorStop(1,GOLD_LO);c.fillStyle=gg;c.fillRect(0,y,W,14);
+  }
+  for(let x=64;x<W;x+=128)for(const y of [by-7,by+bh+7])lozenge(c,x,y,5,GOLD_LO);
+
+  // the cast. The two in the middle are inside the area phones show; the rest fill the wide strip desktops show.
+  const cy=by+bh/2;
+  const cast=[
+    // key, x, y, size, angle
+    ['wizard',96,cy-84,2.2,.5],['frog',214,cy+104,2.2,-.4],['duck',352,cy-40,2.5,-.3],['viking',478,cy+96,2.5,.35],
+    ['bomb',2464,cy-84,2.2,2.7],['crystal',2346,cy+104,2.2,3.4],['tesla',2208,cy-40,2.5,3.5],['pharaoh',2082,cy+96,2.5,2.8],
+  ];
+  for(const a of cast){c.globalAlpha=1;fighter(a[0],a[1],a[2],a[3],a[4])}
+  // dim the supporting cast a little so the title and the two duellists lead
+  c.fillStyle='rgba(6,9,11,.32)';c.fillRect(0,by,600,bh);c.fillRect(W-600,by,600,bh);
+  // the duel: red against blue, blades towards each other, a clash of light between them (under the title ribbon's tails)
+  glow(648,cy+4,210,'rgba(255,120,90,.9)',.34);glow(W-648,cy+4,210,'rgba(110,160,255,.9)',.34);
+  fighter('samurai',648,cy+4,3.7,SA);
+  fighter('railgun',W-648,cy+4,3.7,RA);
+
+  // title
+  goldCrown(W/2,by+86,58);
+  Orn.ribbon(c,W/2,cy-4,720,146,'DUEL KING',100);
+  c.textAlign='center';c.textBaseline='middle';
+  c.font='italic 500 46px '+TEXTF;c.lineJoin='round';c.lineWidth=9;c.strokeStyle='rgba(0,0,0,.8)';c.fillStyle=IVORY;
+  const tag='Forge a champion · Climb the ladder · Win the crown';
+  c.strokeText(tag,W/2,cy+124);c.fillText(tag,W/2,cy+124);
+  c.font='700 40px '+FONT;c.letterSpacing='7px';c.lineWidth=9;c.strokeStyle='rgba(0,0,0,.85)';c.fillStyle=GOLD_HI;
+  c.strokeText('PLAYDUELKING.COM',W/2,cy+180);c.fillText('PLAYDUELKING.COM',W/2,cy+180);
+  c.letterSpacing='0px';
+
+  // above and below the band (television only): fine gold tooling and a quiet line
+  c.strokeStyle=GOLD_LO;c.lineWidth=3;c.strokeRect(40,40,W-80,H-80);c.lineWidth=1.5;c.strokeRect(54,54,W-108,H-108);
+  for(const y of [250,H-250]){
+    c.fillStyle='rgba(122,93,43,.8)';c.fillRect(W/2-420,y-1,840,2);lozenge(c,W/2,y,11,GOLD);lozenge(c,W/2-420,y,6,GOLD_LO);lozenge(c,W/2+420,y,6,GOLD_LO);
+  }
+  c.font='700 34px '+FONT;c.letterSpacing='10px';c.fillStyle=GOLD_LO;
+  c.fillText('A NEW DUEL EVERY DAY',W/2,330);c.fillText('NINETY CHAMPIONS · ONE CROWN',W/2,H-330);
+  c.letterSpacing='0px';
+}
+
+(async()=>{
+  try{await Promise.all([document.fonts.load("700 100px Cinzel"),document.fonts.load("900 100px Cinzel"),document.fonts.load("italic 500 46px 'Cormorant Garamond'")])}catch(e){}
+  try{(which==='banner'?banner:avatar)()}catch(e){document.title='ERR '+e.message}
+  const out=document.createElement('pre');out.id='png';out.textContent=which==='banner'?cv.toDataURL('image/jpeg',.93):cv.toDataURL('image/png');
+  document.body.appendChild(out);
+  document.body.setAttribute('data-done',document.title);
+})();
+</script>
+</body>
+</html>

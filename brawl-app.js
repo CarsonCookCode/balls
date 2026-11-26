@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 42';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 43';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -228,13 +228,26 @@ function sfx(name,vol,rate,ui){
   }catch(e){}
 }
 // what a hit sounds like depends on who landed it; mines and eruptions already have their boom
-const HIT_SFX={blade:'slash',twin:'slash',leech:'slash',pirate:'slash',clock:'metal',fury:'chop',mace:'heavy',jugger:'heavy',turtle:'iron',spikes:'punch',jester:'punch',
-  blaster:'punch',archer:'twig',miner:'',volcano:'',comet:'tick',bramble:'twig',bees:'tin',ghost:'thump',snow:'thump',tesla:'',magnet:'',mirror:'glass',spider:'soft',
-  necro:'wood',painter:'tick',hunter:'wood',beacon:'tick',drum:'thump',wizard:'glass'};
+// The sound of a fighter's hit, by kind of fighter. This list comes first; a fighter not in it uses its class's own
+// sfx.hit (in the class files), and '' means its hits are silent. The kinds were chosen by ear (tools/sfx-build.js):
+// change who sounds like what HERE, never in the class files, which are part of the rules fingerprint.
+const HIT_KINDS={
+  slash:'blade leech pirate',                                              // swords (and, for now, the Vampire)
+  katana:'samurai',dagger:'twin shadow',axe:'fury viking mimic',
+  heavy:'mace jugger',punch:'spikes jester blaster',
+  slam:'ghost snow drum frog snail penguin capybara medusa roomba void dice tornado tide quake fisher',   // body slams
+  metal:'turtle spartan smith railgun',                                    // armour and shells
+  clunk:'clock engineer emperor gladiator echo',                           // clockwork and machines
+  thorn:'bramble cactus archer',goo:'spider plague mushroom moth chef',buzz:'bees chainsaw yoyo',
+  spark:'netrunner glitch drone battery',touch:'duck firefly candle painter pharaoh comet beacon',
+  glass:'mirror wizard',wood:'necro hunter','':'miner volcano tesla magnet',
+};
+const HIT_SFX={};
+for(const [snd,who] of Object.entries(HIT_KINDS))for(const k of who.split(' '))HIT_SFX[k]=snd;
 const HIT_VOL={archer:.7,blaster:.8};
 // each ranged weapon has a voice of its own (these come before a class's own sfx.shot): a pistol for the Gunner, a revolver for
 // the Cowboy, an energy pulse for the Railgun, a soft release for the bow
-const SHOT_SFX={blaster:'gun',cowboy:'revolver',railgun:'rail',archer:'loose',wizard:'cast',hunter:'whoosh',pirate:'whoosh'};
+const SHOT_SFX={blaster:'gun',cowboy:'revolver',railgun:'rail',archer:'loose',wizard:'cast',hunter:'whoosh',pirate:'whoosh',tide:'wave'};
 const UI_SFX={weapon:'place',str:'place',size:'place',others:'page',back:'page',col:'click',new:'page',start:'page',up:'coins',fight:'draw',arm:'latch',tip:'page',duel:'draw',recduel:'draw',board:'open',closeboard:'page'};
 function hitSound(e){
   if(e.ind){sfx('tick',.6);return}
@@ -288,7 +301,7 @@ function onEvents(ev){
       if(e.dmg>=18||e.crit)shake=Math.max(shake,Math.min(4,e.dmg*.09+(e.crit?1:0)));
       hitSound(e);
     }else if(e.k==='heal'){say(e.x,e.y,'+'+Math.max(1,Math.round(e.dmg)),'#7ddc5a')}
-    else if(e.k==='block'){say(e.x,e.y,'Blocked','#bcd4ff');sfx('bell',.8)}
+    else if(e.k==='block'){say(e.x,e.y,'Blocked','#bcd4ff');sfx('block',.8)}
     else if(e.k==='revive'){say(e.x,e.y,'Second life','#ffd447',true);sfx('toll',1)}
     else if(e.k==='parry'){sfx('clang',.55,1.12)}
     else if(e.k==='bump'){sfx('soft',.4)}

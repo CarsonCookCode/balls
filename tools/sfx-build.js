@@ -4,8 +4,9 @@
 // fingerprint of the file so a phone never plays new positions against an old cached copy).
 // Needs ffmpeg on PATH. Sources are Kenney's audio packs (kenney.nl) and four packs from opengameart.org kept under
 // oga/ in the library, all public domain (CC0), so the built file may be published.
-// Which sounds are used was chosen by ear on the picker pages: heavy, metal, clang, ko, gun, revolver and rail are the
-// user's picks of 2026-11-26.
+// Which sounds are used was chosen by ear on the picker pages (the user's picks of 2026-11-26). Round four gave each
+// kind of fighter a sound of its own: the groups from `katana` to `block` below. Which fighter plays which group is
+// HIT_SFX and SHOT_SFX in brawl-app.js.
 // Some sounds (sn(...) below) come from the Sonniss #GameAudioGDC bundle, kept under sonniss/ in the library. Its
 // licence (https://sonniss.com/gdc-bundle-license/) allows them inside a game, which is what this built file is, and
 // forbids supplying them as sounds: never publish them as separate clips (the public picker page must not use them).
@@ -23,6 +24,8 @@ const og = (pack, ...names) => ({ og: pack, names });
 // from the Sonniss bundle: sn(part of the library's folder name, part of the file name[, takes]). With `takes`, the file
 // is a long recording of several (five gunshots, say) and that many single takes are cut out of it.
 const sn = (lib, name, takes) => ({ sn: lib, name, takes: takes || 0 });
+// a stretch of a long steady recording (a running chainsaw): one clip of `len` seconds starting at each time in `at`
+const seg = (lib, name, at, len) => ({ sn: lib, name, at, len });
 // name: { g: playback gain, cap: longest it may run (seconds), gap: shortest time between two plays, files }
 const GROUPS = {
   // blows, by what is doing the hitting
@@ -37,21 +40,34 @@ const GROUPS = {
   wood:    { g: .7,  cap: .33, gap: .07, files: imp('Wood_medium', 0, 1, 2, 3) },
   twig:    { g: .55, cap: .27, gap: .08, files: imp('Wood_light', 0, 1, 2) },
   chop:    { g: .85, cap: .31, gap: .08, files: ['rpg-audio/chop', ...imp('Wood_heavy', 0, 2)] },
-  glass:   { g: .55, cap: .21, gap: .08, files: imp('Glass_light', 0, 1, 2, 3) },
-  shatter: { g: .7,  cap: .54, gap: .2,  files: imp('Glass_medium', 0, 1, 2) },
+  glass:   { g: .5,  cap: .4,  gap: .08, files: og('combat-150', 'BreakGlass*') },   // Mirror, Crystal, Glacier, Mime, Alchemist, the Wizard's touch
+  shatter: { g: .7,  cap: .6,  gap: .2,  files: og('combat-150', 'BreakGlass*') },   // frozen solid
   bell:    { g: .6,  cap: .7,  gap: .25, files: imp('Bell_heavy', 2, 3, 4) },
   toll:    { g: .75, cap: 1.5, gap: .6,  files: imp('Bell_heavy', 0) },
   tick:    { g: .4,  cap: .14, gap: .09, files: imp('Generic_light', 0, 1, 2, 3, 4) },
   tin:     { g: .45, cap: .2,  gap: .09, files: imp('Tin_medium', 0, 1, 2, 3) },
+  // a sound of its own for each kind of fighter (round four of the picker)
+  katana:  { g: .8,  cap: .65, gap: .1,  files: sn('Melee Weapons', 'Axe Flesh Hit', 3) },      // Samurai
+  axe:     { g: .85, cap: .5,  gap: .08, files: sn('Melee Weapons', 'Axe Flesh Hit', 4) },      // Berserker, Viking, Mimic
+  dagger:  { g: .6,  cap: .32, gap: .07, files: sn('Sound Effects Collection', 'Shears') },      // Ninja, Shadow
+  slam:    { g: .8,  cap: .55, gap: .1,  files: imp('Plank_medium', 0, 1, 2, 3) },               // body slams: Snowball, Penguin, Frog...
+  clunk:   { g: .65, cap: .45, gap: .07, files: [sn('Steampunk Machines', 'texture_038'), sn('Steampunk Machines', 'texture_053')] },   // Clockmaker, Engineer, Emperor, Gladiator, Echo
+  thorn:   { g: .55, cap: .3,  gap: .08, files: sn('Videogame Foley', 'Dry Tree Branches') },    // Bramble, Cactus, Archer
+  goo:     { g: .6,  cap: .4,  gap: .1,  files: sn('Gore Mini', 'Gore Splatter', 3) },           // Spider, Plague Doc, Mushroom, Moth, Chef
+  buzz:    { g: .5,  cap: .4,  gap: .12, files: seg('Lumberjack', 'Chainsaw Working', [8, 14], .45) },   // Chainsaw, Beekeeper, Yo-yo
+  spark:   { g: .5,  cap: .3,  gap: .09, files: sn('Battle Droid', 'Droid-UI') },                // Netrunner, Glitch, Drone Pilot, Battery
+  touch:   { g: .4,  cap: .2,  gap: .09, files: sn('User Interaction', 'Select Middle') },       // Duck, Firefly, Candle, Painter, Pharaoh, Comet, Lighthouse
+  wave:    { g: .55, cap: .8,  gap: .2,  files: og('combat-150', 'Water Spell Impact*') },       // Tide's wave
+  block:   { g: .7,  cap: .7,  gap: .25, files: sn('Melee Weapons', 'Shield Block', 5) },        // a shield stops a hit
   // launching, casting and the larger events
   gun:     { g: .5,  cap: .35, gap: .12, files: sn('Desert Eagle', '4m Left', 4) },   // the Gunner
   revolver:{ g: .55, cap: .55, gap: .12, files: sn('Smith & Wesson', '3m Behind', 4) },   // the Cowboy
   rail:    { g: .5,  cap: .7,  gap: .12, files: sn('Sci-Fi Energy Weapons', 'Shot Pulse') },   // the Railgun: a charged energy pulse
-  loose:   { g: .4,  cap: .26, gap: .12, files: ['rpg-audio/cloth2', 'rpg-audio/cloth3', 'rpg-audio/cloth4'] },   // an arrow leaving the string: soft, short, airy
-  whoosh:  { g: .45, cap: .46, gap: .15, files: ['casino-audio/card-slide-4', 'casino-audio/card-slide-1', 'casino-audio/card-slide-2'] },
-  cast:    { g: .4,  cap: .45, gap: .15, files: ['digital-audio/phaseJump1', 'digital-audio/phaseJump2', 'digital-audio/phaseJump3', 'digital-audio/phaseJump4'] },
-  zap:     { g: .4,  cap: .34, gap: .1,  files: ['sci-fi-sounds/laserSmall_000', 'sci-fi-sounds/laserSmall_001', 'sci-fi-sounds/laserSmall_002'] },
-  boom:    { g: .9,  cap: 1.0, gap: .15, files: ['sci-fi-sounds/explosionCrunch_000', 'sci-fi-sounds/explosionCrunch_001', 'sci-fi-sounds/explosionCrunch_002'] },
+  loose:   { g: .45, cap: .35, gap: .12, files: og('rpg-artisticdude', 'swing', 'swing2', 'swing3') },   // the bow, the Frog's tongue, the Cactus's spines, the Fisher's line
+  whoosh:  { g: .45, cap: .45, gap: .15, files: og('rpg-artisticdude', 'swing', 'swing2', 'swing3') },   // thrown things
+  cast:    { g: .45, cap: .55, gap: .15, files: og('rpg-artisticdude', 'magic1', 'spell') },   // Wizard, Netrunner, Storm Cloud
+  zap:     { g: .45, cap: .5,  gap: .1,  files: og('combat-150', 'Lightning Spell Impact*') },   // lightning
+  boom:    { g: .9,  cap: 1.1, gap: .15, files: sn('Explosion SFX', 'Medium Realistic Explosion') },
   rumble:  { g: .9,  cap: 1.0, gap: .4,  files: ['sci-fi-sounds/lowFrequency_explosion_001'] },
   ko:      { g: .9,  cap: 1.3, gap: .4,  files: og('combat-150', 'ElectricExplosion*') },   // a fighter falls
   hum:     { g: .35, cap: .95, gap: .5,  files: ['sci-fi-sounds/forceField_000', 'sci-fi-sounds/forceField_002'] },
@@ -87,14 +103,18 @@ function cutTakes(x, cap, max) {
 }
 // the clips of one sound, ready to be laid end to end
 function clips(G) {
-  if (G.files.sn) {
-    const hit = SON.filter(x => x.rel.includes(G.files.sn.toLowerCase()) && x.base.includes(G.files.name.toLowerCase())).sort((a, b) => a.base.localeCompare(b.base, 'en', { numeric: true }));
-    if (!hit.length) throw new Error('not in the library: sonniss / ' + G.files.sn + ' / ' + G.files.name);
-    const x = decode(hit[0].f), out = G.files.takes ? cutTakes(x, G.cap, G.files.takes) : [tidy(x, G.cap)];
-    if (!out.length) throw new Error('no takes found in ' + hit[0].f);
-    return out;
-  }
-  return resolve(G.files).map(f => tidy(decode(f), G.cap));
+  const one = F => {
+    if (F && F.sn) {
+      const hit = SON.filter(x => x.rel.includes(F.sn.toLowerCase()) && x.base.includes(F.name.toLowerCase())).sort((a, b) => a.base.localeCompare(b.base, 'en', { numeric: true }));
+      if (!hit.length) throw new Error('not in the library: sonniss / ' + F.sn + ' / ' + F.name);
+      const x = decode(hit[0].f);
+      const out = F.at ? F.at.map(t => tidy(x.slice(Math.round(t * RATE), Math.round((t + F.len) * RATE)), G.cap)) : F.takes ? cutTakes(x, G.cap, F.takes) : [tidy(x, G.cap)];
+      if (!out.length) throw new Error('no takes found in ' + hit[0].f);
+      return out;
+    }
+    return resolve(typeof F === 'string' ? [F] : F).map(f => tidy(decode(f), G.cap));
+  };
+  return Array.isArray(G.files) && G.files.some(F => typeof F !== 'string') ? G.files.flatMap(one) : one(G.files);
 }
 function resolve(files) {
   if (Array.isArray(files)) return files.map(id => { if (!index[id]) throw new Error('not in the library: ' + id); return index[id]; });

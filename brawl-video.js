@@ -135,7 +135,7 @@
     return out;
   }
   function siteLine(){
-    try{return (location.host+location.pathname).replace(/\/+$/,'/')||'our site'}catch(e){return 'our site'}
+    try{return (location.host+location.pathname).replace(/(index|duel)\.html$/,'').replace(/\/+$/,'')||'our site'}catch(e){return 'our site'}
   }
   // the end card is a parchment scroll unrolled over the arena
   function drawEndCard(open){

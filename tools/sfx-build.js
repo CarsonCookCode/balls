@@ -6,7 +6,7 @@
 // built file may be published. Sounds from libraries whose licence forbids republishing must NOT be added here.
 //
 // To change the sound of something: edit GROUPS below (several takes per sound keep repeats from grating),
-// run this script, and bump the ?v= on brawl-sfx.js in duel.html.
+// run this script, and bump the ?v= on brawl-sfx.js in index.html.
 const fs = require('fs'), path = require('path'), { spawnSync } = require('child_process');
 const LIB = process.env.BRAWL_AUDIO_LIBRARY || 'C:/repos/balls-audio-library';
 const OUT = path.join(__dirname, '..');

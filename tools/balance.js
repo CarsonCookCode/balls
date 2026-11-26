@@ -10,16 +10,16 @@
 //   node tools/balance.js climb [--n 30]                       real climbs: random picks vs a player who tests every offer first
 //   node tools/balance.js styles [--n 6]                       ways of playing against each other (burst, tank, sustain, tricks, speed...): how far each climbs, how long its fights last
 //   node tools/balance.js all                                  everything, with the red flags gathered at the end
-// Common options: --with file.js (also load a file that duel.html does not list yet), --workers N, --seed N, --json out.json
+// Common options: --with file.js (also load a file that index.html does not list yet), --workers N, --seed N, --json out.json
 //
-// It loads the simulation files duel.html lists (brawl-sim.js, class packs, upgrade packs), so new content is covered as soon as it is added.
+// It loads the simulation files index.html lists (brawl-sim.js, class packs, upgrade packs), so new content is covered as soon as it is added.
 const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
 const fs = require('fs'), path = require('path'), os = require('os');
 const ROOT = path.join(__dirname, '..');
 const EXPORT = ';return {FIGHTERS,ROSTER,UPGRADES,UP_IDS,STRENGTHS,SIZES,makeBuild,canTake,addUpgrade,offers,rival,createMatch,mulberry32,typeOf,upName,effHp,effDmg,effSpd};';
 
 function simFiles(extra) {
-  const html = fs.readFileSync(path.join(ROOT, 'duel.html'), 'utf8');
+  const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   const list = [...html.matchAll(/<script src="([^"?]+)[^"]*"><\/script>/g)].map(m => m[1]).filter(f => /^brawl-(sim|pack\d*|boons\d*)\.js$/.test(f));
   for (const f of extra) if (f && !list.includes(f)) list.push(f);
   return list;

@@ -17,7 +17,7 @@
 <script>
 (async()=>{
   const q=new URLSearchParams(location.search),from=+q.get('from')||0,n=+q.get('n')||12,sig=+q.get('sig')||0,T=q.get('t')===null?5:+q.get('t'),vs=q.get('vs')||'';
-  const html=await (await fetch('duel.html',{cache:'no-store'})).text();
+  const html=await (await fetch('index.html',{cache:'no-store'})).text();
   let list=[...html.matchAll(/<script src="([^"?]+)[^"]*"><\/script>/g)].map(m=>m[1]).filter(f=>/^brawl-(sim|looks|pack\d*|boons\d*)\.js$/.test(f));
   for(const f of (q.get('with')||'').split(',').filter(Boolean))if(!list.includes(f))list.push(f);
   // one shared scope, as on the real page

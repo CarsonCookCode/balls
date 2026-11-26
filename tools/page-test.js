@@ -28,7 +28,7 @@ const store = {};
 let g = boot(store, 25);
 
 // 1. three taps, then a name; types read as two words
-assert(g.p().mode === 'make' && g.p().step === 0 && count(g.els.panel.innerHTML, 'data-act="weapon"') === 3, 'step 1 offers three fighters');
+assert(g.p().mode === 'make' && g.p().step === 0 && count(g.els.panel.innerHTML, 'data-act="weapon"') === 3 && count(g.els.panel.innerHTML, 'data-thumb=') === 3, 'step 1 offers three fighters, each with its picture');
 g.click('weapon', { key: 'blade' }); g.click('str', { i: 0 }); g.click('size', { i: 1 });
 assert(g.p().step === 3 && /Name your Tough Knight/.test(g.els.panel.innerHTML), 'finish screen names the type: ' + g.els.panel.innerHTML.slice(0, 80));
 g.type('inName', 'Bob');
@@ -55,7 +55,7 @@ g.els.btnBoard._h.click(); assert(g.p().mode === 'make' && g.els.btnBoard.textCo
 
 // 3. climbs record today's best and can put you in the duel
 const cleared = [];
-let seenShield = false, armedFights = 0, tips = 0;
+let seenShield = false, armedFights = 0, tips = 0, sheets = 0;
 for (let n = 0; n < 30; n++) {
   g.click('start');
   assert(g.p().mode === 'ready' && g.p().run.rung === 1 && g.els.round.textContent === 'Rung 1' && g.p().you === 0, 'climb starts on the rung 1 matchup');
@@ -77,9 +77,18 @@ for (let n = 0; n < 30; n++) {
         assert(g.els.panel.innerHTML.includes('id="tipLine"') && g.els.panel.innerHTML.includes(g.ctx.__text(R.build, id)) && clean(g.els.panel.innerHTML), 'tapping a tag shows what the upgrade does');
         g.click('tip', { side: '0', key: id }); assert(!g.els.panel.innerHTML.includes('id="tipLine"'), 'tapping it again closes it'); tips++;
       }
+      if ((guard + n) % 11 === 0) { g.click('sheet'); assert(g.els.panel.innerHTML.includes('id="btnSheetBack"') && !g.els.panel.innerHTML.includes('btnFight'), 'the matchup opens the sheet too'); g.click('sheet'); assert(g.els.panel.innerHTML.includes('btnFight'), 'and returns'); sheets++; }
       g.click('fight');
     } else if (p.mode === 'pick') {
       assert(count(g.els.panel.innerHTML, 'data-act="up"') === p.choice.length && count(g.els.panel.innerHTML, 'class="ic"') === p.choice.length && /you are a /.test(g.els.panel.innerHTML) && clean(g.els.panel.innerHTML), 'upgrade screen drawn');
+      if (!sheets || (guard + n) % 9 === 0) {
+        assert(g.els.panel.innerHTML.includes('class="mebtn"'), 'the boon screen has the portrait button');
+        g.click('sheet');
+        const h = g.els.panel.innerHTML, R = g.p().run;
+        assert(h.includes('id="btnSheetBack"') && h.includes('Health') && h.includes('Its own boon') && h.includes(g.ctx.__type(R.build)) && !h.includes('data-act="up"') && clean(h), 'the sheet shows the class, its numbers and its own boon');
+        for (const id of new Set(R.build.ups)) assert(h.includes(g.ctx.__text(R.build, id)), 'the sheet explains every boon: ' + id);
+        g.click('sheet'); assert(count(g.els.panel.innerHTML, 'data-act="up"') === p.choice.length, 'Back returns to the boons'); sheets++;
+      }
       g.click('up', { key: p.choice[(guard + n) % p.choice.length] });
     } else g.tick(1);
   }
@@ -93,7 +102,7 @@ for (let n = 0; n < 30; n++) {
 const top = Math.max(...cleared), inNow = g.ctx.__s().slice(0, 2).some(r => r.you);
 assert(inNow === (top >= tgt), 'you are in the duel exactly when you reached the target');
 assert(inNow ? /You are in today/.test(g.els.panel.innerHTML) : /Clear <b>\d+<\/b> rungs to get in/.test(g.els.panel.innerHTML), 'end screen says whether you are in');
-console.log('30 climbs ok. Best today', top, '| in the duel:', inNow, '| reached rung 5:', seenShield, '| fights with the shield raised:', armedFights, '| upgrade tags tapped:', tips);
+console.log('30 climbs ok. Best today', top, '| in the duel:', inNow, '| reached rung 5:', seenShield, '| fights with the shield raised:', armedFights, '| upgrade tags tapped:', tips, '| sheets opened:', sheets);
 
 // 4. today's duel plays best of three to a result
 g.els.btnBoard._h.click(); g.click('duel');

@@ -81,6 +81,21 @@ button[aria-pressed="false"].tog{color:var(--ash);text-decoration:line-through}
              conic-gradient(from 45deg at 50% 50%,var(--ink) 0 100%) center bottom / 7px 7px no-repeat}
 .ps{margin:0;font:italic 500 16px/1.25 var(--text);color:var(--ink-2);text-align:center;text-wrap:balance}
 .ps a{color:var(--crimson);text-decoration:underline;text-underline-offset:2px}
+/* your fighter: a small round portrait button in the corner of the boon screen, and the sheet it opens */
+button.mebtn{position:absolute;top:8px;right:10px;width:50px;height:50px;min-height:0;padding:0;border-radius:50%;border:2px solid var(--gold);background:#161d22;box-shadow:0 3px 0 rgba(0,0,0,.4);overflow:hidden;z-index:2}
+button.mebtn canvas{width:100%;height:100%;display:block}
+button.mebtn:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.4)}
+button.side.mine{min-height:0;padding:0;background:none;border:0;box-shadow:none;text-shadow:none;color:inherit;text-transform:none;letter-spacing:normal;font:inherit;display:flex;flex-direction:column;align-items:center}
+button.side.mine small{text-decoration:underline;text-underline-offset:2px}
+.sheettop{display:flex;align-items:center;gap:12px;justify-content:center}
+.sheettop canvas{flex:0 0 auto;width:84px;height:84px;border-radius:50%;border:2px solid var(--gold);background:#161d22;box-shadow:0 3px 0 rgba(0,0,0,.35)}
+.sheettop .ph{padding-bottom:6px;background:none;text-align:left}
+.sheettop .ps{text-align:left}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;padding:4px 0}
+.stats span{display:flex;flex-direction:column;gap:2px;padding:6px 2px;background:rgba(60,40,15,.08);border-radius:3px}
+.stats b{font:900 18px/1 var(--display);font-variant-numeric:tabular-nums lining-nums}
+.stats i{font:700 9px/1 var(--display);font-style:normal;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2)}
+.ps.boon{text-align:left;border-top:0;border-left:4px solid var(--k,transparent)}
 .ps b{font-style:normal;font-weight:700;color:var(--ink)}
 .stepn{margin:0;font:700 10.5px/1 var(--display);letter-spacing:.2em;text-transform:uppercase;color:var(--ink-2);text-align:center}
 /* a choice is a line on the scroll, not a boxed button */
@@ -91,6 +106,9 @@ button[aria-pressed="false"].tog{color:var(--ash);text-decoration:line-through}
 .card:last-of-type{border-bottom:0}
 .card:active{transform:none;background:rgba(143,39,50,.12);box-shadow:none}
 .card::before{content:"";flex:0 0 auto;width:9px;height:9px;background:var(--crimson);transform:rotate(45deg);margin:0 3px}
+/* a fighter's card on the first screen: its picture in place of the bullet */
+.card.face::before{display:none}
+.card.face canvas{flex:0 0 auto;width:58px;height:58px;border-radius:50%;border:2px solid var(--gold-lo);box-shadow:0 2px 4px rgba(0,0,0,.35);margin:-3px 2px -3px -4px}
 .card i{flex:0 0 auto;width:24px;height:24px;border-radius:50%;border:2.5px solid var(--gold);outline:1px solid #090b0d;box-shadow:inset 0 0 0 1.5px #090b0d,inset 2px 3px 4px rgba(255,255,255,.3);margin-left:-4px}
 .card:has(i)::before{display:none}
 .card span{display:flex;flex-direction:column;gap:2px;min-width:0}

@@ -138,21 +138,22 @@ toLadder(g);
 assert(!g.els.panel.innerHTML.includes('id="btnRec"'), 'the ladder has no record button: only the automatic video records');
 g.click('recduel');
 assert(g.p().mode === 'duel' && g.B.recording, 'recording armed and duel started');
-let frozen = 0, sawZero = false, movedInIntro = false, speedTapped = false, endFrames = 0;
+let frozen = 0, sawZero = false, movedInIntro = false, slowOpen = 0, speedTapped = false, endFrames = 0;
 const frames1 = runToOverlay(g, n => {
   const p = g.p();
   if (p.speed === 0) { frozen++; sawZero = true; }
   if (p.duel && p.duel.done) endFrames++;
-  if (n < 60 && p.mt > 0.02) movedInIntro = true;        // the intro is 1.2s: the first second must not advance the round
+  if (n < 60 && p.mt > 0.5) movedInIntro = true;         // the video opens on the fight itself
+  if (n > 80 && n < 190 && p.speed > 0 && p.speed < .5) slowOpen++;   // then slows for the question
   if (n === 400 && !speedTapped) { speedTapped = true; g.els.btnSpeed._h.click(); }   // a stray tap on Speed mid-recording
-  if (n === 402) assert(p.speed === 1 || p.speed === 0, 'recorder keeps normal speed after a tap on Speed, got ' + p.speed);
+  if (n === 402) assert(p.speed <= 1, 'the recorder keeps its own speed after a tap on Speed, got ' + p.speed);
 });
 let st = g.B.stats(), T = g.report.texts, p = g.p();
-assert(sawZero && !movedInIntro, 'the round is held during the intro card');
+assert(movedInIntro && slowOpen > 80, 'the video opens on the fight, then slows for the question: ' + slowOpen + ' slow frames');
 const rounds = p.duel.score[0] + p.duel.score[1];
-const expectFrozen = (1.2 + 0.9 * (rounds - 1)) / 0.0167;
-assert(Math.abs(frozen - expectFrozen) < 14, 'held for the intro and each round sting: ' + frozen + ' frames, expected about ' + Math.round(expectFrozen));
-for (const s of ['TODAY’S DUEL', 'best of three', 'VS', 'ROUND 1', 'ROUND 2', 'FINAL', 'IS TODAY’S DUEL KING', 'TODAY’S LADDER', 'MAKE YOURS AT', 'example.test/balls', 'house fighter'])
+const expectFrozen = (0.8 * (rounds - 1)) / 0.0167;
+assert(sawZero && Math.abs(frozen - expectFrozen) < 14, 'held for each round call: ' + frozen + ' frames, expected about ' + Math.round(expectFrozen));
+for (const s of ['who takes the crown?', 'VS', '#1', '#2', 'ROUND 1', 'ROUND 2', 'FINAL', 'is today’s Duel King', 'MAKE YOURS AT', 'example.test/balls'])
   assert(T.has(s), 'frame text drawn: ' + s + ' (have ' + [...T].slice(0, 40).join(' | ') + ')');
 if (rounds === 3) assert(T.has('DECIDER'), 'third round is announced');
 assert(g.recorders.length === 1 && g.recorders[0].starts === 1 && g.recorders[0].stops === 1, 'recorder started once and stopped once');
@@ -170,8 +171,8 @@ assert(!g.body.children.some(c => c.tagName === 'CANVAS'), 'the recording canvas
 assert(g.report.outside.length === 0, 'text outside the frame: ' + g.report.outside.slice(0, 4).join(' ; '));
 assert(g.report.bad.length === 0, 'non-finite numbers: ' + g.report.bad.slice(0, 3).join(' ; '));
 console.log('recorded duel ok:', rounds, 'rounds,', st.frames, 'frames,', st.seconds.toFixed(1) + 's,', g.report.calls, 'canvas calls, file', save.download);
-assert(Math.abs(endFrames * 0.0167 - 3.8) < 0.25, 'the video runs about 3.8s past the deciding blow: ' + (endFrames * 0.0167).toFixed(2));
-console.log('  held', frozen, 'frames for intro and stings; end card', (endFrames * 0.0167).toFixed(1) + 's after the deciding blow');
+assert(Math.abs(endFrames * 0.0167 - 2.8) < 0.25, 'the video runs about 2.8s past the end of the duel: ' + (endFrames * 0.0167).toFixed(2));
+console.log('  held', frozen, 'frames for round calls; the closing screen ends', (endFrames * 0.0167).toFixed(1) + 's after the duel is decided');
 
 // 2. a second recording straight after
 g.find('bcClose')._h.click();

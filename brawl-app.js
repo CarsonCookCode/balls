@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 37';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 38';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -368,7 +368,7 @@ function frame(ts){
     while(acc>=DT&&n<10){snap(match);match.step();onEvents(match.events);acc-=DT;n++}
     if(n===10)acc=0;
     lerpA=match.over?1:acc/DT;
-    FX.rate=!playing||speed===1?1:speed===2?.75:.55;       // at higher speeds each moment throws fewer sparks, so the arena stays readable
+    FX.rate=!playing||speed<=1?1:speed===2?.75:.55;       // at higher speeds each moment throws fewer sparks, so the arena stays readable
     if(mode!=='ready')FX.ambient(match,dt);
     if(match.over){
       overFor+=dt;
@@ -499,11 +499,26 @@ function fightDone(){
 }
 
 // ----- today's duel: the top two on the ladder, best of three -----
+// In the video the two sides must be told apart at a glance. When their colours are close, the second fighter wears a
+// warm colour against a cool one, or a cool colour against a warm one, for the duel only.
+function hueOf(hex){
+  const r=parseInt(hex.slice(1,3),16)/255,g=parseInt(hex.slice(3,5),16)/255,b=parseInt(hex.slice(5,7),16)/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;
+  if(d<.12)return -1;                                   // grey, white or black: no hue to speak of
+  const h=mx===r?((g-b)/d)%6:mx===g?(b-r)/d+2:(r-g)/d+4;
+  return (h*60+360)%360;
+}
+function apart(a,b){
+  if(!okColor(a.color)||!okColor(b.color))return;
+  const ha=hueOf(a.color),hb=hueOf(b.color),gap=ha<0||hb<0?(ha<0&&hb<0?0:180):Math.min(Math.abs(ha-hb),360-Math.abs(ha-hb));
+  if(gap<70)b.color=ha>=150&&ha<=300?'#e0662b':'#3f8fd1';
+}
 function startDuel(){
   const r=duelPair();
   if(!boardReady()||r.length<2)return;
   audioOn();
-  duel={a:rebuild(r[0].e),b:rebuild(r[1].e),you:r[0].you?0:r[1].you?1:-1,who:[owner(r[0]),owner(r[1])],score:[0,0],round:1,done:false};
+  const da=rebuild(r[0].e),db=rebuild(r[1].e);
+  apart(da,db);
+  duel={a:da,b:db,you:r[0].you?0:r[1].you?1:-1,who:[owner(r[0]),owner(r[1])],score:[0,0],round:1,done:false};
   mode='duel';duelRound();
   log('duel',{a:logBuild(duel.a),b:logBuild(duel.b),who:duel.who,you:duel.you,rec:window.Broadcast&&Broadcast.stats&&Broadcast.stats().state!=='idle'?1:0});
 }

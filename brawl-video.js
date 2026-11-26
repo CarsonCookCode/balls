@@ -1,6 +1,8 @@
 // Video recorder for Duel King. Defines window.Broadcast; the game works without it.
-// It records today's duel as a 1080x1920 video with everything a Short needs drawn into the frame:
-// title, score, the arena, health bars, round stings and an end card with the day's ladder.
+// It records a day's duel as a 1080x1920 video with everything a Short needs drawn into the frame. The video opens on
+// the fight itself; a second in, time slows and the question is put ("GOOSE OR MIKA? who takes the crown?"); each
+// fighter's trick is named once; rounds are called; the deciding blow lands in slow motion; and it ends on one screen,
+// the winner crowned, with the invitation to play.
 // The page calls start() before the duel, onFrame(dt) after each of its own frames, and finish() when the duel is decided.
 (function(){
   'use strict';
@@ -10,16 +12,17 @@
   // WebM first: Chrome's MP4 recording kept only a fraction of a second once an audio track was attached (seen in a real
   // recording, 2026-11-25). Safari cannot record WebM, so it falls through to MP4, which is its native format.
   const MIMES=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4;codecs=avc1,mp4a.40.2','video/mp4'];
-  // timeline, in seconds
-  const INTRO=1.2,STING=.9,KO_LINGER=.7,END_CARD=3.1;
+  // timeline, in seconds: HOOK_PLAY of fight at full speed, then HOOK_HOLD in slow motion (HOOK_SLOW of normal speed)
+  // under the question; the tricks strip shows until TRICKS; STING holds each new round; the deciding blow and
+  // KO_LINGER after it run at KO_SLOW; CROWN is the closing screen.
+  const HOOK_PLAY=1.3,HOOK_HOLD=1.9,HOOK_SLOW=.14,TRICKS=7,STING=.8,KO_SLOW=.22,KO_LINGER=.5,CROWN=2.3;
   // layout
-  const AX=90,AY=580,AS=900;                        // where the arena's 0..AW square sits in the frame
-  const TITLE_A=262,TITLE_B=408,VS_Y=335,SCORE_Y=536,NAME_Y=1544,BAR_Y=1570,BAR_H=34,TAG_Y=1640;
+  const AX=60,AY=484,AS=960;                        // where the arena's 0..AW square sits in the frame
 
   let state='idle';     // idle | armed (start() called, recorder not yet made) | rec | ending | saving
   let cv=null,c=null,rec=null,stream=null,audioDest=null,chunks=[],mime='',cutShort=false,failNote='';
-  let secs=0,frames=0,intro=0,sting=0,stingText='',lastRound=1,endT=0,armedFrames=0,armTimer=0,audioWait=0;
-  let titles=['',''],overlay=null,fileUrl='';
+  let secs=0,frames=0,sting=0,stingText='',lastRound=1,endT=0,armedFrames=0,armTimer=0,audioWait=0;
+  let titles=['',''],overlay=null,fileUrl='',bandY=0;
 
   const MR=()=>typeof MediaRecorder!=='undefined'?MediaRecorder:null;
   function supported(){
@@ -78,18 +81,40 @@
     c.strokeStyle=GOLD_LO_C;c.lineWidth=3;c.strokeRect(30,30,W-60,H-60);
     c.lineWidth=1.5;c.strokeRect(42,42,W-84,H-84);
   }
-  function drawTitle(scale){
-    const A=titles[0].toUpperCase(),B=titles[1].toUpperCase();
-    if(scale>1)c.setTransform(scale,0,0,scale,540*(1-scale),VS_Y*(1-scale));
-    Orn.ribbon(c,540,TITLE_A,800,104,A,56);
-    Orn.ribbon(c,540,TITLE_B,800,104,B,56);
-    Orn.shield(c,540,VS_Y-6,40,'VS');
-    c.setTransform(1,0,0,1,0,0);
+  // ----- the frame -----
+  // Laid out for a Short. YouTube draws its own caption and channel over the bottom quarter and its buttons down the
+  // lower right edge, so everything that matters sits above y=1460: who is fighting and how healthy they are at the
+  // top (the players' names lead, the fighter's type is the small print), then the arena, as large as it will go.
+  const side=i=>i?duel.b:duel.a;
+  // the name a side goes by: the player's, or the class name for a house fighter
+  function who(i){
+    let n='';try{n=String(duel.who[i]||'')}catch(e){}
+    if(!n||n==='House'){try{n=FIGHTERS[side(i).key].name}catch(e){n='Fighter'}}
+    return n.toUpperCase();
   }
-  function drawScore(){
+  function dayLine(){
+    let d='';try{d=dayKey()}catch(e){}
+    const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
+    return m?['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][+m[2]-1]+' '+(+m[3]):'';
+  }
+  function spaced(str,x,y,size,ls,o){c.letterSpacing=ls+'px';try{text(str,x,y,size,o.maxW||900,o)}finally{c.letterSpacing='0px'}}
+  function drawHud(){
+    const day=dayLine();
+    spaced('DUEL KING'+(day?'  ·  '+day:''),540,150,30,6,{fill:GOLD_C});
+    for(let i=0;i<2;i++){
+      const b=side(i),f=fighter(i),left=!i,x0=left?60:590,w=430,part=f&&f.max>0?clamp01(f.hp/f.max):1;
+      // place on the ladder
+      c.fillStyle=b.color;c.strokeStyle=EDGE_C;c.lineWidth=4;box(left?x0:x0+w-92,214,92,52,8);c.fill();c.stroke();
+      text('#'+(i+1),left?x0+46:x0+w-46,242,34,80,{fill:'#ffffff',stroke:'rgba(0,0,0,.55)',lw:5,weight:900});
+      text(who(i),left?x0+110:x0+w-110,244,76,w-116,{align:left?'left':'right',fill:PAPER,stroke:EDGE_C,lw:12,weight:900,min:30});
+      text(titles[i],left?x0:x0+w,312,38,w,{text:true,italic:true,align:left?'left':'right',fill:'#c9d0d4',min:22});
+      Orn.bar(c,x0,344,w,part,b.color,!left,46);
+      if(f)text(String(Math.max(0,Math.ceil(f.hp))),left?x0+w-18:x0+18,368,34,110,{align:left?'right':'left',fill:'#ffffff',stroke:'rgba(0,0,0,.7)',lw:6,weight:900});
+      for(let k=0;k<2;k++)gem(left?x0+24+k*50:x0+w-24-k*50,424,16,b.color,duel.score[i]>k);
+    }
+    Orn.shield(c,540,256,44,'VS');
     const label=duel.done?'FINAL':duel.round>=3?'DECIDER':'ROUND '+duel.round;
-    text(label,540,SCORE_Y,40,360,{fill:SUN,stroke:EDGE_C,lw:8});
-    for(let i=0;i<2;i++)for(let k=0;k<2;k++)gem(i?930-k*58:150+k*58,SCORE_Y,20,i?duel.b.color:duel.a.color,duel.score[i]>k);
+    spaced(label,540,424,34,3,{fill:SUN,stroke:EDGE_C,lw:8,maxW:330});
   }
   function drawArenaBox(){
     const s=AS/AW,k=(typeof calm!=='undefined'&&calm)?0:(typeof shake==='number'?shake:0);
@@ -99,81 +124,112 @@
     c.setTransform(1,0,0,1,0,0);
     c.globalAlpha=1;c.setLineDash([]);c.lineCap='butt';
   }
-  function drawBars(){
-    for(let i=0;i<2;i++){
-      const b=i?duel.b:duel.a,f=fighter(i),x=i?570:90,w=420;
-      const part=f&&f.max>0?clamp01(f.hp/f.max):1;
-      // name on the outer side, health number on the inner side, both above the bar
-      text(String(b.name||'').toUpperCase(),i?x+w:x,NAME_Y,34,w-110,{fill:PAPER,stroke:EDGE_C,lw:7,align:i?'right':'left'});
-      if(f)text(String(Math.max(0,Math.ceil(f.hp))),i?x:x+w,NAME_Y,34,90,{fill:SUN,stroke:EDGE_C,lw:7,align:i?'left':'right'});
-      Orn.bar(c,x,BAR_Y,w,part,b.color,!!i,BAR_H);
-      // their boons, as a quiet line of script
-      let ups='';try{ups=summary(b)}catch(e){}
-      if(ups&&ups!=='no upgrades yet')text(ups,x+w/2,TAG_Y,30,w,{text:true,italic:true,fill:'#b9c1c4',min:22});
-    }
-  }
-  // a crimson band across the arena, used for the intro and between rounds. `open` 0..1 is how far it has opened.
-  function drawBand(main,sub,open){
-    const h=230*clamp01(open),y=AY+AS/2;
+  // a crimson band across the arena: the opening question, and the call between rounds. `open` 0..1 is how far it has opened.
+  function drawBand(main,sub,open,y){
+    const h=250*clamp01(open);
     if(h<4)return;
     c.fillStyle='rgba(0,0,0,.5)';c.fillRect(0,y-h/2+12,W,h);
     const gr=c.createLinearGradient(0,y-h/2,0,y+h/2);gr.addColorStop(0,'#a53340');gr.addColorStop(1,'#7b1e29');
     c.fillStyle=gr;c.fillRect(0,y-h/2,W,h);
     c.fillStyle=GOLD_C;c.fillRect(0,y-h/2+9,W,5);c.fillRect(0,y+h/2-14,W,5);
     if(open<.92)return;
-    text(main,540,sub?y-22:y+4,100,900,{fill:PAPER,shadow:5});
-    if(sub)text(sub,540,y+62,44,900,{text:true,italic:true,fill:SUN});
+    text(main,540,sub?y-26:y+4,104,980,{fill:PAPER,shadow:5,weight:900,min:44});
+    if(sub)text(sub,540,y+66,50,900,{text:true,italic:true,fill:SUN});
   }
-  function ladderRows(){
-    const out=[];
-    try{
-      for(const r of standings().slice(0,5)){
-        const b=rebuild(r.e);
-        out.push({type:typeOf(b),col:b.color,cleared:r.cleared,who:r.house?'house fighter':String(b.name||'player')});
-      }
-    }catch(e){}
-    return out;
+  // The opening question sits in whichever part of the arena the two fighters are furthest from, decided once.
+  function placeBand(){
+    let best=.22,far=-1;
+    for(const k of [.2,.5,.74]){
+      let d=1e9;for(let i=0;i<2;i++){const f=fighter(i);if(f)d=Math.min(d,Math.abs(f.y/AW-k))}
+      if(d>far){far=d;best=k}
+    }
+    return AY+AS*best;
+  }
+  function wrap(str,maxW,font,maxLines){
+    c.font=font;
+    const words=String(str).split(' '),lines=[];let cur='';
+    for(const w of words){const t=cur?cur+' '+w:w;if(cur&&c.measureText(t).width>maxW){lines.push(cur);cur=w}else cur=t}
+    if(cur)lines.push(cur);
+    if(lines.length>maxLines){lines.length=maxLines;lines[maxLines-1]=lines[maxLines-1].replace(/[ ,.;:]+$/,'')+'…'}
+    return lines;
+  }
+  // what each fighter does, said once, in the first seconds: a dark strip along the arena's lower edge
+  function drawTricks(alpha){
+    if(alpha<=0)return;
+    const y0=AY+AS-196,font='italic 500 30px '+TEXT;
+    c.save();c.globalAlpha=clamp01(alpha);
+    const gr=c.createLinearGradient(0,y0-50,0,AY+AS);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(.3,'rgba(0,0,0,.74)');gr.addColorStop(1,'rgba(0,0,0,.8)');
+    c.fillStyle=gr;c.fillRect(AX,y0-50,AS,AS+AY-y0+50);
+    for(let i=0;i<2;i++){
+      const b=side(i),left=!i,x=left?AX+26:AX+AS-26;let name='',desc='';
+      try{name=FIGHTERS[b.key].name.toUpperCase();desc=FIGHTERS[b.key].desc}catch(e){}
+      c.letterSpacing='3px';text(name,x,y0+18,30,440,{align:left?'left':'right',fill:b.color,stroke:'rgba(0,0,0,.8)',lw:6});c.letterSpacing='0px';
+      const lines=wrap(desc,440,font,3);
+      c.font=font;c.textAlign=left?'left':'right';c.textBaseline='middle';c.fillStyle=PAPER;
+      lines.forEach((ln,k)=>c.fillText(ln,x,y0+62+k*38));
+    }
+    c.restore();
   }
   function siteLine(){
     // the automatic video is recorded from a copy of the game served on this computer: it still names the real site
     try{return /^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/.test(location.host)?'playduelking.com':(location.host+location.pathname).replace(/(index|duel)\.html$/,'').replace(/\/+$/,'')||'our site'}catch(e){return 'our site'}
   }
-  // the end card is a parchment scroll unrolled over the arena
-  function drawEndCard(open){
-    const x=AX+24,y=AY+40,w=AS-48,h=AS-80,k=clamp01(open);
-    if(k<1){const cw=w*k,ch=h*k;if(cw>40&&ch>40)Orn.scroll(c,x+(w-cw)/2,y+(h-ch)/2,cw,ch);return}
-    Orn.scroll(c,x,y,w,h);
-    const wt=titles[duel.winner===1?1:0];
-    text(wt.toUpperCase(),540,y+98,90,w-130,{fill:'#8f2732',weight:900});
-    text('IS TODAY’S DUEL KING',540,y+182,42,w-130,{fill:INK});
-    c.fillStyle='rgba(60,40,15,.6)';c.fillRect(x+150,y+230,w-300,3);
-    c.save();c.translate(540,y+231);c.rotate(Math.PI/4);c.fillStyle=INK;c.fillRect(-8,-8,16,16);c.restore();
-    text('TODAY’S LADDER',x+60,y+282,24,400,{fill:'#5a4630',align:'left'});
-    text('RUNGS',x+w-60,y+282,24,200,{fill:'#5a4630',align:'right'});
-    const rows=ladderRows();
-    for(let i=0;i<rows.length;i++){
-      const r=rows[i],ry=y+344+i*72;
-      text(String(i+1),x+78,ry+4,38,50,{fill:'#5a4630'});
-      gem(x+136,ry+4,19,r.col,true);
-      text(r.type,x+176,ry-9,32,w-176-170,{fill:INK,align:'left',min:20});
-      text(r.who,x+176,ry+24,26,w-176-170,{text:true,italic:true,fill:'#5a4630',align:'left',min:18});
-      text(String(r.cleared),x+w-64,ry+4,48,110,{fill:INK,weight:900,align:'right'});
-      if(i<rows.length-1){c.fillStyle='rgba(60,40,15,.25)';c.fillRect(x+50,ry+44,w-100,2)}
+  function crownPath(){c.beginPath();c.moveTo(-1,.6);c.lineTo(-1,-.42);c.lineTo(-.5,.06);c.lineTo(0,-.8);c.lineTo(.5,.06);c.lineTo(1,-.42);c.lineTo(1,.6);c.closePath()}
+  function drawCrownShape(x,y,s){
+    c.save();c.translate(x,y);c.scale(s,s);c.lineJoin='round';
+    const gr=c.createLinearGradient(0,-.8,0,.6);gr.addColorStop(0,SUN);gr.addColorStop(.55,GOLD_C);gr.addColorStop(1,GOLD_LO_C);
+    c.fillStyle=gr;c.strokeStyle=EDGE_C;c.lineWidth=.07;crownPath();c.fill();c.stroke();
+    c.fillStyle=GOLD_LO_C;c.fillRect(-.93,.28,1.86,.09);
+    for(const p of [[-1,-.42],[0,-.8],[1,-.42]]){c.fillStyle=SUN;c.strokeStyle=EDGE_C;c.lineWidth=.05;c.beginPath();c.arc(p[0],p[1],.13,0,6.2832);c.fill();c.stroke()}
+    for(const p of [[-.55,'#3f6fd8'],[0,'#b3313f'],[.55,'#3f6fd8']]){c.fillStyle=EDGE_C;c.beginPath();c.arc(p[0],.44,.115,0,6.2832);c.fill();c.fillStyle=p[1];c.beginPath();c.arc(p[0],.44,.085,0,6.2832);c.fill()}
+    c.restore();
+  }
+  // The ending: the arena dims, the winner is shown large in a burst of light, the crown drops onto it, and the
+  // invitation sits underneath. One screen, about two seconds, so the video loops cleanly. t = seconds since it began.
+  function drawCrowned(t){
+    const w=duel.winner===1?1:0,f=fighter(w),p=clamp01(t/.3),e=1-(1-p)*(1-p),cx=540,cy=AY+AS*.34;
+    c.fillStyle='rgba(6,9,11,'+(.55*e).toFixed(3)+')';c.fillRect(AX,AY,AS,AS);
+    c.save();c.globalCompositeOperation='lighter';
+    let gr=c.createRadialGradient(cx,cy,0,cx,cy,430);gr.addColorStop(0,'rgba(255,214,140,'+(.45*e).toFixed(3)+')');gr.addColorStop(1,'rgba(0,0,0,0)');
+    c.fillStyle=gr;c.fillRect(cx-430,cy-430,860,860);
+    c.translate(cx,cy);c.rotate(t*.25);
+    for(let k=0;k<14;k++){
+      c.rotate(6.2832/14);
+      gr=c.createLinearGradient(0,0,0,-440);gr.addColorStop(0,'rgba(255,220,150,'+(.2*e).toFixed(3)+')');gr.addColorStop(1,'rgba(255,220,150,0)');
+      c.fillStyle=gr;c.beginPath();c.moveTo(-24,0);c.lineTo(24,0);c.lineTo(66,-440);c.lineTo(-66,-440);c.closePath();c.fill();
     }
-    // the invitation, on a crimson plate
-    Orn.plate(c,x+44,y+h-162,w-88,124,'',true);
-    text('MAKE YOURS AT',540,y+h-124,24,w-180,{fill:SUN});
-    text(siteLine(),540,y+h-78,46,w-180,{fill:PAPER,min:22,shadow:3});
+    c.restore();
+    let R=150;
+    if(f&&f.hp>0){
+      // the winner itself, drawn by the game's own art, about three times arena size
+      const k=(150/Math.max(12,f.r))*(.6+.4*e),lab=f.label,gone=f.gone;R=f.r*k;
+      try{
+        f.label='';f.gone=false;
+        c.save();c.setTransform(k,0,0,k,cx-f.x*k,cy-f.y*k);
+        g=c;MATCH=match;NOW=match.t;PX=k;LIVE=false;
+        drawFighter(f,false);
+      }catch(err){failNote=failNote||String(err&&err.message||err)}
+      finally{f.label=lab;f.gone=gone;c.restore();c.setTransform(1,0,0,1,0,0);c.globalAlpha=1;c.setLineDash([])}
+    }
+    drawCrownShape(cx,cy-R-52-(1-e)*220,78);
+    if(p<1)return;
+    text(who(w),540,AY+AS*.7,150,AS-80,{fill:PAPER,stroke:EDGE_C,lw:18,weight:900,min:56});
+    text('is today’s Duel King',540,AY+AS*.7+104,60,AS-80,{text:true,italic:true,fill:SUN,stroke:'rgba(0,0,0,.8)',lw:8});
+    Orn.plate(c,170,AY+AS-150,740,118,'',true);
+    spaced('MAKE YOURS AT',540,AY+AS-116,24,4,{fill:SUN,maxW:660});
+    text(siteLine(),540,AY+AS-72,46,660,{fill:PAPER,min:22,shadow:3});
   }
   function drawFrame(){
     drawBackground();
-    drawTitle(intro>0?pop((INTRO-intro)/.32):1);
-    drawScore();
+    drawHud();
     drawArenaBox();
-    drawBars();
-    if(intro>0)drawBand('TODAY’S DUEL','best of three',Math.min((INTRO-intro)/.16,intro/.14));
-    else if(sting>0)drawBand(stingText,'',Math.min((STING-sting)/.14,sting/.12));
-    if(state==='ending'&&endT>KO_LINGER)drawEndCard((endT-KO_LINGER)/.22);
+    if(state==='rec'){
+      drawTricks(Math.min(1,(secs-.35)/.3,(TRICKS-secs)/.5));
+      const q=secs-HOOK_PLAY;
+      if(q>0&&q<HOOK_HOLD){if(!bandY)bandY=placeBand();drawBand(who(0)+' OR '+who(1)+'?','who takes the crown?',Math.min(q/.14,(HOOK_HOLD-q)/.12),bandY)}
+      else if(sting>0)drawBand(stingText,'',Math.min((STING-sting)/.14,sting/.12),AY+AS/2);
+    }
+    if(state==='ending'&&endT>KO_LINGER)drawCrowned(endT-KO_LINGER);
     frames++;
   }
 
@@ -238,10 +294,10 @@
       if(!supported()||state==='saving')return;
       if(state==='rec'||state==='ending'||state==='armed')cancel();
       closeOverlay();
-      state='armed';secs=0;frames=0;endT=0;sting=0;intro=INTRO;armedFrames=0;audioWait=0;cutShort=false;failNote='';lastRound=1;
+      state='armed';secs=0;frames=0;endT=0;sting=0;bandY=0;armedFrames=0;audioWait=0;cutShort=false;failNote='';lastRound=1;
       makeCanvas();
       try{if(document.fonts&&document.fonts.load){document.fonts.load('700 96px Cinzel');document.fonts.load('900 96px Cinzel');document.fonts.load('italic 500 32px "Cormorant Garamond"')}}catch(e){}
-      setSpeed(0);                                   // hold the first bell until the title card has played
+      setSpeed(0);                                   // hold the first bell until the recorder is running
       clearTimeout(armTimer);
       armTimer=setTimeout(()=>{if(state==='armed')cancel()},2500);   // never leave the duel frozen if no frame arrives
     }catch(e){cancel()}
@@ -267,12 +323,13 @@
       dt=dt>0&&dt<.25?dt:1/60;
       if(state==='rec'){
         if(duel.round!==lastRound){lastRound=duel.round;sting=STING;stingText=duel.round>=3?'DECIDER':'ROUND '+duel.round}
-        if(intro>0){intro-=dt;setSpeed(0)}
-        else if(sting>0){sting-=dt;setSpeed(0)}
-        else setSpeed(1);
+        if(sting>0){sting-=dt;setSpeed(0)}
+        else if(secs<HOOK_PLAY)setSpeed(1);
+        else if(secs<HOOK_PLAY+HOOK_HOLD)setSpeed(HOOK_SLOW);
+        else setSpeed(deciding()?KO_SLOW:1);
       }else{
-        endT+=dt;setSpeed(1);
-        if(endT>=KO_LINGER+END_CARD){drawFrame();secs+=dt;stop();return}
+        endT+=dt;setSpeed(endT<KO_LINGER?KO_SLOW:1);
+        if(endT>=KO_LINGER+CROWN){drawFrame();secs+=dt;stop();return}
       }
       drawFrame();
       secs+=dt;
@@ -281,10 +338,12 @@
       cancel();
     }
   }
+  // the blow that has just ended this round also ends the duel
+  function deciding(){try{return !!(match&&match.over&&!match.draw&&!duel.done&&duel.score[match.winner]===1)}catch(e){return false}}
   function finish(){
     if(state==='armed'){cancel();return}
     if(state!=='rec')return;
-    state='ending';endT=0;intro=0;sting=0;setSpeed(1);
+    state='ending';endT=0;sting=0;setSpeed(KO_SLOW);
   }
 
   // ----- handing over the file -----

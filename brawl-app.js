@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 46';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 47';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -584,14 +584,14 @@ function makeBody(){
   if(step===0&&browse){
     return head(ROSTER.length+' fighters','Choose your champion')+
       `<div class="roster">`+ROSTER.map(k=>`<button type="button" class="pick" id="pk-${k}" data-act="weapon" data-key="${k}"><canvas width="${THUMB}" height="${THUMB}" data-thumb="${k}"></canvas><span>${FIGHTERS[k].name}</span></button>`).join('')+`</div>`+
-      `<button type="button" id="btnFew" class="quiet" data-act="few">Show three at a time</button>`;
+      `<button type="button" id="btnFew" class="opt" data-act="few"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Three at a time</button>`;
   }
   if(step===0){
     const offer=[0,1,2].map(i=>deck[(deckAt+i)%deck.length]);
     return head('Step 1 of 3 · '+ROSTER.length+' fighters','Choose your champion')+
       offer.map(k=>`<button type="button" class="card face" id="wp-${k}" data-act="weapon" data-key="${k}"><canvas width="${THUMB}" height="${THUMB}" data-thumb="${k}" aria-hidden="true"></canvas><span><b>${FIGHTERS[k].name}</b><small>${FIGHTERS[k].desc}</small></span></button>`).join('')+
-      `<button type="button" id="btnOthers" class="quiet" data-act="others">Show three others</button>`+
-      `<button type="button" id="btnAll" class="quiet" data-act="all">See all ${ROSTER.length} fighters</button>`;
+      `<div class="pair"><button type="button" id="btnOthers" class="opt" data-act="others"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg>Three others</button>`+
+      `<button type="button" id="btnAll" class="opt" data-act="all"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/></svg>All ${ROSTER.length}</button></div>`;
   }
   const what=`<p class="ps what"><b>${FIGHTERS[me.key].name}.</b> ${FIGHTERS[me.key].desc}</p>`;
   if(step===1)return head('Step 2 of 3','Pick a strength')+what+

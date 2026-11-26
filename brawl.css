@@ -255,3 +255,32 @@ body[data-mode="ready"] #btnFight{margin-top:8px;margin-bottom:auto}
 body[data-mode="ready"] #panel{align-items:stretch;text-align:center}
 .mu2 .chips,.mu2 .chips:last-child{justify-content:center}
 .ps.tipline{text-align:center;border-left:0;border-top:3px solid var(--k,transparent)}
+
+/* Build 47. Champion rows have room around the picture; the upgrade screen's three choices are large separate tiles;
+   "three others" and "all 90" are a pair of light plates with icons. */
+.card.face{min-height:78px;padding:9px 10px 9px 4px;gap:13px}
+.card.face canvas{width:58px;height:58px;margin:0}
+.card.face b{font-size:17px}
+body[data-mode="pick"] #panel{max-height:none;flex:0 0 auto;gap:9px;padding-bottom:16px}
+body[data-mode="pick"] .card.up{min-height:80px;padding:12px 12px 12px 17px;gap:14px;border:1px solid rgba(60,40,15,.3);border-radius:5px;background:rgba(60,40,15,.07);box-shadow:inset 5px 0 0 var(--k)}
+body[data-mode="pick"] .card.up:active{background:rgba(143,39,50,.14);box-shadow:inset 5px 0 0 var(--k)}
+body[data-mode="pick"] .card.up i.ic{width:42px;height:42px}
+body[data-mode="pick"] .card.up i.ic svg{width:23px;height:23px}
+body[data-mode="pick"] .card.up span{gap:4px}
+body[data-mode="pick"] .card.up b{font-size:19px}
+body[data-mode="pick"] .card.up small{font-size:17.5px;line-height:1.15}
+body[data-mode="pick"] .card.up em{font-size:10.5px}
+@media (max-height:700px){
+  body[data-mode="pick"] #panel{gap:7px;padding-bottom:12px}
+  body[data-mode="pick"] .card.up{min-height:64px;padding:8px 10px 8px 15px;gap:12px}
+  body[data-mode="pick"] .card.up i.ic{width:34px;height:34px}
+  body[data-mode="pick"] .card.up i.ic svg{width:19px;height:19px}
+  body[data-mode="pick"] .card.up b{font-size:17px}
+  body[data-mode="pick"] .card.up small{font-size:16px}
+  .card.face{min-height:66px;padding:5px 10px 5px 4px}
+  .card.face canvas{width:52px;height:52px}
+}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:0 0 auto;margin-top:5px}
+button.opt{min-height:44px;padding:0 8px;gap:8px;font:700 12px/1 var(--display);letter-spacing:.1em;color:var(--ink);text-shadow:none;background:rgba(60,40,15,.08);border:1px solid rgba(60,40,15,.45);border-radius:5px;box-shadow:none;flex:0 0 auto}
+button.opt:active{transform:none;box-shadow:none;background:rgba(143,39,50,.14)}
+button.opt svg{width:17px;height:17px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}

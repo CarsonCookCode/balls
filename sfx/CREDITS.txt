@@ -1,2 +1,8 @@
 brawl.mp3 is assembled from sound effects by Kenney (www.kenney.nl), released into the public domain (Creative Commons Zero).
 Packs used: Impact Sounds, RPG Audio, Interface Sounds, UI Audio, Digital Audio, Sci-fi Sounds, Casino Audio.
+
+The sound picker (sounds.html, sfx/pick/) also uses these packs from opengameart.org, all public domain (CC0), checked 2026-11-26:
+  20 Sword Sound Effects (Attacks and Clashes), by StarNinjas: https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes
+  150 Combat Sound Effects, compiled by untamedpixels (its LICENSES.txt lists each source): https://opengameart.org/content/150-combat-sound-effects
+  RPG Sound Pack, by artisticdude: https://opengameart.org/content/rpg-sound-pack
+  80 CC0 RPG SFX, by rubberduck: https://opengameart.org/content/80-cc0-rpg-sfx

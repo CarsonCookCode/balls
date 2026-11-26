@@ -135,7 +135,7 @@ function runToOverlay(g, each) {
 let g = boot({ share: true });
 assert(g.B && g.B.supported() === true, 'Broadcast is defined and supported');
 toLadder(g);
-assert(g.els.panel.innerHTML.includes('id="btnRec"'), 'the ladder offers the record button');
+assert(!g.els.panel.innerHTML.includes('id="btnRec"'), 'the ladder has no record button: only the automatic video records');
 g.click('recduel');
 assert(g.p().mode === 'duel' && g.B.recording, 'recording armed and duel started');
 let frozen = 0, sawZero = false, movedInIntro = false, speedTapped = false, endFrames = 0;
@@ -194,7 +194,7 @@ console.log('early exit ok');
 g = boot({ noRecorder: true });
 assert(g.B.supported() === false, 'unsupported without MediaRecorder');
 toLadder(g);
-assert(!g.els.panel.innerHTML.includes('btnRec') && g.els.panel.innerHTML.includes('btnDuel'), 'no record button, watch button still there');
+assert(!g.els.panel.innerHTML.includes('btnRec') && !g.els.panel.innerHTML.includes('btnDuel'), 'no record or watch button');
 // the arena art keeps its static floor on a spare canvas of its own, so count recorder-canvas calls from here on
 const calls0 = g.report.calls;
 g.click('recduel');

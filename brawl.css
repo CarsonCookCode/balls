@@ -80,6 +80,7 @@ button[aria-pressed="false"].tog{color:var(--ash);text-decoration:line-through}
   background:linear-gradient(rgba(60,40,15,.6),rgba(60,40,15,.6)) center bottom 3px / 46% 1px no-repeat,
              conic-gradient(from 45deg at 50% 50%,var(--ink) 0 100%) center bottom / 7px 7px no-repeat}
 .ps{margin:0;font:italic 500 16px/1.25 var(--text);color:var(--ink-2);text-align:center;text-wrap:balance}
+.ps a{color:var(--crimson);text-decoration:underline;text-underline-offset:2px}
 .ps b{font-style:normal;font-weight:700;color:var(--ink)}
 .stepn{margin:0;font:700 10.5px/1 var(--display);letter-spacing:.2em;text-transform:uppercase;color:var(--ink-2);text-align:center}
 /* a choice is a line on the scroll, not a boxed button */
@@ -214,7 +215,6 @@ body[data-mode="ready"] .ps.tipline,body[data-mode="ready"] .ps.what{min-height:
 /* a second-rank plate: the same size and weight as the main one, in the dark plate colours */
 button.alt{width:100%;min-height:48px;font-size:15px}
 /* the way out of the ladder: a plate at the top of the scroll (the footer plate also reads Back while the ladder is open) */
-button.backtop{width:auto;align-self:flex-start;min-height:36px;padding:6px 16px 6px 12px;margin-bottom:-4px}
 /* the matchup is centred: the whole block sits in the middle of the scroll, and each fighter's upgrades sit under it.
    (auto margins, not justify-content, so nothing is cut off at the top if a small screen ever has to scroll) */
 body[data-mode="ready"] #panel>:first-child{margin-top:auto}

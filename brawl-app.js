@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 36';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 37';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -553,6 +553,7 @@ function makeBody(){
     `<button type="button" id="btnNew" class="alt" data-act="new">Make a different fighter</button>`;
 }
 const CROWN='<svg class="crown" viewBox="0 0 20 16" width="19" height="15" role="img" aria-label="1"><path d="M3 14.5h14l1.8-10-5 3.8L10 1.5 6.2 8.3l-5-3.8z" fill="#c9a45c" stroke="#3c280f" stroke-width="1.3" stroke-linejoin="round"/></svg>';
+const CHANNEL='https://www.youtube.com/@playduelking';
 function boardBody(){
   const rows=standings(),pair=[],seen=new Set();
   for(const r of rows){if(seen.has(r.who))continue;seen.add(r.who);pair.push(r);if(pair.length===2)break}
@@ -561,11 +562,12 @@ function boardBody(){
     return `<li class="${r.you?'me':''}${pair.includes(r)?' in':''}"><span class="rk">${i?i+1:CROWN}</span><i style="background:${b.color}"></i>`+
       `<span class="nm"><b>${typeOf(b)}</b><small>${r.you?esc(b.name)+' · you':r.player?esc(b.name):'house fighter'}</small></span><span class="rg">${r.cleared}</span></li>`;
   };
-  return `<button type="button" id="btnClose" class="alt backtop" data-act="closeboard">‹ Back</button><h2 class="ph">Today’s ladder</h2><p class="ps" id="goal">${goalLine()}</p>`+(netLine()?`<p class="ps" id="netLine">${netLine()}</p>`:'')+
-    (boardReady()?`<button type="button" id="btnDuel" class="go" data-act="duel">Watch today’s duel</button>`+
-      (window.Broadcast&&Broadcast.supported&&Broadcast.supported()?`<button type="button" id="btnRec" data-act="recduel">Record today’s duel as a video</button>`:'')+
-      `<ol class="lb">`+rows.slice(0,80).map(row).join('')+`</ol>`:'')+
-    `<button type="button" id="btnClose2" class="alt" data-act="closeboard">Back</button>`;
+  // The duel is not played here: it is fought once, when the day ends, and shown in the video. The way out of the
+  // ladder is the Back plate in the footer.
+  return `<h2 class="ph">Today’s ladder</h2><p class="ps" id="goal">${goalLine()}</p>`+
+    `<p class="ps" id="duelNote">The duel is fought when the day ends, and shown in <a href="${CHANNEL}" target="_blank" rel="noopener">the next video</a>.</p>`+
+    (netLine()?`<p class="ps" id="netLine">${netLine()}</p>`:'')+
+    (boardReady()?`<ol class="lb">`+rows.slice(0,80).map(row).join('')+`</ol>`:'');
 }
 function duelBody(){
   // kept short so the arena has the screen; the fighters' names are already above the health bars
@@ -656,6 +658,7 @@ $('panel').addEventListener('click',e=>{
     log('pick',{r:run.rung,of:choice,got:b.dataset.key});
     if(Climb.pick(run.st,choice.indexOf(b.dataset.key)))nextFight();
   }
+  // no button asks for these three any more: the automatic video and the tests start and leave a duel through them
   else if(act==='duel')startDuel();
   else if(act==='recduel'){if(window.Broadcast&&Broadcast.start)Broadcast.start();startDuel()}
   else if(act==='board'){mode='board';render()}

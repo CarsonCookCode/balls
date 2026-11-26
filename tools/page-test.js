@@ -49,9 +49,9 @@ assert(tgt === rows[1].cleared + 1, 'target is one more than second place');
 assert(new RegExp('Clear <b>' + tgt + '</b> rungs to get in').test(g.els.panel.innerHTML), 'start screen shows the target');
 console.log('ladder ok: house fighters cleared', rows.map(r => r.cleared).join(','), '| target to get in:', tgt);
 g.els.btnBoard._h.click();
-assert(g.p().mode === 'board' && count(g.els.panel.innerHTML, '<li') === 14 && g.els.panel.innerHTML.includes('btnDuel') && clean(g.els.panel.innerHTML), 'ladder view lists every fighter');
+assert(g.p().mode === 'board' && count(g.els.panel.innerHTML, '<li') === 14 && !/btnDuel|btnRec|btnClose/.test(g.els.panel.innerHTML) && g.els.panel.innerHTML.includes('id="duelNote"') && clean(g.els.panel.innerHTML), 'ladder view lists every fighter, with no duel or back buttons of its own');
 assert(count(g.els.panel.innerHTML, 'class=" in"') === 2 || count(g.els.panel.innerHTML, ' in"') === 2, 'top two are marked as in the duel');
-g.click('closeboard'); assert(g.p().mode === 'make', 'Back returns to the fighter');
+g.els.btnBoard._h.click(); assert(g.p().mode === 'make' && g.els.btnBoard.textContent === 'Ladder', 'the footer plate leaves the ladder');
 
 // 3. climbs record today's best and can put you in the duel
 const cleared = [];
@@ -98,7 +98,7 @@ console.log('30 climbs ok. Best today', top, '| in the duel:', inNow, '| reached
 // 4. today's duel plays best of three to a result
 g.els.btnBoard._h.click(); g.click('duel');
 assert(g.p().mode === 'duel' && /best of three/.test(g.els.panel.innerHTML) && g.els.panel.innerHTML.includes('duelrow') && g.els.panel.innerHTML.includes('btnLeave') && clean(g.els.panel.innerHTML), 'duel screen shows two types');
-g.tick(120); g.click('board'); assert(g.p().mode === 'board' && g.els.panel.innerHTML.includes('btnDuel'), 'leaving the duel returns to the ladder');
+g.tick(120); g.click('board'); assert(g.p().mode === 'board' && g.els.panel.innerHTML.includes('class="lb"'), 'leaving the duel returns to the ladder');
 g.click('duel'); assert(g.p().mode === 'duel' && g.p().duel.score.join() === '0,0', 'a fresh duel starts after leaving');
 let guard = 0; while (!g.p().duel.done && guard++ < 200000) g.tick(1);
 p = g.p();

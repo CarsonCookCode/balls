@@ -102,6 +102,12 @@ jobs:
           node-version: 24
           package-manager-cache: false   # no packages to install, nothing to cache
 
+      - name: Make sure ffmpeg is there
+        run: |
+          # the recorder uses it to line sound up with picture and to write the MP4
+          if ! command -v ffmpeg >/dev/null 2>&1; then sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg; fi
+          ffmpeg -version | head -1
+
       - name: Record the duel
         env:
           DAY: ${{ steps.day.outputs.day }}

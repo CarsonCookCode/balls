@@ -10,7 +10,10 @@
 //   2. Opens the game in headless Chrome as ?video=<day>. The page itself reads the ladder, plays every climb's proof
 //      again and keeps only those that pass, filters the names, and records the duel between the best fighters of the
 //      top two players (brawl-app.js, "the automatic daily video").
-//   3. Saves the video to <out>/ and writes <out>/meta.json: {ok, day, file, title, description, tags, ...}.
+//   3. Saves the recording, then (with ffmpeg installed) lines its sound up with its picture using the mark the
+//      recorder put at the start, cuts the mark off and writes an MP4 (tools/av.js). A video that cannot be finished this way (no
+//      ffmpeg, the marks are missing, or the sound drifts) is kept for inspection but not passed on for posting.
+//      Writes <out>/meta.json: {ok, day, file, title, description, tags, sync, ...}.
 //      ok:false with a reason means there is nothing to post (no players that day, say); that is not an error.
 //
 // --min N   how many of the two duellists must be real, proven players (default 1; 2 = never a house fighter; 0 = any)
@@ -18,7 +21,7 @@
 // Chrome is found from --chrome, the CHROME_PATH environment variable, or the usual install places.
 // Uses only what Node 22+ has built in (it speaks to Chrome over its DevTools socket directly).
 const fs = require('fs'), os = require('os'), path = require('path'), http = require('http'), cp = require('child_process');
-const stamp = require('./stamp');
+const stamp = require('./stamp'), av = require('./av');
 const ROOT = path.join(__dirname, '..');
 const arg = (n, d) => { const i = process.argv.indexOf('--' + n); return i > 0 && process.argv[i + 1] !== undefined ? process.argv[i + 1] : d; };
 const DAY = arg('day', ''), OUT = path.resolve(arg('out', 'out')), MIN = Math.max(0, Math.min(2, +arg('min', 1) || 0)), TIMEOUT = (+arg('timeout', 420) || 420) * 1000;
@@ -156,6 +159,16 @@ function words(day, d) {
       else {
         const d = Object.assign({}, st.duel, { a_b: [st.duel.a, st.duel.b] });
         Object.assign(meta, { ok: true, file: name, bytes: size, seconds: f.secs, type: f.type, duel: st.duel }, words(DAY, d));
+        // sound against picture, the mark cut off, and an MP4
+        const mp4 = name.replace(/.[a-z0-9]+$/i, '') + '.mp4', fin = f.clap ? av.finish(path.join(OUT, name), path.join(OUT, mp4), f.clap) : { ok: false, why: 'this recording has no sync mark' };
+        if (fin.ok) {
+          if (!process.env.KEEP_RAW) fs.rmSync(path.join(OUT, name), { force: true });
+          Object.assign(meta, { file: mp4, bytes: fs.statSync(path.join(OUT, mp4)).size, seconds: fin.seconds, type: 'video/mp4', sync: { fixed: true, startMs: fin.startMs, endMs: fin.endMs } });
+          say('sound was ' + fin.startMs + ' ms from the picture at the start and ' + fin.endMs + ' ms at the end (positive = late): corrected, marks cut off');
+        } else {
+          // a recording that could not be finished still has its sync marks in it and unchecked sound: never post it
+          meta.ok = false; meta.raw = name; meta.reason = 'sound and picture could not be lined up: ' + fin.why; meta.sync = { fixed: false, why: fin.why, startMs: fin.startMs, endMs: fin.endMs }; code = 1;
+        }
       }
     }
   } catch (e) { meta.reason = String(e && e.message || e); code = 1; }

@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 38';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 39';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -768,12 +768,13 @@ async function autoVideo(day){
     out.sound=!!sfxBuf&&!!actx&&actx.state==='running';
     out.state='recording';
     window.__duelFile=null;
+    Broadcast.clap=true;                                // a flash and a beep at the start, for lining sound up with picture
     Broadcast.start();startDuel();
     for(let k=0;k<3000&&!window.__duelFile;k++)await wait(100);
     const f=window.__duelFile;
     if(!f||!f.ok)throw new Error('the recording came out empty'+(f&&f.note?' ('+f.note+')':''));
     const t=[typeOf(duel.a),typeOf(duel.b)],w=duel.winner;
-    out.file={name:f.name,type:f.type,size:f.blob.size,secs:f.secs,cut:!!f.cut};
+    out.file={name:f.name,type:f.type,size:f.blob.size,secs:f.secs,cut:!!f.cut,clap:Broadcast.CLAP};
     out.duel={a:t[0],b:t[1],who:duel.who.slice(),winner:w,score:duel.score.slice(),rungs:[pair[0].cleared,pair[1].cleared],house:[!pair[0].player,!pair[1].player]};
     out.state='done';
   }catch(e){out.state='error';out.reason=String(e&&e.message||e)}

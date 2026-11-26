@@ -50,6 +50,13 @@ db.listen(0, '127.0.0.1', async () => {
       const order = players.map((p, i) => ({ name: p[1], r: bests[i] })).sort((a, b) => b.r - a.r);
       if (meta.duel.rungs[0] !== order[0].r || meta.duel.rungs[1] !== order[1].r) bad('the duel is not between the two best: ' + JSON.stringify(meta.duel.rungs) + ' vs ' + JSON.stringify(order));
       if (meta.pageErrors) bad('the page reported errors: ' + meta.pageErrors.join(' | '));
+      // sound against picture: measured from the marks at both ends of the recording (tools/av.js)
+      const av = require('./av');
+      if (!av.has()) console.log('(ffmpeg is not installed: sound and picture were not lined up or checked)');
+      else {
+        if (!meta.sync || !meta.sync.fixed) bad('sound and picture were not lined up: ' + (meta.sync && meta.sync.why));
+        else console.log('sound against picture as recorded: ' + meta.sync.startMs + ' ms at the start, ' + meta.sync.endMs + ' ms at the end (positive = late); corrected and the marks cut off');
+      }
       console.log('\n' + meta.title + '\n' + meta.description + '\n\n' + kind + ', ' + meta.seconds + ' s, ' + (meta.bytes / 1048576).toFixed(1) + ' MB, sound ' + (meta.sound ? 'on' : 'off') + ', ' + meta.players + ' proven players, climbs ' + bests.join('/') + ', refused: ' + meta.rejected.map(x => x.id + ' (' + x.why + ')').join(', '));
       if (process.argv.includes('--keep')) console.log('kept: ' + file);
     }

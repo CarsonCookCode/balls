@@ -1,8 +1,10 @@
 // Video recorder for Duel King. Defines window.Broadcast; the game works without it.
-// It records a day's duel as a 1080x1920 video with everything a Short needs drawn into the frame. The video opens on
-// the fight itself; a second in, time slows and the question is put ("GOOSE OR MIKA? who takes the crown?"); each
-// fighter's trick is named once; rounds are called; the deciding blow lands in slow motion; and it ends on one screen,
-// the winner crowned, with the invitation to play.
+// It records a day's duel as a 1080x1920 video with everything a Short needs drawn into the frame: the two units' names
+// either side of VS (the player's name small beneath), health bars, the arena; each round is called before it starts;
+// the deciding blow lands in slow motion; and it ends on one screen, the winner crowned, with the invitation to play.
+// With Broadcast.clap set (the automatic video does this) the recording starts and ends with a white square and a beep
+// in the same instant, so tools/duel-video.js can measure how far sound and picture are apart, correct it, and cut the
+// marks off.
 // The page calls start() before the duel, onFrame(dt) after each of its own frames, and finish() when the duel is decided.
 (function(){
   'use strict';
@@ -12,17 +14,17 @@
   // WebM first: Chrome's MP4 recording kept only a fraction of a second once an audio track was attached (seen in a real
   // recording, 2026-11-25). Safari cannot record WebM, so it falls through to MP4, which is its native format.
   const MIMES=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4;codecs=avc1,mp4a.40.2','video/mp4'];
-  // timeline, in seconds: HOOK_PLAY of fight at full speed, then HOOK_HOLD in slow motion (HOOK_SLOW of normal speed)
-  // under the question; the tricks strip shows until TRICKS; STING holds each new round; the deciding blow and
-  // KO_LINGER after it run at KO_SLOW; CROWN is the closing screen.
-  const HOOK_PLAY=1.3,HOOK_HOLD=1.9,HOOK_SLOW=.14,TRICKS=7,STING=.8,KO_SLOW=.22,KO_LINGER=.5,CROWN=2.3;
+  // timeline, in seconds: OPEN holds the first round under its call and STING each later one; the deciding blow and
+  // KO_LINGER after it run at KO_SLOW of normal speed; CROWN is the closing screen. CLAP_LEAD is the extra hold at the
+  // very start, and CLAP_TAIL the one at the very end, that carry the sync marks and are cut off afterwards.
+  const OPEN=.9,STING=.8,KO_SLOW=.22,KO_LINGER=.5,CROWN=2.3,CLAP_LEAD=2.6,CLAP_AT=2.1,CLAP_LEN=.07,CLAP_TAIL=.5,TAIL_AT=.2;
   // layout
   const AX=60,AY=484,AS=960;                        // where the arena's 0..AW square sits in the frame
 
   let state='idle';     // idle | armed (start() called, recorder not yet made) | rec | ending | saving
   let cv=null,c=null,rec=null,stream=null,audioDest=null,chunks=[],mime='',cutShort=false,failNote='';
-  let secs=0,frames=0,sting=0,stingText='',lastRound=1,endT=0,armedFrames=0,armTimer=0,audioWait=0;
-  let titles=['',''],overlay=null,fileUrl='',bandY=0;
+  let secs=0,frames=0,sting=0,stingLen=1,stingText='',lastRound=1,endT=0,armedFrames=0,armTimer=0,audioWait=0;
+  let titles=['',''],overlay=null,fileUrl='',lead=0,clapped=false,clapped2=false;
 
   const MR=()=>typeof MediaRecorder!=='undefined'?MediaRecorder:null;
   function supported(){
@@ -86,33 +88,21 @@
   // lower right edge, so everything that matters sits above y=1460: who is fighting and how healthy they are at the
   // top (the players' names lead, the fighter's type is the small print), then the arena, as large as it will go.
   const side=i=>i?duel.b:duel.a;
-  // the name a side goes by: the player's, or the class name for a house fighter
-  function who(i){
-    let n='';try{n=String(duel.who[i]||'')}catch(e){}
-    if(!n||n==='House'){try{n=FIGHTERS[side(i).key].name}catch(e){n='Fighter'}}
-    return n.toUpperCase();
-  }
-  function dayLine(){
-    let d='';try{d=dayKey()}catch(e){}
-    const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
-    return m?['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][+m[2]-1]+' '+(+m[3]):'';
-  }
+  // the unit's plain name (Tide, Railgun), and the player who made it ('' for a house fighter)
+  function unit(i){try{return FIGHTERS[side(i).key].name.toUpperCase()}catch(e){return 'FIGHTER'}}
+  function maker(i){let n='';try{n=String(duel.who[i]||'')}catch(e){}return n==='House'?'':n}
   function spaced(str,x,y,size,ls,o){c.letterSpacing=ls+'px';try{text(str,x,y,size,o.maxW||900,o)}finally{c.letterSpacing='0px'}}
+  // Symmetrical about the VS shield: each unit's name is centred over its own health bar, the player's name small under it.
   function drawHud(){
-    const day=dayLine();
-    spaced('DUEL KING'+(day?'  ·  '+day:''),540,150,30,6,{fill:GOLD_C});
     for(let i=0;i<2;i++){
-      const b=side(i),f=fighter(i),left=!i,x0=left?60:590,w=430,part=f&&f.max>0?clamp01(f.hp/f.max):1;
-      // place on the ladder
-      c.fillStyle=b.color;c.strokeStyle=EDGE_C;c.lineWidth=4;box(left?x0:x0+w-92,214,92,52,8);c.fill();c.stroke();
-      text('#'+(i+1),left?x0+46:x0+w-46,242,34,80,{fill:'#ffffff',stroke:'rgba(0,0,0,.55)',lw:5,weight:900});
-      text(who(i),left?x0+110:x0+w-110,244,76,w-116,{align:left?'left':'right',fill:PAPER,stroke:EDGE_C,lw:12,weight:900,min:30});
-      text(titles[i],left?x0:x0+w,312,38,w,{text:true,italic:true,align:left?'left':'right',fill:'#c9d0d4',min:22});
+      const b=side(i),f=fighter(i),left=!i,x0=left?60:590,w=430,mid=x0+w/2,part=f&&f.max>0?clamp01(f.hp/f.max):1,by=maker(i);
+      text(unit(i),mid,236,78,w-70,{fill:PAPER,stroke:EDGE_C,lw:12,weight:900,min:34});
+      if(by)text(by,mid,302,38,w-40,{text:true,italic:true,fill:'#c9d0d4',min:22});
       Orn.bar(c,x0,344,w,part,b.color,!left,46);
       if(f)text(String(Math.max(0,Math.ceil(f.hp))),left?x0+w-18:x0+18,368,34,110,{align:left?'right':'left',fill:'#ffffff',stroke:'rgba(0,0,0,.7)',lw:6,weight:900});
       for(let k=0;k<2;k++)gem(left?x0+24+k*50:x0+w-24-k*50,424,16,b.color,duel.score[i]>k);
     }
-    Orn.shield(c,540,256,44,'VS');
+    Orn.shield(c,540,244,44,'VS');
     const label=duel.done?'FINAL':duel.round>=3?'DECIDER':'ROUND '+duel.round;
     spaced(label,540,424,34,3,{fill:SUN,stroke:EDGE_C,lw:8,maxW:330});
   }
@@ -124,7 +114,7 @@
     c.setTransform(1,0,0,1,0,0);
     c.globalAlpha=1;c.setLineDash([]);c.lineCap='butt';
   }
-  // a crimson band across the arena: the opening question, and the call between rounds. `open` 0..1 is how far it has opened.
+  // a crimson band across the arena, for the call before each round. `open` 0..1 is how far it has opened.
   function drawBand(main,sub,open,y){
     const h=250*clamp01(open);
     if(h<4)return;
@@ -135,40 +125,6 @@
     if(open<.92)return;
     text(main,540,sub?y-26:y+4,104,980,{fill:PAPER,shadow:5,weight:900,min:44});
     if(sub)text(sub,540,y+66,50,900,{text:true,italic:true,fill:SUN});
-  }
-  // The opening question sits in whichever part of the arena the two fighters are furthest from, decided once.
-  function placeBand(){
-    let best=.22,far=-1;
-    for(const k of [.2,.5,.74]){
-      let d=1e9;for(let i=0;i<2;i++){const f=fighter(i);if(f)d=Math.min(d,Math.abs(f.y/AW-k))}
-      if(d>far){far=d;best=k}
-    }
-    return AY+AS*best;
-  }
-  function wrap(str,maxW,font,maxLines){
-    c.font=font;
-    const words=String(str).split(' '),lines=[];let cur='';
-    for(const w of words){const t=cur?cur+' '+w:w;if(cur&&c.measureText(t).width>maxW){lines.push(cur);cur=w}else cur=t}
-    if(cur)lines.push(cur);
-    if(lines.length>maxLines){lines.length=maxLines;lines[maxLines-1]=lines[maxLines-1].replace(/[ ,.;:]+$/,'')+'…'}
-    return lines;
-  }
-  // what each fighter does, said once, in the first seconds: a dark strip along the arena's lower edge
-  function drawTricks(alpha){
-    if(alpha<=0)return;
-    const y0=AY+AS-196,font='italic 500 30px '+TEXT;
-    c.save();c.globalAlpha=clamp01(alpha);
-    const gr=c.createLinearGradient(0,y0-50,0,AY+AS);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(.3,'rgba(0,0,0,.74)');gr.addColorStop(1,'rgba(0,0,0,.8)');
-    c.fillStyle=gr;c.fillRect(AX,y0-50,AS,AS+AY-y0+50);
-    for(let i=0;i<2;i++){
-      const b=side(i),left=!i,x=left?AX+26:AX+AS-26;let name='',desc='';
-      try{name=FIGHTERS[b.key].name.toUpperCase();desc=FIGHTERS[b.key].desc}catch(e){}
-      c.letterSpacing='3px';text(name,x,y0+18,30,440,{align:left?'left':'right',fill:b.color,stroke:'rgba(0,0,0,.8)',lw:6});c.letterSpacing='0px';
-      const lines=wrap(desc,440,font,3);
-      c.font=font;c.textAlign=left?'left':'right';c.textBaseline='middle';c.fillStyle=PAPER;
-      lines.forEach((ln,k)=>c.fillText(ln,x,y0+62+k*38));
-    }
-    c.restore();
   }
   function siteLine(){
     // the automatic video is recorded from a copy of the game served on this computer: it still names the real site
@@ -213,8 +169,8 @@
     }
     drawCrownShape(cx,cy-R-52-(1-e)*220,78);
     if(p<1)return;
-    text(who(w),540,AY+AS*.7,150,AS-80,{fill:PAPER,stroke:EDGE_C,lw:18,weight:900,min:56});
-    text('is today’s Duel King',540,AY+AS*.7+104,60,AS-80,{text:true,italic:true,fill:SUN,stroke:'rgba(0,0,0,.8)',lw:8});
+    text(unit(w),540,AY+AS*.7,150,AS-80,{fill:PAPER,stroke:EDGE_C,lw:18,weight:900,min:56});
+    text((maker(w)?maker(w)+' is':'is')+' today’s Duel King',540,AY+AS*.7+104,60,AS-80,{text:true,italic:true,fill:SUN,stroke:'rgba(0,0,0,.8)',lw:8});
     Orn.plate(c,170,AY+AS-150,740,118,'',true);
     spaced('MAKE YOURS AT',540,AY+AS-116,24,4,{fill:SUN,maxW:660});
     text(siteLine(),540,AY+AS-72,46,660,{fill:PAPER,min:22,shadow:3});
@@ -223,12 +179,10 @@
     drawBackground();
     drawHud();
     drawArenaBox();
-    if(state==='rec'){
-      drawTricks(Math.min(1,(secs-.35)/.3,(TRICKS-secs)/.5));
-      const q=secs-HOOK_PLAY;
-      if(q>0&&q<HOOK_HOLD){if(!bandY)bandY=placeBand();drawBand(who(0)+' OR '+who(1)+'?','who takes the crown?',Math.min(q/.14,(HOOK_HOLD-q)/.12),bandY)}
-      else if(sting>0)drawBand(stingText,'',Math.min((STING-sting)/.14,sting/.12),AY+AS/2);
-    }
+    if(state==='rec'&&lead<=0&&sting>0)drawBand(stingText,'',Math.min((stingLen-sting)/.14,sting/.12),AY+AS/2);
+    // the sync mark: a white square in the corner for the same few moments the beep sounds (cut off afterwards)
+    const tail=state==='ending'&&api.clap?endT-(KO_LINGER+CROWN+TAIL_AT):-1;
+    if((lead>0&&secs>=CLAP_AT&&secs<CLAP_AT+CLAP_LEN)||(tail>=0&&tail<CLAP_LEN)){c.fillStyle='#ffffff';c.fillRect(0,0,64,64)}
     if(state==='ending'&&endT>KO_LINGER)drawCrowned(endT-KO_LINGER);
     frames++;
   }
@@ -294,7 +248,7 @@
       if(!supported()||state==='saving')return;
       if(state==='rec'||state==='ending'||state==='armed')cancel();
       closeOverlay();
-      state='armed';secs=0;frames=0;endT=0;sting=0;bandY=0;armedFrames=0;audioWait=0;cutShort=false;failNote='';lastRound=1;
+      state='armed';secs=0;frames=0;endT=0;sting=0;lead=0;clapped=false;clapped2=false;armedFrames=0;audioWait=0;cutShort=false;failNote='';lastRound=1;
       makeCanvas();
       try{if(document.fonts&&document.fonts.load){document.fonts.load('700 96px Cinzel');document.fonts.load('900 96px Cinzel');document.fonts.load('italic 500 32px "Cormorant Garamond"')}}catch(e){}
       setSpeed(0);                                   // hold the first bell until the recorder is running
@@ -318,18 +272,19 @@
         lastRound=duel.round;
         makeRecorder();
         state='rec';
+        lead=api.clap?CLAP_LEAD:0;sting=stingLen=OPEN;stingText='ROUND 1';
       }
       if(!inDuel){if(state==='ending')stop();else cancel();return}
       dt=dt>0&&dt<.25?dt:1/60;
       if(state==='rec'){
-        if(duel.round!==lastRound){lastRound=duel.round;sting=STING;stingText=duel.round>=3?'DECIDER':'ROUND '+duel.round}
-        if(sting>0){sting-=dt;setSpeed(0)}
-        else if(secs<HOOK_PLAY)setSpeed(1);
-        else if(secs<HOOK_PLAY+HOOK_HOLD)setSpeed(HOOK_SLOW);
+        if(duel.round!==lastRound){lastRound=duel.round;sting=stingLen=STING;stingText=duel.round>=3?'DECIDER':'ROUND '+duel.round}
+        if(lead>0){lead-=dt;setSpeed(0);if(!clapped&&secs>=CLAP_AT){clapped=true;beep()}}
+        else if(sting>0){sting-=dt;setSpeed(0)}
         else setSpeed(deciding()?KO_SLOW:1);
       }else{
         endT+=dt;setSpeed(endT<KO_LINGER?KO_SLOW:1);
-        if(endT>=KO_LINGER+CROWN){drawFrame();secs+=dt;stop();return}
+        if(api.clap&&!clapped2&&endT>=KO_LINGER+CROWN+TAIL_AT){clapped2=true;beep()}
+        if(endT>=KO_LINGER+CROWN+(api.clap?CLAP_TAIL:0)){drawFrame();secs+=dt;stop();return}
       }
       drawFrame();
       secs+=dt;
@@ -337,6 +292,18 @@
       failNote=String(e&&e.message||e);
       cancel();
     }
+  }
+  // (The opening mark comes two seconds in: Chrome's recorder was seen to drop every frame between about 0.2 s and
+  // 1.4 s of a recording while its encoder starts up, and the first sound it records is not yet steady.)
+  // the sound half of the sync mark: a short high beep straight into the recording (not through the game's own mix)
+  function beep(){
+    try{
+      const ac=window.BrawlAudio&&BrawlAudio.ctx();
+      if(!ac||!audioDest)return;
+      const o=ac.createOscillator(),gn=ac.createGain();
+      o.type='square';o.frequency.value=2000;gn.gain.value=.5;o.connect(gn);gn.connect(audioDest);
+      o.start();o.stop(ac.currentTime+CLAP_LEN);
+    }catch(e){}
   }
   // the blow that has just ended this round also ends the duel
   function deciding(){try{return !!(match&&match.over&&!match.draw&&!duel.done&&duel.score[match.winner]===1)}catch(e){return false}}
@@ -420,6 +387,8 @@
     get recording(){return state==='armed'||state==='rec'||state==='ending'},
     // for tests and for diagnosing a failed recording from the console
     stats:()=>({state,frames,seconds:secs,mime,note:failNote,cutShort}),
+    clap:false,                                        // set by the automatic video: begin with the sync mark
+    CLAP:{lead:CLAP_LEAD,at:CLAP_AT,len:CLAP_LEN,tail:CLAP_TAIL,tailAt:TAIL_AT},
   };
   window.Broadcast=api;
   try{globalThis.Broadcast=api}catch(e){}            // the same object in a browser; keeps the bare name valid elsewhere

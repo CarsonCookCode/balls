@@ -54,7 +54,10 @@ const GROUPS = {
   clunk:   { g: .65, cap: .45, gap: .07, files: [sn('Steampunk Machines', 'texture_038'), sn('Steampunk Machines', 'texture_053')] },   // Clockmaker, Engineer, Emperor, Gladiator, Echo
   thorn:   { g: .55, cap: .3,  gap: .08, files: sn('Videogame Foley', 'Dry Tree Branches') },    // Bramble, Cactus, Archer
   goo:     { g: .6,  cap: .4,  gap: .1,  files: sn('Gore Mini', 'Gore Splatter', 3) },           // Spider, Plague Doc, Mushroom, Moth, Chef
-  buzz:    { g: .5,  cap: .4,  gap: .12, files: seg('Lumberjack', 'Chainsaw Working', [8, 14], .45) },   // Chainsaw, Beekeeper, Yo-yo
+  buzz:    { g: .5,  cap: .4,  gap: .12, files: seg('Lumberjack', 'Chainsaw Working', [8, 14], .45) },   // Chainsaw
+  sting:   { g: .55, cap: .3,  gap: .09, files: og('own-synth', 'bee*') },   // Beekeeper: a short insect buzz, synthesised with ffmpeg for this game (unheard by me)
+  knock:   { g: .6,  cap: .3,  gap: .09, files: og('rpg-rubberduck', 'wood_0*') },                              // Yo-yo (my guess, unheard: wood on wood)
+  thunder: { g: .6,  cap: .7,  gap: .3,  files: sn('BluezoneCorp - High Voltage', 'surge_discharge', 3) },       // Storm Cloud's bolts (my guess, unheard: an electric arc)
   spark:   { g: .5,  cap: .3,  gap: .09, files: sn('Battle Droid', 'Droid-UI') },                // Netrunner, Glitch, Drone Pilot, Battery
   touch:   { g: .4,  cap: .2,  gap: .09, files: sn('User Interaction', 'Select Middle') },       // Duck, Firefly, Candle, Painter, Pharaoh, Comet, Lighthouse
   wave:    { g: .55, cap: .8,  gap: .2,  files: og('combat-150', 'Water Spell Impact*') },       // Tide's wave

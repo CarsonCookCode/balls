@@ -77,17 +77,20 @@ for (let n = 0; n < 30; n++) {
         assert(g.els.panel.innerHTML.includes('id="tipLine"') && g.els.panel.innerHTML.includes(g.ctx.__text(R.build, id)) && clean(g.els.panel.innerHTML), 'tapping a tag shows what the upgrade does');
         g.click('tip', { side: '0', key: id }); assert(!g.els.panel.innerHTML.includes('id="tipLine"'), 'tapping it again closes it'); tips++;
       }
-      if ((guard + n) % 11 === 0) { g.click('sheet'); assert(g.els.panel.innerHTML.includes('btnFight') && !g.els.panel.innerHTML.includes('btnSheet'), 'the matchup has no sheet'); }
+      assert(g.els.sheet.hidden === true, 'the sheet shows only on the upgrade screen');
       g.click('fight');
     } else if (p.mode === 'pick') {
-      assert(count(g.els.panel.innerHTML, 'data-act="up"') === p.choice.length && count(g.els.panel.innerHTML, 'class="ic"') === p.choice.length && /see your fighter/.test(g.els.panel.innerHTML) && clean(g.els.panel.innerHTML), 'upgrade screen drawn');
-      if (!sheets || (guard + n) % 9 === 0) {
-        assert(g.els.panel.innerHTML.includes('class="mecard"') && g.els.panel.innerHTML.includes('see your fighter'), 'the boon screen opens with your fighter, which leads to the sheet');
-        g.click('sheet');
-        const h = g.els.panel.innerHTML, R = g.p().run;
-        assert(h.includes('id="btnSheetBack"') && h.includes('Health') && h.includes('Its own boon') && h.includes('What a ') && h.includes(g.ctx.__type(R.build)) && !h.includes('data-act="up"') && clean(h), 'the sheet shows the class, its numbers and its own boon');
-        for (const id of new Set(R.build.ups)) assert(h.includes(g.ctx.__text(R.build, id)), 'the sheet explains every boon: ' + id);
-        g.click('sheet'); assert(count(g.els.panel.innerHTML, 'data-act="up"') === p.choice.length, 'Back returns to the boons'); sheets++;
+      assert(count(g.els.panel.innerHTML, 'data-act="up"') === p.choice.length && count(g.els.panel.innerHTML, 'class="ic"') === p.choice.length && /Choose an upgrade/.test(g.els.panel.innerHTML) && clean(g.els.panel.innerHTML), 'upgrade screen drawn');
+      {                                                // your fighter is shown above the choices: name, numbers, upgrades
+        const h = g.els.sheet.innerHTML, R = g.p().run;
+        assert(g.els.sheet.hidden === false && h.includes(g.ctx.__type(R.build)) && h.includes('Health') && h.includes('data-me') && clean(h), 'the upgrade screen shows your fighter above the choices');
+        assert(!/boon/i.test(h + g.els.panel.innerHTML), 'the word boon is not used');
+        if (R.build.ups.length && (guard + n) % 5 === 0) {
+          const id = R.build.ups[0];
+          g.els.sheet._h.click({ target: { closest: () => ({ dataset: { act: 'tip', side: '0', key: id } }) } });
+          assert(g.els.sheet.innerHTML.includes('id="tipLine"') && g.els.sheet.innerHTML.includes(g.ctx.__text(R.build, id)), 'tapping one of your upgrades there explains it');
+          sheets++;
+        }
       }
       g.click('up', { key: p.choice[(guard + n) % p.choice.length] });
     } else g.tick(1);
@@ -102,7 +105,7 @@ for (let n = 0; n < 30; n++) {
 const top = Math.max(...cleared), inNow = g.ctx.__s().slice(0, 2).some(r => r.you);
 assert(inNow === (top >= tgt), 'you are in the duel exactly when you reached the target');
 assert(inNow ? /You are in today/.test(g.els.panel.innerHTML) : /Clear <b>\d+<\/b> rungs to get in/.test(g.els.panel.innerHTML), 'end screen says whether you are in');
-console.log('30 climbs ok. Best today', top, '| in the duel:', inNow, '| reached rung 5:', seenShield, '| fights with the shield raised:', armedFights, '| upgrade tags tapped:', tips, '| sheets opened:', sheets);
+console.log('30 climbs ok. Best today', top, '| in the duel:', inNow, '| reached rung 5:', seenShield, '| fights with the shield raised:', armedFights, '| upgrade tags tapped:', tips, '| upgrades read on the sheet:', sheets);
 
 // 4. today's duel plays best of three to a result
 g.els.btnBoard._h.click(); g.click('duel');

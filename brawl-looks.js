@@ -17,7 +17,8 @@ let g=null;        // the context being drawn to; set at the start of drawArena
 let PX=2;          // device pixels per arena unit (shadows ignore the transform, so they need it)
 let NOW=0;         // match time, for small idle motions
 let MATCH=null;
-let PORTRAIT=false; // true while drawing a fighter's picture: no name, no crown, no health banner
+let PORTRAIT=false; // true while drawing a fighter's picture: its circle and nothing else (no weapons, name or health)
+const RING=false;   // the gold ring round every fighter. Off since Build 45 (the user: "let's try getting rid of the gold border"); true brings it back
 let LIVE=false;     // true while drawing the arena on screen (not a portrait): the effects engine joins in
 const GOLD='#c9a45c',GOLD_HI='#f0dca4',GOLD_LO='#7a5d2b',IVORY='#f3ead6',INK='#231a12',EDGE='#090b0d',CRIMSON='#8f2732',CRIMSON_LO='#5e1820',
   PARCH='#e6d6b0',PARCH_LO='#c9b487',STEEL='#d7dde2',STEEL_LO='#8b959d',WOOD='#6f4d30',LEATHER='#3a2a1e';
@@ -675,28 +676,29 @@ function drawFighter(f,isYou){
   if(SQ){g.translate(x,y);g.rotate(SQ.th);g.scale(1-SQ.k,1+SQ.k*.7);g.rotate(-SQ.th);g.translate(-x,-y)}
   if(LIVE){FX.back(g,f,MATCH,alpha);resetInk(alpha)}
   // weapons, under the medallion so they seem to come out from behind the ring
-  for(const A of f.arms){
+  if(!PORTRAIT)for(const A of f.arms){
     const an=f.ang*A.rate+A.a,c=Math.cos(an),s=Math.sin(an),x2=x+c*(r+A.l),y2=y+s*(r+A.l);
     if(A.extra||!L.arm){turned(f,an);steelBlade(r,A.l,A.extra?1.9:2.3);g.restore()}
     else L.arm(f,A,x+c*r,y+s*r,x2,y2,an);
     resetInk(alpha);
     if(f.poison){g.fillStyle='#8be05a';g.strokeStyle=EDGE;g.lineWidth=.45;disc(x2,y2,1.5);g.fill();g.stroke()}
   }
-  if(f.key==='blaster')barrel(f,f.aim,4,10.5,false);
-  if(f.side)barrel(f,f.key==='blaster'?f.aim+.5:f.aim,2.3,8,true);
-  if(L.back){L.back(f);resetInk(alpha)}
+  if(!PORTRAIT&&f.key==='blaster')barrel(f,f.aim,4,10.5,false);
+  if(!PORTRAIT&&f.side)barrel(f,f.key==='blaster'?f.aim+.5:f.aim,2.3,8,true);
+  if(L.back&&!PORTRAIT){L.back(f);resetInk(alpha)}
 
   // the medallion: gold ring, dark seat, enamel, crest
   const hit=f.flash>0,col=hit?shade(base,.4):base;      // a hit flashes the enamel pale; the crest must still read
   g.fillStyle='rgba(0,0,0,.5)';g.beginPath();g.ellipse(x+r*.05,y+r*.17,r*1.02,r*.98,0,0,TAU);g.fill();
-  g.fillStyle=lin(g,x-r,y-r,x+r,y+r,[0,GOLD_HI,.45,GOLD,1,GOLD_LO]);g.strokeStyle=EDGE;g.lineWidth=Math.max(.45,r*.035);disc(x,y,r);g.fill();g.stroke();
-  if(r>=11){
+  if(RING){g.fillStyle=lin(g,x-r,y-r,x+r,y+r,[0,GOLD_HI,.45,GOLD,1,GOLD_LO]);g.strokeStyle=EDGE;g.lineWidth=Math.max(.45,r*.035);disc(x,y,r);g.fill();g.stroke();}
+  else{g.fillStyle=EDGE;disc(x,y,r);g.fill()}                 // no ring: a thin dark rim and the enamel right to the edge
+  if(RING&&r>=11){
     g.strokeStyle='rgba(60,42,12,.75)';g.lineWidth=Math.max(.3,r*.03);g.beginPath();
     for(let k=0;k<28;k++){const a=k/28*TAU;g.moveTo(x+Math.cos(a)*(r*.975),y+Math.sin(a)*(r*.975));g.lineTo(x+Math.cos(a+.05)*(r*.945),y+Math.sin(a+.05)*(r*.945))}
     g.stroke();
   }
-  g.fillStyle=EDGE;disc(x,y,r*.925);g.fill();                 // a slim gold ring: the enamel takes most of the medallion
-  g.fillStyle=rad(g,x-r*.25,y-r*.3,r*.1,x,y,r*.92,[0,shade(col,.28),.55,col,1,shade(col,-.35)]);disc(x,y,r*.885);g.fill();
+  if(RING){g.fillStyle=EDGE;disc(x,y,r*.925);g.fill()}
+  g.fillStyle=rad(g,x-r*.25,y-r*.3,r*.1,x,y,r*.92,[0,shade(col,.28),.55,col,1,shade(col,-.35)]);disc(x,y,RING?r*.885:r*.95);g.fill();
   g.save();
   g.translate(x,y-r*.06);g.scale(r*.84,r*.84);
   g.fillStyle=IVORY;g.strokeStyle=IVORY;g.lineCap='round';g.lineJoin='round';g.lineWidth=.06;
@@ -725,12 +727,12 @@ function drawFighter(f,isYou){
     }
     g.fill();g.stroke();
   }
-  if(f.shield&&f.shieldT<=0){
+  if(f.shield&&f.shieldT<=0&&!PORTRAIT){
     g.strokeStyle='rgba(176,208,255,.8)';g.lineWidth=.8;disc(x,y,r+5);g.stroke();
     g.strokeStyle='rgba(240,220,164,.75)';g.lineWidth=.6;g.setLineDash(DASH_FINE);g.lineDashOffset=NOW*5;disc(x,y,r+3.3);g.stroke();g.setLineDash(NODASH);g.lineDashOffset=0;
     for(let k=0;k<4;k++){const a=k/4*TAU+NOW*.9;lozenge(g,x+Math.cos(a)*(r+5),y+Math.sin(a)*(r+5),1.5,'#cfe1ff')}
   }
-  if(L.over){L.over(f,MATCH);resetInk(alpha)}
+  if(L.over&&!PORTRAIT){L.over(f,MATCH);resetInk(alpha)}
   if(LIVE){FX.front(g,f,MATCH,alpha);resetInk(alpha)}
   g.restore();resetInk(alpha);
 
@@ -764,7 +766,8 @@ function drawFighter(f,isYou){
 }
 
 // ---------- a fighter's picture ----------
-// One fighter on its own: nothing behind it, no name and no health banner. Used on the cards, the matchup and the sheet.
+// One fighter's picture: its circle and crest only. No weapons, nothing behind it, no name, no health banner. Used on
+// the cards, the matchup and the sheet.
 // The caller sets the transform (in arena units); the fighter is drawn where it stands in its match.
 function drawPortrait(c,match,i){
   g=c;MATCH=match;NOW=match?match.t:0;PX=deviceScale(c);LIVE=false;PORTRAIT=true;

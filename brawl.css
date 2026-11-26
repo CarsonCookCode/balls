@@ -81,24 +81,24 @@ button[aria-pressed="false"].tog{color:var(--ash);text-decoration:line-through}
              conic-gradient(from 45deg at 50% 50%,var(--ink) 0 100%) center bottom / 7px 7px no-repeat}
 .ps{margin:0;font:italic 500 16px/1.25 var(--text);color:var(--ink-2);text-align:center;text-wrap:balance}
 .ps a{color:var(--crimson);text-decoration:underline;text-underline-offset:2px}
-/* Your fighter on the boon screen: a strip across the top that opens the sheet. */
-button.mecard{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;width:100%;min-height:0;padding:6px 12px 6px 6px;text-align:left;text-transform:none;letter-spacing:normal;text-shadow:none;color:var(--ink);background:rgba(60,40,15,.08);border:1px solid rgba(60,40,15,.35);border-radius:4px;box-shadow:none}
-button.mecard:active{transform:none;background:rgba(143,39,50,.12)}
-button.mecard canvas{width:54px;height:54px;display:block}
-button.mecard span{display:flex;flex-direction:column;gap:2px;min-width:0}
-button.mecard b{font:700 15.5px/1.1 var(--display);letter-spacing:.06em;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-button.mecard small{font:italic 500 15px/1.1 var(--text);color:var(--ink-2)}
-button.mecard i{font:700 22px/1 var(--display);font-style:normal;color:var(--crimson)}
-/* The sheet. */
-.hero{display:flex;flex-direction:column;align-items:center;gap:2px;flex:0 0 auto}
-.hero canvas{width:118px;height:118px;display:block}
-.hero .ph{padding-bottom:9px}
-.made{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex:0 0 auto}
-.made span{display:flex;flex-direction:column;gap:2px;padding:6px 8px;border-left:3px solid var(--gold-lo);background:rgba(60,40,15,.06);font:italic 500 14.5px/1.15 var(--text);color:var(--ink-2)}
-.made b{font:700 12px/1 var(--display);font-style:normal;letter-spacing:.1em;text-transform:uppercase;color:var(--ink)}
-.ps.what.does{font-size:17px;color:var(--ink)}
-.card.still{display:flex;align-items:center;gap:8px;flex:0 0 auto;position:relative;min-height:44px;cursor:default;border-bottom:1px solid rgba(60,40,15,.2)}
-.card.still:active{transform:none;background:none}
+/* The upgrade screen: your fighter takes the top half, where the arena was; the three choices sit on the scroll below. */
+body[data-mode="pick"] #stage,body[data-mode="pick"] header.top{display:none}
+#sheet{flex:1 1 0;min-height:0;overflow-y:auto;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:8px 10px 2px;color:var(--ivory)}
+#sheet[hidden]{display:none}
+.shtop{display:flex;align-items:center;gap:14px}
+.shtop canvas{flex:0 0 auto;width:104px;height:104px;display:block}
+.shtop div{min-width:0}
+.shtop h2{margin:0;font:900 22px/1.05 var(--display);letter-spacing:.07em;text-transform:uppercase;text-wrap:balance}
+.shtop p{margin:5px 0 0;font:italic 500 17px/1.2 var(--text);color:#c9d0d4;text-wrap:pretty}
+#sheet .stats{padding:0}
+#sheet .stats span{background:rgba(255,255,255,.07)}
+#sheet .stats i{color:var(--ash)}
+.shl{margin:0;font:700 10.5px/1 var(--display);letter-spacing:.2em;text-transform:uppercase;color:var(--gold);text-align:center}
+#sheet .chips{display:flex;flex-wrap:wrap;justify-content:center;gap:5px}
+#sheet button.chip{color:var(--ivory);background:rgba(255,255,255,.09);min-height:30px}
+#sheet button.chip.on{background:rgba(255,255,255,.2)}
+.shtip{margin:0;text-align:center;font:500 16.5px/1.2 var(--text);color:var(--ivory);text-wrap:balance}
+.shtip b{font:700 14px/1 var(--display);letter-spacing:.05em;text-transform:uppercase;color:var(--gold-hi);margin-right:4px}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;padding:4px 0}
 .stats span{display:flex;flex-direction:column;gap:2px;padding:6px 2px;background:rgba(60,40,15,.08);border-radius:3px}
 .stats b{font:900 18px/1 var(--display);font-variant-numeric:tabular-nums lining-nums}

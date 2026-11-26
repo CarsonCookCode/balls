@@ -2,8 +2,10 @@
 //   node tools/sfx-build.js
 // Output: sfx/brawl.mp3 (every sound end to end, with silence between) and brawl-sfx.js (where each one starts, and a
 // fingerprint of the file so a phone never plays new positions against an old cached copy).
-// Needs ffmpeg on PATH. Sources are Kenney's audio packs (kenney.nl), which are public domain (CC0), so the
-// built file may be published. Sounds from libraries whose licence forbids republishing must NOT be added here.
+// Needs ffmpeg on PATH. Sources are Kenney's audio packs (kenney.nl) and four packs from opengameart.org kept under
+// oga/ in the library, all public domain (CC0), so the built file may be published.
+// Which sounds are used was chosen by ear on the picker page (tools/sound-picker.js): heavy, metal, clang and ko are
+// the user's picks of 2026-11-26.
 //
 // To change the sound of something: edit GROUPS below (several takes per sound keep repeats from grating),
 // run this script, and bump the ?v= on brawl-sfx.js in index.html.
@@ -13,15 +15,17 @@ const OUT = path.join(__dirname, '..');
 const RATE = 44100, GAP = 0.18, LEAD = 0.03;
 
 const imp = (n, ...i) => i.map(k => 'impact-sounds/impact' + n + '_00' + k);
+// from the opengameart packs: og(pack folder, names...). A name ending in * takes every file that starts with it.
+const og = (pack, ...names) => ({ og: pack, names });
 // name: { g: playback gain, cap: longest it may run (seconds), gap: shortest time between two plays, files }
 const GROUPS = {
   // blows, by what is doing the hitting
   slash:   { g: .75, cap: .42, gap: .07, files: ['rpg-audio/knifeSlice', 'rpg-audio/knifeSlice2'] },
-  metal:   { g: .7,  cap: .3,  gap: .06, files: imp('Metal_medium', 0, 1, 2, 3, 4) },
-  clang:   { g: .6,  cap: .45, gap: .09, files: imp('Metal_light', 0, 1, 2, 3, 4) },
+  metal:   { g: .7,  cap: .5,  gap: .06, files: og('swords-starninjas', 'sword_clash.1', 'sword_clash.2', 'sword_clash.3', 'sword_clash.4', 'sword_clash.5') },
+  clang:   { g: .6,  cap: .45, gap: .09, files: og('swords-starninjas', 'sword_clash.1', 'sword_clash.2', 'sword_clash.3', 'sword_clash.4', 'sword_clash.5') },   // the ring on a critical hit, and a parry
   iron:    { g: .85, cap: .36, gap: .08, files: imp('Metal_heavy', 0, 1, 2, 3, 4) },
   punch:   { g: .75, cap: .45, gap: .07, files: imp('Punch_medium', 0, 1, 2, 3) },
-  heavy:   { g: .9,  cap: .55, gap: .09, files: imp('Punch_heavy', 1, 2, 3, 4) },
+  heavy:   { g: .9,  cap: .6,  gap: .09, files: og('combat-150', 'BlastImpact*') },
   soft:    { g: .45, cap: .2,  gap: .12, files: imp('Soft_medium', 0, 1, 2, 3, 4) },
   thump:   { g: .8,  cap: .55, gap: .1,  files: imp('Soft_heavy', 0, 1, 2, 3) },
   wood:    { g: .7,  cap: .33, gap: .07, files: imp('Wood_medium', 0, 1, 2, 3) },
@@ -35,12 +39,15 @@ const GROUPS = {
   tin:     { g: .45, cap: .2,  gap: .09, files: imp('Tin_medium', 0, 1, 2, 3) },
   // launching, casting and the larger events
   gun:     { g: .5,  cap: .2,  gap: .12, files: ['sci-fi-sounds/explosionCrunch_000', 'sci-fi-sounds/explosionCrunch_003', 'sci-fi-sounds/explosionCrunch_001'] },   // only the crack of the bang, cut short
+  revolver:{ g: .55, cap: .45, gap: .12, files: og('combat-150', 'HeavyShot*') },   // the Cowboy: a deeper bang than the Gunner's crack
+  rail:    { g: .5,  cap: .5,  gap: .12, files: og('combat-150', 'ZapLauncher*') },   // the Railgun: a charged, electric shot
   loose:   { g: .4,  cap: .26, gap: .12, files: ['rpg-audio/cloth2', 'rpg-audio/cloth3', 'rpg-audio/cloth4'] },   // an arrow leaving the string: soft, short, airy
   whoosh:  { g: .45, cap: .46, gap: .15, files: ['casino-audio/card-slide-4', 'casino-audio/card-slide-1', 'casino-audio/card-slide-2'] },
   cast:    { g: .4,  cap: .45, gap: .15, files: ['digital-audio/phaseJump1', 'digital-audio/phaseJump2', 'digital-audio/phaseJump3', 'digital-audio/phaseJump4'] },
   zap:     { g: .4,  cap: .34, gap: .1,  files: ['sci-fi-sounds/laserSmall_000', 'sci-fi-sounds/laserSmall_001', 'sci-fi-sounds/laserSmall_002'] },
   boom:    { g: .9,  cap: 1.0, gap: .15, files: ['sci-fi-sounds/explosionCrunch_000', 'sci-fi-sounds/explosionCrunch_001', 'sci-fi-sounds/explosionCrunch_002'] },
   rumble:  { g: .9,  cap: 1.0, gap: .4,  files: ['sci-fi-sounds/lowFrequency_explosion_001'] },
+  ko:      { g: .9,  cap: 1.3, gap: .4,  files: og('combat-150', 'ElectricExplosion*') },   // a fighter falls
   hum:     { g: .35, cap: .95, gap: .5,  files: ['sci-fi-sounds/forceField_000', 'sci-fi-sounds/forceField_002'] },
   rise:    { g: .3,  cap: .42, gap: .2,  files: ['digital-audio/phaserUp2', 'digital-audio/phaserUp4', 'digital-audio/phaserUp6'] },
   fall:    { g: .3,  cap: .47, gap: .2,  files: ['digital-audio/phaserDown1', 'digital-audio/phaserDown2'] },
@@ -60,6 +67,17 @@ const GROUPS = {
 function walk(d, out = []) { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p, out); else if (/\.(ogg|wav|mp3|flac)$/i.test(e.name)) out.push(p); } return out; }
 const index = {};
 for (const f of walk(path.join(LIB, 'kenney'))) index[path.relative(path.join(LIB, 'kenney'), f).split(path.sep)[0] + '/' + path.basename(f).replace(/\.\w+$/, '')] = f;
+const OGA = fs.existsSync(path.join(LIB, 'oga')) ? walk(path.join(LIB, 'oga')).filter(f => !/__MACOSX|[\\/]\./.test(f)).map(f => ({ f, pack: path.relative(path.join(LIB, 'oga'), f).split(path.sep)[0], base: path.basename(f).replace(/\.\w+$/, '') })) : [];
+function resolve(files) {
+  if (Array.isArray(files)) return files.map(id => { if (!index[id]) throw new Error('not in the library: ' + id); return index[id]; });
+  const out = [];
+  for (const n of files.names) {
+    const hit = OGA.filter(x => x.pack === files.og && (n.endsWith('*') ? x.base.toLowerCase().startsWith(n.slice(0, -1).toLowerCase()) : x.base.toLowerCase() === n.toLowerCase())).sort((a, b) => a.base.localeCompare(b.base, 'en', { numeric: true }));
+    if (!hit.length) throw new Error('not in the library: oga/' + files.og + '/' + n);
+    for (const x of hit) if (!out.includes(x.f)) out.push(x.f);
+  }
+  return out;
+}
 
 function decode(file) {
   const r = spawnSync('ffmpeg', ['-v', 'error', '-i', file, '-ac', '1', '-ar', String(RATE), '-f', 's16le', '-'], { maxBuffer: 1 << 28 });
@@ -85,9 +103,8 @@ const parts = [new Float32Array(Math.round(.25 * RATE))], map = {};
 let pos = parts[0].length, takes = 0;
 for (const [name, G] of Object.entries(GROUPS)) {
   map[name] = { g: G.g, gap: G.gap, v: [] };
-  for (const id of G.files) {
-    if (!index[id]) throw new Error('not in the library: ' + id);
-    const y = tidy(decode(index[id]), G.cap);
+  for (const file of resolve(G.files)) {
+    const y = tidy(decode(file), G.cap);
     map[name].v.push([+(pos / RATE).toFixed(4), +(y.length / RATE).toFixed(4)]);
     parts.push(y, new Float32Array(Math.round(GAP * RATE)));
     pos += y.length + Math.round(GAP * RATE); takes++;
@@ -105,7 +122,7 @@ fs.writeFileSync(wav, Buffer.concat([head, pcm]));
 const r = spawnSync('ffmpeg', ['-v', 'error', '-y', '-i', wav, '-codec:a', 'libmp3lame', '-b:a', '80k', '-ac', '1', '-ar', String(RATE), mp3], { encoding: 'utf8' });
 fs.unlinkSync(wav);
 if (r.status !== 0) throw new Error('ffmpeg could not write the mp3: ' + r.stderr);
-fs.writeFileSync(path.join(OUT, 'sfx', 'CREDITS.txt'), 'brawl.mp3 is assembled from sound effects by Kenney (www.kenney.nl), released into the public domain (Creative Commons Zero).\nPacks used: Impact Sounds, RPG Audio, Interface Sounds, UI Audio, Digital Audio, Sci-fi Sounds, Casino Audio.\n');
+fs.writeFileSync(path.join(OUT, 'sfx', 'CREDITS.txt'), 'brawl.mp3 and the clips in pick/ are assembled from public-domain (Creative Commons Zero) sound effects.\n\nFrom opengameart.org, licence checked 2026-11-26:\n  20 Sword Sound Effects (Attacks and Clashes), by StarNinjas: https://opengameart.org/content/20-sword-sound-effects-attacks-and-clashes\n  150 Combat Sound Effects, compiled by untamedpixels (its LICENSES.txt names each source): https://opengameart.org/content/150-combat-sound-effects\n  RPG Sound Pack, by artisticdude: https://opengameart.org/content/rpg-sound-pack\n  80 CC0 RPG SFX, by rubberduck: https://opengameart.org/content/80-cc0-rpg-sfx\n\nFrom Kenney (www.kenney.nl):\nPacks used: Impact Sounds, RPG Audio, Interface Sounds, UI Audio, Digital Audio, Sci-fi Sounds, Casino Audio.\n');
 fs.writeFileSync(path.join(OUT, 'brawl-sfx.js'),
   '// Generated by tools/sfx-build.js. Where each sound sits inside sfx/brawl.mp3: name -> gain, shortest gap between plays, and its takes as [start, length] in seconds.\n' +
   "const SFX_FILE='sfx/brawl.mp3?h=" + require('crypto').createHash('md5').update(fs.readFileSync(mp3)).digest('hex').slice(0, 8) + "',SFX_LEAD=" + LEAD + ';\nconst SFX=' + JSON.stringify(map).replace(/"(\w+)":/g, '$1:') + ';\n');

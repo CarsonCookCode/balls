@@ -28,9 +28,9 @@ const ROLES = [
   { id: 'blunt', name: 'Blunt hit', when: 'A body or fist lands (Urchin, Jester, most fighters without a weapon).', cap: .45, now: 'punch', opts: [
     ['Punch', K('impact-sounds', ['impactPunch_medium'], 4)], ['Small impact', O('combat-150', ['SmallImpact'], 3)], ['Impact', O('combat-150', ['Impact_0'], 2)], ['Plate knock', K('impact-sounds', ['impactPlate_medium'], 4)], ['Soft thud', K('impact-sounds', ['impactSoft_heavy'], 4)]] },
   { id: 'heavy', name: 'Heavy hit', when: 'A big, slow blow lands (Ogre, Juggernaut).', cap: .6, now: 'heavy', opts: [
-    ['Heavy punch', K('impact-sounds', ['impactPunch_heavy'], 4)], ['Blast impact', O('combat-150', ['BlastImpact'], 3)], ['Heavy plate', K('impact-sounds', ['impactPlate_heavy'], 4)], ['Stones', O('rpg-rubberduck', ['stones_'], 4)], ['Earth strike', O('combat-150', ['Earth Spell Impact'], 3)]] },
+    ['Blast impact', O('combat-150', ['BlastImpact'], 3)], ['Heavy punch', K('impact-sounds', ['impactPunch_heavy'], 4)], ['Heavy plate', K('impact-sounds', ['impactPlate_heavy'], 4)], ['Stones', O('rpg-rubberduck', ['stones_'], 4)], ['Earth strike', O('combat-150', ['Earth Spell Impact'], 3)]] },
   { id: 'metal', name: 'Metal on metal', when: 'A hit on armour, a parry, and the ring on top of a critical hit.', cap: .5, now: 'metal', opts: [
-    ['Metal knock', K('impact-sounds', ['impactMetal_medium'], 4)], ['Sword clash, set 1', O('swords-starninjas', ['sword_clash.1', 'sword_clash.2', 'sword_clash.3', 'sword_clash.4', 'sword_clash.5'], 5)], ['Sword clash, set 2', O('swords-starninjas', ['sword_clash.6', 'sword_clash.7', 'sword_clash.8', 'sword_clash.9', 'sword_clash.10'], 5)],
+    ['Sword clash, set 1', O('swords-starninjas', ['sword_clash.1', 'sword_clash.2', 'sword_clash.3', 'sword_clash.4', 'sword_clash.5'], 5)], ['Metal knock', K('impact-sounds', ['impactMetal_medium'], 4)], ['Sword clash, set 2', O('swords-starninjas', ['sword_clash.6', 'sword_clash.7', 'sword_clash.8', 'sword_clash.9', 'sword_clash.10'], 5)],
     ['Metal ring', O('rpg-rubberduck', ['metal_'], 3)], ['Chain', O('rpg-rubberduck', ['chain_'], 3)], ['Heavy metal', K('impact-sounds', ['impactMetal_heavy'], 4)]] },
   { id: 'light', name: 'Small hit', when: 'Lots of little hits in a row: poison, thorns, small shots.', cap: .2, now: 'tick', opts: [
     ['Light tap', K('impact-sounds', ['impactGeneric_light'], 4)], ['Tin tap', K('impact-sounds', ['impactTin_medium'], 4)], ['Wood tap', K('impact-sounds', ['impactWood_light'], 4)], ['Pluck', K('interface-sounds', ['pluck'], 2)], ['Tick', K('interface-sounds', ['tick'], 3)]] },
@@ -38,14 +38,20 @@ const ROLES = [
     ['Soft bump', K('impact-sounds', ['impactSoft_medium'], 4)], ['Plank knock', K('impact-sounds', ['impactPlank_medium'], 4)], ['Wood knock', O('rpg-rubberduck', ['wood_'], 4)], ['Stone knock', O('rpg-rubberduck', ['item_stone'], 4)], ['Step on wood', K('impact-sounds', ['footstep_wood'], 4)]] },
   { id: 'block', name: 'Shield block', when: 'A shield stops a hit completely.', cap: .7, now: 'bell', opts: [
     ['Bell', K('impact-sounds', ['impactBell_heavy_002', 'impactBell_heavy_003', 'impactBell_heavy_004'], 3)], ['Sword clash', O('swords-starninjas', ['sword_clash.6', 'sword_clash.7', 'sword_clash.8'], 3)], ['Heavy metal', K('impact-sounds', ['impactMetal_heavy'], 4)], ['Heavy plate', K('impact-sounds', ['impactPlate_heavy'], 4)], ['Force field', K('sci-fi-sounds', ['forceField'], 3)]] },
-  { id: 'shot', name: 'Shot fired', when: 'A gun or launcher goes off (Gunner, Railgun, Cowboy).', cap: .35, now: 'gun', opts: [
-    ['Crack', K('sci-fi-sounds', ['explosionCrunch_000', 'explosionCrunch_003', 'explosionCrunch_001'], 3)], ['Shot', O('combat-150', ['Shoot_0'], 4)], ['Heavy shot', O('combat-150', ['HeavyShot'], 3)], ['Short shot', O('combat-150', ['ShootShort'], 1)], ['Laser pistol', O('combat-150', ['Laser Pistol'], 4)], ['Retro laser', K('sci-fi-sounds', ['laserRetro'], 4)]] },
+  { id: 'gun', name: 'Gunner’s gun', when: 'The Gunner fires. Fast and often.', cap: .35, now: 'gun', opts: [
+    ['Crack', K('sci-fi-sounds', ['explosionCrunch_000', 'explosionCrunch_003', 'explosionCrunch_001'], 3)], ['Shot', O('combat-150', ['Shoot_0'], 4)], ['Short shot', O('combat-150', ['ShootShort'], 1)], ['Laser pistol', O('combat-150', ['Laser Pistol'], 4)], ['Retro laser', K('sci-fi-sounds', ['laserRetro'], 4)]] },
+  { id: 'revolver', name: 'Cowboy’s revolver', when: 'The Cowboy fires. Should not sound like the Gunner.', cap: .45, now: 'revolver', opts: [
+    ['Heavy shot', O('combat-150', ['HeavyShot'], 3)], ['Shot', O('combat-150', ['Shoot_0'], 4)], ['Crack', K('sci-fi-sounds', ['explosionCrunch_000', 'explosionCrunch_003', 'explosionCrunch_001'], 3)], ['Blast', O('combat-150', ['BlastImpact'], 3)], ['Retro explosion', O('combat-150', ['Retro Explosion Short'], 2)]] },
+  { id: 'rail', name: 'Railgun', when: 'The Railgun fires its charged shot. Rare and strong.', cap: .5, now: 'rail', opts: [
+    ['Zap launcher', O('combat-150', ['ZapLauncher'], 3)], ['Laser rifle', O('combat-150', ['Laser Rifle'], 4)], ['Laser beam', O('combat-150', ['Laser Beam'], 4)], ['Heavy zap', O('combat-150', ['HeavyZap', 'PowerZap'], 2)], ['Pulse', O('combat-150', ['EMP'], 3)], ['Large laser', K('sci-fi-sounds', ['laserLarge'], 4)]] },
+  { id: 'bow', name: 'Bow', when: 'An arrow leaves the string (Archer). Soft, short and airy.', cap: .3, now: 'loose', opts: [
+    ['Cloth snap', K('rpg-audio', ['cloth2', 'cloth3', 'cloth4'], 3)], ['Swing through air', O('rpg-artisticdude', ['swing'], 3)], ['Card slide', K('casino-audio', ['card-slide'], 4)], ['Leather', K('rpg-audio', ['handleSmallLeather'], 2)], ['Belt', K('rpg-audio', ['clothBelt'], 2)]] },
   { id: 'zap', name: 'Magic and lightning', when: 'A spell is cast or lightning strikes (Wizard, Tesla, Storm Cloud).', cap: .5, now: 'zap', opts: [
     ['Small laser', K('sci-fi-sounds', ['laserSmall'], 3)], ['Zap', O('combat-150', ['ElectroZap', 'EnergyZap', 'HeavyZap', 'PowerZap'], 4)], ['Lightning strike', O('combat-150', ['Lightning Spell Impact'], 4)], ['Spell', O('rpg-rubberduck', ['spell_0'], 2)], ['Electric crackle', O('combat-150', ['Retro Electric Short', 'Retro Electric 0', 'Retro Electric 2'], 4)], ['Phase jump', K('digital-audio', ['phaseJump'], 4)]] },
   { id: 'boom', name: 'Explosion', when: 'A bomb, mine or blast goes off (Sapper, Bomb, Volcano).', cap: 1, now: 'boom', opts: [
     ['Crunch', K('sci-fi-sounds', ['explosionCrunch'], 3)], ['Blast', O('combat-150', ['BlastImpact'], 3)], ['Retro explosion', O('combat-150', ['Retro Explosion Short'], 2)], ['Gravity bomb', O('combat-150', ['GravityBomb'], 3)], ['Fire burst', O('combat-150', ['Fire Spell Impact'], 4)], ['Fire spell', O('rpg-rubberduck', ['spell_fire'], 4)]] },
   { id: 'ko', name: 'Knockout', when: 'A fighter falls: the end of a fight. Once per fight, so it can be big.', cap: 1.3, now: 'rumble', opts: [
-    ['Low rumble', K('sci-fi-sounds', ['lowFrequency_explosion_001'], 1)], ['Low boom', O('combat-150', ['low_frequency_explosion'], 2)], ['Long explosion', O('combat-150', ['Retro Explosion Long'], 1)], ['Break', O('combat-150', ['Break_0'], 2)], ['Electric explosion', O('combat-150', ['ElectricExplosion'], 1)], ['Glass break', O('combat-150', ['BreakGlass'], 3)]] },
+    ['Electric explosion', O('combat-150', ['ElectricExplosion'], 1)], ['Low rumble', K('sci-fi-sounds', ['lowFrequency_explosion_001'], 1)], ['Low boom', O('combat-150', ['low_frequency_explosion'], 2)], ['Long explosion', O('combat-150', ['Retro Explosion Long'], 1)], ['Break', O('combat-150', ['Break_0'], 2)], ['Glass break', O('combat-150', ['BreakGlass'], 3)]] },
   { id: 'heal', name: 'Heal', when: 'A fighter gets health back. Silent in the game today.', cap: .6, now: '', silent: true, opts: [
     ['Healing, set 1', O('combat-150', ['Healing Spell Impact 1', 'Healing Spell Impact 2', 'Healing Spell Impact 3'], 3)], ['Healing, set 2', O('combat-150', ['Healing Spell Impact 4', 'Healing Spell Impact 5', 'Healing Spell Impact 6'], 3)], ['Power up', K('digital-audio', ['powerUp'], 3)], ['Soft chime', K('interface-sounds', ['confirmation'], 3)]] },
 ];
@@ -136,7 +142,7 @@ textarea{width:100%;min-height:86px;font:500 17px/1.3 var(--text);color:var(--in
 </head>
 <body>
 <h1>Fight sounds</h1>
-<p class="lead">For each sound, listen to the candidates and tap Use on the one you like. "Play" plays it once; "×5" plays it five times fast, the way it comes in a fight. Turn your ringer on.</p>
+<p class="lead">Round two. Your first picks are in the game and marked "in the game now". The guns each have their own row. For each sound, listen to the candidates and tap Use on the one you like. "Play" plays it once; "×5" plays it five times fast, the way it comes in a fight. Turn your ringer on.</p>
 <p id="left"></p>
 <div id="list"></div>
 <section>
@@ -149,7 +155,7 @@ textarea{width:100%;min-height:86px;font:500 17px/1.3 var(--text);color:var(--in
 <script>
 const ROLES=/*DATA*/;
 const DB='https://ball-brawl-9b1bb-default-rtdb.firebaseio.com';
-let picks={};try{picks=JSON.parse(localStorage.getItem('duelking.sndpick'))||{}}catch(e){}
+let picks={};try{picks=JSON.parse(localStorage.getItem('duelking.sndpick2'))||{}}catch(e){}
 let ac=null;const bufs={};
 function ctx(){if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();if(ac.state!=='running')ac.resume();return ac}
 async function load(url){
@@ -177,7 +183,7 @@ function render(){
       const box=document.createElement('span');box.style.cssText='display:flex;gap:6px';
       if(r.o){const p=document.createElement('button');p.type='button';p.textContent='Play';p.onclick=()=>play(r.o,1);const q=document.createElement('button');q.type='button';q.textContent='×5';q.onclick=()=>play(r.o,5);box.append(p,q)}
       const u=document.createElement('button');u.type='button';u.className='use';u.textContent=picks[R.id]===key?'Chosen':'Use';
-      u.onclick=()=>{picks[R.id]=key;try{localStorage.setItem('duelking.sndpick',JSON.stringify(picks))}catch(e){}render()};
+      u.onclick=()=>{picks[R.id]=key;try{localStorage.setItem('duelking.sndpick2',JSON.stringify(picks))}catch(e){}render()};
       d.append(box,u);s.append(d);
     }
     L.append(s);

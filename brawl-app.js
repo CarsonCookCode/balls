@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 49';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 50';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -57,7 +57,7 @@ function tipLine(a,b){
   const o=tip&&(tip.side?b:a);
   if(!o||!o.ups.includes(tip.id))return `<p class="ps what"><b>${FIGHTERS[b.key].name}.</b> ${FIGHTERS[b.key].desc}</p>`;
   const K=kindOf(tip.id),n=o.ups.filter(x=>x===tip.id).length;
-  return `<p class="ps tipline" id="tipLine" style="--k:${K.col}"><b>${upName(o,tip.id)}${n>1?' ×'+n:''}</b><em>${K.label}</em>${upText(o,tip.id)}${n>1?' (each)':''}</p>`;
+  return `<p class="ps tipline" id="tipLine" style="--k:${K.col}"><b>${upName(o,tip.id)}${n>1?' ×'+n:''}</b><em>${K.label}</em>${upLine(o,tip.id,false,!tip.side)}${n>1&&tip.id!=='momentum'?' (each)':''}</p>`;
 }
 function summary(b){
   if(!b.ups.length)return 'no upgrades yet';
@@ -572,8 +572,21 @@ function duelDone(){
 // ----- panel -----
 const head=(n,title)=>`<p class="stepn">${n}</p><h2 class="ph">${title}</h2>`;
 const card=(id,act,data,title,text,dot,tag)=>`<button type="button" class="card" id="${id}" data-act="${act}" ${data}>${dot?`<i style="background:${dot}"></i>`:''}<span><b>${title}${tag?`<em>${tag}</em>`:''}</b><small>${text}</small></span></button>`;
+// What an upgrade does, in words. Momentum's own line only says "fast fighters", so here it is worked out for the fighter
+// in hand: what it gives at that fighter's speed right now. (Kept in this file: a change to the rules files resets the ladder.)
+// adding = the card offers one more copy; mine = it is the player's own fighter.
+function upLine(b,id,adding,mine){
+  if(id!=='momentum')return upText(b,id);
+  const n=b.ups.filter(x=>x==='momentum').length+(adding?1:0),sp=FIGHTERS[b.key].speed*effSpd(b),k=Math.min(.5,Math.max(0,1.1*(sp/170-1))),pct=Math.round(k*n*100),top=50*n;
+  const who=mine?(n>1?'With two, yours':'Yours'):(n>1?'With two, this one':'This one');
+  if(pct<1){
+    let need=0;for(let j=1;j<=4&&!need;j++)if(FIGHTERS[b.key].speed*b.spd*Math.max(.4,1+(b.as||0)+.2*j)>170*1.01)need=j;
+    return 'Faster fighters hit harder. '+(mine?'Yours is':'This one is')+' too slow: it gives nothing'+(adding&&need?' until you take Faster'+(need>1?' '+['','','twice','three times','four times'][need]:''):' at this speed')+'.';
+  }
+  return 'Faster fighters hit harder. '+who+' now: +'+pct+'% damage'+(pct>=top?', the most it gives.':' (most: +'+top+'%).');
+}
 // an upgrade card: a stripe and an icon in its kind's colour, and the kind named beside the title
-const upCard=(b,id,n)=>{const K=kindOf(id);return `<button type="button" class="card up" id="up-${id}" data-act="up" data-key="${id}" style="--k:${K.col}"><i class="ic">${kindIcon(K)}</i><span><b>${upName(b,id)}<em class="kd">${K.label}</em>${n?`<em>have ${n}</em>`:''}</b><small>${upText(b,id)}</small></span></button>`};
+const upCard=(b,id,n)=>{const K=kindOf(id);return `<button type="button" class="card up" id="up-${id}" data-act="up" data-key="${id}" style="--k:${K.col}"><i class="ic">${kindIcon(K)}</i><span><b>${upName(b,id)}<em class="kd">${K.label}</em>${n?`<em>have ${n}</em>`:''}</b><small>${upLine(b,id,true,true)}</small></span></button>`};
 function makeBody(){
   if(step===0&&browse){
     return head(ROSTER.length+' fighters','Choose your champion')+
@@ -710,7 +723,7 @@ function sheetBody(){
     `<div class="stats">`+stat(Math.round(effHp(b)),'Health')+stat(Math.round(effDmg(b)*100)+'%','Damage')+stat(Math.round(effSpd(b)*100)+'%','Speed')+stat(sizeWord(b.r),'Size')+`</div>`+
     `<p class="shl">${b.ups.length?'Your upgrades · tap to read':'No upgrades yet'}</p>`+
     (b.ups.length?`<div class="chips">${chips(b,0,false)}</div>`:'')+
-    (on?`<p class="shtip" id="tipLine"><b>${upName(b,on)}</b> ${upText(b,on)}</p>`:'');
+    (on?`<p class="shtip" id="tipLine"><b>${upName(b,on)}</b> ${upLine(b,on,false,true)}</p>`:'');
 }
 function save(){try{localStorage.setItem('brawl.fighter',JSON.stringify(me))}catch(e){}}
 const onTap=e=>{

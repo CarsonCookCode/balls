@@ -11,12 +11,16 @@ function climb(seed, key) {
   for (let k = 0; k < 400 && !st.over; k++) { Climb.next(st, null); const r = Climb.settle(st, Climb.play(st.build, st.rival, st.fseed), st.shield > 0 && rnd() < .5); if (r === 'pick') Climb.pick(st, (rnd() * st.choice.length) | 0); }
   return st;
 }
-// each player keeps the best of a few climbs
+// each player keeps the best of a few climbs. The first two must stand above every house fighter on the test day's
+// ladder, or the duel would not be between two players: they climb until they have cleared CLEAR rungs (the house's
+// best on this day is 12 under the rules of Build 55; it moves when the fights change).
+const CLEAR = 14;
 const players = [['aaaaaaaaaaaaaaaa', 'Ana', 'samurai', '#8e2f3c'], ['bbbbbbbbbbbbbbbb', 'Bo', 'railgun', '#3f6fd8'], ['cccccccccccccccc', 'sh1t head', 'duck', '#e3b23c']];
 const data = {}; let t = DAY0 + 3600000; const bests = [];
 players.forEach(([pid, name, key, c], i) => {
   let best = null;
-  for (let k = 0; k < 14; k++) { const st = climb((i * 1000 + k * 7919 + 5) >>> 0, key); if (st.over && (!best || st.cleared > best.cleared)) best = st; }
+  for (let k = 0; k < (i < 2 ? 400 : 14) && !(i < 2 && k >= 14 && best && best.cleared >= CLEAR); k++) { const st = climb((i * 1000 + k * 7919 + 5) >>> 0, key); if (st.over && (!best || st.cleared > best.cleared)) best = st; }
+  if (i < 2 && best && best.cleared < CLEAR) throw new Error('the test bot could not clear ' + CLEAR + ' rungs with ' + key);
   if (!best || best.cleared < 1) throw new Error('the test bot could not clear a rung with ' + key);
   bests.push(best.cleared);
   data[pid] = { [best.seed.toString(36)]: { n: name, k: key, s: best.str, z: best.size, c, u: best.build.ups, r: best.cleared, t: t += 60000, v: S.RULES, p: Climb.proof(best) } };

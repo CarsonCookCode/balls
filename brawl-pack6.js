@@ -117,7 +117,7 @@ BEHAVE.entropy={
     S.t-=DT;
     if(S.t>0)return;
     S.t=D.cd/f.spdMul;
-    const grow=1+.05*m.t,own=Math.max(.08,.3-.07*f.sig);
+    const grow=1+.05*m.t,own=Math.max(.12,.3-.05*f.sig);
     m.events.push({k:'fx',n:'wave',x:f.x,y:f.y,r0:Math.max(4,S.rad-10),r:S.rad,life:.45,col:'#d6cca4',w:1.1,i:f.i});
     m.events.push({k:'fx',n:'dust',x:f.x,y:f.y+f.r*.3,num:2,col:'#d6cca4',jit:f.r,i:f.i});
     if(S.inside){m.events.push({k:'fx',n:'dust',x:e.x,y:e.y,num:5,col:'#d6cca4',jit:e.r*1.4,i:f.i});m.events.push({k:'fx',n:'shards',x:e.x,y:e.y,num:3,col:'#b8ae84',lo:20,hi:70,jit:e.r,i:f.i})}

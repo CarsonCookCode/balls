@@ -9,20 +9,21 @@
 // The page plays a climb through this same code (Climb.start / next / settle / pick), so the two cannot drift apart.
 //
 // What this does not stop: a program that really plays the game, many times, and keeps its best climb. That climb is
-// real. It also cannot tell which of another player's fighters you "happened" to meet, so a rival taken from another
-// player is only checked to be a legal fighter of the right weight, on a fight where the dice allowed one.
+// real. Nor can it tell which of the other players' fighters you "happened" to meet, or whether the house stood in
+// because nobody had reached that rung yet. What it does check is that a rival taken from another player is a real one:
+// the checker is handed `known`, which looks the rival up on the day's ladder (Net.knows in brawl-net.js).
 //
 // RULES names the exact rules a climb was played under: it is a fingerprint of every simulation file, written by
 // `node tools/stamp.js` (and `node tools/stamp.js --check` fails when it is stale). Climbs made under other rules cannot be
 // replayed here, so the ladder shows only climbs made under these rules: a change to the fights starts a fresh ladder.
-const RULES='6d76815350';
-// A climb earns two second chances: a shield on reaching rung SHIELD_RUNG, which the player may raise before one fight
-// of their choosing (lose that fight and the climb goes on), and an extra life after clearing rung LIFE_RUNG, which is
-// spent by itself on the next loss. Either way a saved loss brings a new rival on the same rung, and no boon.
-// A draw (both fall in the same instant) does the same and spends nothing.
-// FRIEND_CHANCE of fights may be against another player's fighter; a class met in the last CLASS_GAP fights is not
-// picked again for a house rival.
-const SHIELD_RUNG=5,LIFE_RUNG=10,FRIEND_CHANCE=.3,CLASS_GAP=5,PROOF_FIGHTS=400,PROOF_CHARS=24000;
+const RULES='f8cabc97d4';
+// A climb starts with LIVES lives (the page shows them as hearts): a lost fight costs one, and the climb ends with the
+// last. One more is earned after clearing rung LIFE_RUNG. A shield is earned on reaching rung SHIELD_RUNG, which the
+// player may raise before one fight of their choosing: lose that fight and no life is lost. A loss that does not end
+// the climb brings a new rival on the same rung, and no upgrade. A draw (both fall in the same instant) does the same
+// and costs nothing. st.life counts the lives to spare, so the climb has st.life+1 hearts.
+// A class met in the last CLASS_GAP fights is not picked again for a house rival.
+const LIVES=2,SHIELD_RUNG=5,LIFE_RUNG=10,CLASS_GAP=5,PROOF_FIGHTS=400,PROOF_CHARS=24000;
 function mix32(a,b,c){
   let h=(a>>>0)^0x9e3779b9;
   h=Math.imul(h^(b>>>0),0x85ebca6b);h^=h>>>15;h=Math.imul(h,0xc2b2ae35);h^=h>>>13;
@@ -31,34 +32,34 @@ function mix32(a,b,c){
 }
 const Climb={
   start(seed,key,str,size,name,color){
-    return {seed:seed>>>0,key,str,size,build:makeBuild(key,str,size,name,color),rung:1,n:0,shield:0,gotShield:false,life:0,gotLife:false,
+    return {seed:seed>>>0,key,str,size,build:makeBuild(key,str,size,name,color),rung:1,n:0,shield:0,gotShield:false,life:LIVES-1,gotLife:false,
       met:[],log:[],rival:null,friend:null,fseed:0,choice:null,last:'',earned:'',over:false,cleared:0};
   },
-  // Another player's fighter as a rival on this rung: cut back to the boons a house rival would have at this height,
-  // topped up with random ones if it has fewer, and scaled like any rival. p = {k,s,z,u[,n,c]}.
-  // strict (checking a proof): every boon listed must be one that was really applied.
-  friend(p,rung,R,strict){
+  // Another player's fighter as the rival on this rung: exactly as its owner had it there, which is its class, strength
+  // and size with the first rung-1 upgrades it took, in the order it took them. Only the first rungs' easing is applied.
+  // p = {k,s,z,u[,n,c]}; u may be the fighter's whole list. Null when it never stood on this rung, or is not a legal fighter.
+  // strict (checking a proof): u must be exactly the upgrades it had on this rung.
+  friend(p,rung,strict){
     if(!p||typeof p!=='object'||!FIGHTERS[p.k]||![0,1,2].includes(p.s)||![0,1,2].includes(p.z))return null;
-    const list=Array.isArray(p.u)?p.u:[],b=makeBuild(p.k,rung>1?p.s:-1,p.z,p.n,p.c),n=Math.floor((rung-1)*RIVAL_UPS),used=[];
-    for(let k=0;k<list.length&&k<200&&used.length<n;k++){
+    const list=Array.isArray(p.u)?p.u:[],n=rung-1,b=makeBuild(p.k,p.s,p.z,p.n,p.c);
+    if(list.length<n||(strict&&list.length!==n))return null;
+    for(let k=0;k<n;k++){
       const id=list[k];
-      if(typeof id!=='string'||!UPGRADES[id])return null;
-      if(canTake(b,id)){addUpgrade(b,id);used.push(id)}else if(strict)return null;
+      if(typeof id!=='string'||!UPGRADES[id]||!canTake(b,id))return null;
+      addUpgrade(b,id);
     }
-    if(strict&&used.length!==list.length)return null;
-    for(let k=0;k<n*2&&b.ups.length<n;k++){const o=offers(b,R,1);if(!o.length)break;addUpgrade(b,o[0])}
-    const sc=rivalScale(rung);b.hp*=sc;b.dmg*=sc;
-    return {b,spec:{k:p.k,s:p.s,z:p.z,u:used}};
+    const sc=easeScale(rung);b.hp*=sc;b.dmg*=sc;
+    return {b,spec:{k:p.k,s:p.s,z:p.z,u:b.ups.slice()}};
   },
-  // Step 1 of a fight: who stands on this rung. `friend` is another player's fighter the caller would like to meet, or
-  // null; it is used only when this fight's roll allows one. Sets st.rival and st.fseed (the seed of the fight itself).
+  // Step 1 of a fight: who stands on this rung. `friend` is another player's fighter that reached this rung, or null when
+  // nobody has: then the house sends one. Sets st.rival and st.fseed (the seed of the fight itself).
   next(st,friend,strict){
     st.earned='';
     if(st.rung>=SHIELD_RUNG&&!st.gotShield){st.gotShield=true;st.shield=1;st.earned='shield'}
-    if(st.rung>LIFE_RUNG&&!st.gotLife){st.gotLife=true;st.life=1;st.earned=st.earned?'both':'life'}
-    const R=mulberry32(mix32(st.seed,st.n,1)),roll=R();
+    if(st.rung>LIFE_RUNG&&!st.gotLife){st.gotLife=true;st.life++;st.earned=st.earned?'both':'life'}
+    const R=mulberry32(mix32(st.seed,st.n,1));
     let b=null;st.friend=null;
-    if(friend&&roll<FRIEND_CHANCE){const x=Climb.friend(friend,st.rung,R,strict);if(x){b=x.b;st.friend=x.spec}}
+    if(friend){const x=Climb.friend(friend,st.rung,strict);if(x){b=x.b;st.friend=x.spec}}
     if(!b){b=rival(st.rung,R);for(let k=0;k<12&&st.met.includes(b.key);k++)b=rival(st.rung,R)}
     st.met.push(b.key);if(st.met.length>CLASS_GAP)st.met.shift();
     st.rival=b;st.fseed=mix32(st.seed,st.n,2)&0x7fffffff;
@@ -79,7 +80,7 @@ const Climb={
       return 'pick';
     }
     if(armed){st.last='shield';return 'next'}
-    if(st.life>0){st.life=0;st.last='life';return 'next'}
+    if(st.life>0){st.life--;st.last='life';return 'next'}
     st.last='lost';st.over=true;st.cleared=st.rung-1;
     return 'over';
   },
@@ -101,7 +102,8 @@ const Climb={
   play(a,b,seed){const m=createMatch(a,b,seed);let k=0;while(!m.over&&k++<9000){m.step();m.events.length=0}return m},
   // Plays a claimed climb again, one fight per step() so a page can spread the work over many frames.
   // e = {key,str,size,ups,cleared,proof} with proof as parsed by Climb.parse. Ends with done, ok and (when not ok) why.
-  checker(e){
+  // known(spec,rung), when given, says whether another player's fighter {k,s,z,u} really reached that rung on the ladder.
+  checker(e,known){
     const P=e&&e.proof,C={done:false,ok:false,why:'',fights:0,step:null};
     const end=(ok,why)=>{C.done=true;C.ok=ok;C.why=why||'';return C};
     if(!P||!FIGHTERS[e.key]||![0,1,2].includes(e.str)||![0,1,2].includes(e.size)){C.step=()=>end(false,'no proof');return C}
@@ -116,6 +118,7 @@ const Climb={
         if(x[0]&&!fr)return end(false,'a fight that cannot be read');
         Climb.next(st,fr,true);
         if(fr&&!st.friend)return end(false,'a rival the rules do not allow');
+        if(fr&&known&&!known(st.friend,st.rung))return end(false,'a rival who is not on the ladder');
         if(x[1]&&!(st.shield>0))return end(false,'a shield that was not held');
         const m=Climb.play(st.build,st.rival,st.fseed);
         if(!m.over)return end(false,'a fight that does not end');
@@ -135,5 +138,5 @@ const Climb={
     };
     return C;
   },
-  check(e){const C=Climb.checker(e);while(!C.done)C.step();return C},
+  check(e,known){const C=Climb.checker(e,known);while(!C.done)C.step();return C},
 };

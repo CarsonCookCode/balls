@@ -130,10 +130,18 @@ function typeOf(b){
   const pre=top?PREFIX[top]:b.str>=0?STRENGTHS[b.str].label:'';
   return (pre?pre+' ':'')+FIGHTERS[b.key].name;
 }
-// How the ladder gets harder: a rival's health and damage are multiplied by rivalScale(rung), and it has RIVAL_UPS upgrades per rung.
-// The curve starts gentle and steepens. A straight line that is kind early lets a good build outgrow the rivals for ever.
-const RIVAL_START=.70,RIVAL_GROW=.06,RIVAL_ACC=.004,RIVAL_UPS=.5;
-const rivalScale=rung=>RIVAL_START+RIVAL_GROW*(rung-1)+RIVAL_ACC*(rung-1)*(rung-1);
+// How the ladder gets harder (the user's design, Build 55). A rival is another player's fighter exactly as its owner had
+// it on that rung whenever one got that far (Climb.friend in brawl-proof.js), and a house fighter otherwise. Both are
+// weakened on the first rungs: easeScale multiplies health and damage, from RIVAL_START on rung 1 up to full strength
+// on rung EASE_RUNGS. A house fighter has as many upgrades as a player would have there (RIVAL_UPS for each rung below),
+// but random ones, and the players' fighters found high up are the ones good enough to get there. So the house is made
+// up to the same weight: HOUSE_GROW more health and damage for every rung above HOUSE_FROM, and a little more again
+// (HOUSE_ACC, squared) past EASE_RUNGS, where only the house is left to stop a build that has outrun every player.
+// Measured over simulated days (2026-11-27): players beat a player's fighter about 65% of the time on rungs 5-9 and
+// 50% from rung 10; these numbers make the house the same.
+const RIVAL_START=.6,EASE_RUNGS=10,HOUSE_FROM=4,HOUSE_GROW=.025,HOUSE_ACC=.002,RIVAL_UPS=1;
+const easeScale=rung=>rung>=EASE_RUNGS?1:RIVAL_START+(1-RIVAL_START)*(rung-1)/(EASE_RUNGS-1);
+const rivalScale=rung=>easeScale(rung)*(1+(rung>HOUSE_FROM?HOUSE_GROW*(rung-HOUSE_FROM):0)+(rung>EASE_RUNGS?HOUSE_ACC*(rung-EASE_RUNGS)*(rung-EASE_RUNGS):0));
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
 // A build is everything a match needs to know about one fighter.
@@ -163,7 +171,7 @@ function offers(b,rnd,n){
   while(out.length<n&&pool.length)out.push(pool.splice((rnd()*pool.length)|0,1)[0]);
   return out;
 }
-// The rival on a rung: a house fighter with some upgrades of its own and stats that rise a little every rung.
+// The house's rival on a rung: as many upgrades as a player would have there, picked at random.
 function rival(rung,rnd){
   const key=ROSTER[(rnd()*ROSTER.length)|0],b=makeBuild(key,rung>1?(rnd()*3)|0:-1,1);
   const n=Math.floor((rung-1)*RIVAL_UPS);

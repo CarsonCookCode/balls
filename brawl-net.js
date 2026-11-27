@@ -13,7 +13,8 @@
 //   - its proof is played again (Climb.checker), a fight at a time between frames. NET.proof says what a failed check
 //     means: 'enforce' shows only climbs that pass; 'check' keeps showing the entry and only records the verdict in the
 //     play log. It ran on 'check' until Build 52: 1,209 honest climbs from iPhones, Android, Chrome and Firefox all passed.
-//   - a copy of someone else's climb (the same proof under another id) loses to the earlier one.
+//   - a copy of someone else's climb (the same proof under another id) loses to the earlier one;
+//   - every rival it says it met from another player must be on the day's ladder, as that fighter was on that rung.
 // The older ladder/ and fighters/ lists (entries with no proof) are no longer read.
 const NET={url:'https://ball-brawl-9b1bb-default-rtdb.firebaseio.com',proof:'enforce'};   // url: no trailing slash; '' turns the shared ladder off
 const Net={
@@ -107,7 +108,7 @@ const Net={
   verifyStep(ms,onVerdict){
     const t0=Date.now();let changed=false;
     while(Net.pending()&&Date.now()-t0<ms){
-      if(!Net.now){const e=Net.queue.shift();Net.now={e,c:Climb.checker(e)}}
+      if(!Net.now){const e=Net.queue.shift();Net.now={e,c:Climb.checker(e,(spec,rung)=>Net.knows(e,spec,rung))}}
       const N=Net.now;
       N.c.step();
       if(N.c.done){
@@ -118,6 +119,13 @@ const Net={
       }
     }
     return changed&&Net.settle();
+  },
+  // A rival named in climb e's proof must be a fighter that is really on the day's ladder: another player's, written
+  // before e was, that reached that rung with exactly those upgrades, and that has not failed its own check.
+  knows(e,spec,rung){
+    const u=spec.u.join(',');
+    return Net.all.some(x=>x.id!==e.id&&!x.copy&&x.key===spec.k&&x.str===spec.s&&x.size===spec.z&&x.cleared>=rung-1&&x.t<=e.t&&
+      x.ups.slice(0,rung-1).join(',')===u&&!(Net.verdict.has(Net.vkey(x))&&!Net.verdict.get(Net.vkey(x)).ok));
   },
   rejected(){return Net.all.filter(e=>e.copy||(Net.verdict.has(Net.vkey(e))&&!Net.verdict.get(Net.vkey(e)).ok)).map(e=>({id:e.id.slice(0,6),key:e.key,cleared:e.cleared,why:e.copy?'a copy of another climb':Net.verdict.get(Net.vkey(e)).why}))},
   // everyone else's fighters: each player's best with each class

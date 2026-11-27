@@ -60,18 +60,19 @@ function workerMain() {
       for (const seed of p.seeds) {
         const rnd = S.mulberry32(seed), b = build(p.spec), fights = []; let rung = 1; const p0 = count;
         const off = {}, got = {}; let secs = 0, quick = 0, played = 0; const late = [0, 0];
-        // the two second chances a player gets: a shield from rung 5 and an extra life after rung 10. The shield is the
-        // player's to place; here it is simply spent on the first loss, which is the least it is worth.
-        let shield = 0, life = 0, gotShield = false, gotLife = false;
+        // what a player has to spend: two lives from the start, a shield from rung 5 and one more life after rung 10. The
+        // shield is the player's to place; here it is simply spent on the first loss, which is the least it is worth.
+        // (The lab's rivals are the house's: on the real ladder most are other players' fighters.)
+        let shield = 0, life = 1, gotShield = false, gotLife = false;
         while (rung <= p.cap) {
           if (rung >= 5 && !gotShield) { gotShield = true; shield = 1; }
-          if (rung > 10 && !gotLife) { gotLife = true; life = 1; }
+          if (rung > 10 && !gotLife) { gotLife = true; life++; }
           const res = play(b, S.rival(rung, rnd), (rnd() * 2147483647) | 0);
           secs += res.t; played++; if (res.t < 3) quick++; if (rung >= 8) { late[0] += res.t; late[1]++; }
           if (res.draw && fights.length < p.cap * 6) { fights.push(0); continue; }   // a draw: a new rival on the same rung, nothing spent
           const won = res.winner === 0 && !res.draw;
           fights.push(won ? 1 : 0);
-          if (!won) { if (shield) { shield = 0; continue; } if (life) { life = 0; continue; } break; }
+          if (!won) { if (shield) { shield = 0; continue; } if (life) { life--; continue; } break; }
           const o = S.offers(b, rnd, 3);
           if (o.length) {
             let pick = o[(rnd() * o.length) | 0];
@@ -297,7 +298,7 @@ async function main() {
     const ids = U, cx = [], foes = [];
     for (let c = 0; c < ctxN; c++) {
       cx.push(context(K[hash(c, 31) % K.length], 4, hash(c, 32)));
-      foes.push(Array.from({ length: M }, (_, j) => [{ rv: [11, hash(c, j, 33)] }, hash(c, j, 34)]));   // strong rivals, so there is room to improve
+      foes.push(Array.from({ length: M }, (_, j) => [{ rv: [9, hash(c, j, 33)] }, hash(c, j, 34)]));   // strong rivals, so there is room to improve
     }
     const many = id => Array(Math.min(3, S.UPGRADES[id].max)).fill(id);
     const list = [], tag = [];
@@ -315,7 +316,7 @@ async function main() {
       out.push({ a: ids[i], b: ids[j], da: a, db: b, dab: ab, syn: ab - a - b, wr: wr('p' + i + '_' + j) });
     }
     out.sort((x, y) => y.syn - x.syn);
-    console.log('\nPAIRS: ' + ids.length + ' upgrades, up to three copies each, on fighters with 4 other upgrades against rung-11 rivals (base win rate ' + pct(base) + '); ' + list.length + ' fights');
+    console.log('\nPAIRS: ' + ids.length + ' upgrades, up to three copies each, on fighters with 4 other upgrades against rung-9 rivals (base win rate ' + pct(base) + '); ' + list.length + ' fights');
     console.log('  strongest together (points of win rate: each alone, both, and the extra from combining)');
     for (const x of out.slice(0, 14)) console.log('  ' + pad(uname(x.a) + ' + ' + uname(x.b), 34) + lpad(pp(x.da), 5) + lpad(pp(x.db), 5) + ' -> ' + lpad(pp(x.dab), 4) + '   extra ' + pp(x.syn));
     console.log('  weakest together');

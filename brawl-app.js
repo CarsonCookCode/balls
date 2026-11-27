@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 54';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 55';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -114,20 +114,21 @@ function target(){
 }
 const inDuel=()=>duelPair().some(x=>x.you);
 const owner=r=>r.you?'You':r.player?r.e.name:'House';
-// A rival on a rung is sometimes another player's fighter, cut back to what they had at that height.
-// Players are met through every fighter they have climbed with today, not only their best one.
-// Nobody should meet the same fighter over and over: a player's fighter comes back only after FRIEND_GAP other
-// rivals, and a class that was met in the last few fights is not picked again.
-// The climb itself (Climb, in brawl-proof.js) rolls whether a player's fighter may stand on a rung and builds the rival;
-// this page only offers it a candidate.
+// The rival on a rung is another player's fighter whenever one of them got that far today: any fighter, of any player,
+// that reached this rung, exactly as it was on it. Only when nobody has does the house send one.
+// Nobody should meet the same fighter over and over, so one met in the last FRIEND_GAP fights, or of a class met in
+// the last few, waits its turn; but when every fighter that got this far was met lately, the one met longest ago
+// comes back, because a player's fighter always comes before the house.
+// The climb itself (Climb, in brawl-proof.js) builds the rival; this page only says which fighter.
 const FRIEND_GAP=6;
 let fightNo=0;
 const lastMet={};
 function pickRival(st){
   fightNo++;
-  const pool=Net.rivals().filter(p=>!(fightNo-lastMet[p.id+':'+p.key]<=FRIEND_GAP)&&!st.met.includes(p.key));
-  const p=pool.length?pool[(Math.random()*pool.length)|0]:null;
-  const b=Climb.next(st,p?{k:p.key,s:p.str,z:p.size,u:p.ups,n:p.name,c:p.color}:null);
+  const n=st.rung-1,tag=p=>p.id+':'+p.key,can=Net.rivals().filter(p=>p.cleared>=n&&p.ups.length>=n);
+  const pool=can.filter(p=>!(fightNo-lastMet[tag(p)]<=FRIEND_GAP)&&!st.met.includes(p.key));
+  const p=pool.length?pool[(Math.random()*pool.length)|0]:can.length?can.slice().sort((a,b)=>(lastMet[tag(a)]||0)-(lastMet[tag(b)]||0))[0]:null;
+  const b=Climb.next(st,p?{k:p.key,s:p.str,z:p.size,u:p.ups.slice(0,n),n:p.name,c:p.color}:null);
   if(st.friend&&p){b.owner=p.name;lastMet[p.id+':'+p.key]=fightNo}
   return b;
 }
@@ -468,13 +469,21 @@ function startClimb(){
   nextFight();
 }
 // Before every fight the two fighters stand in the arena and the scroll shows the matchup; the fight starts on a tap.
-// The rules of a climb (the shield, the extra life, draws) live in Climb, in brawl-proof.js; run mirrors its state.
+// The rules of a climb (lives, the shield, draws) live in Climb, in brawl-proof.js; run mirrors its state.
+// Lives are shown as hearts: one for each loss the climb can still take, and an outline for each one lost.
+const HEART='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5C5.5 16 3 12.6 3 9.2 3 6.6 5 4.6 7.5 4.6c1.8 0 3.3.9 4.5 2.6 1.2-1.7 2.7-2.6 4.5-2.6C19 4.6 21 6.6 21 9.2c0 3.4-2.5 6.8-9 11.3z"/></svg>';
+function hearts(){
+  if(!run||!run.st)return '';
+  const have=run.st.over?0:run.life+1,of=LIVES+(run.st.gotLife?1:0);
+  let h='';for(let i=0;i<Math.max(have,of);i++)h+='<i class="'+(i<have?'on':'off')+'">'+HEART+'</i>';
+  return '<span class="hearts" role="img" aria-label="'+have+(have===1?' life':' lives')+' left">'+h+'</span>';
+}
 function nextFight(note){
   const st=run.st;
   run.rival=pickRival(st);run.seed=st.fseed;run.armed=false;run.note=note||'';tip=null;
   run.rung=st.rung;run.shield=st.shield;run.life=st.life;
   if(st.earned==='shield'||st.earned==='both')run.note+=(run.note?' ':'')+'You have earned a shield.';
-  if(st.earned==='life'||st.earned==='both')run.note+=(run.note?' ':'')+'You have earned an extra life.';
+  if(st.earned==='life'||st.earned==='both')run.note+=(run.note?' ':'')+'You have earned another life.';
   mode='ready';
   begin(createMatch(run.build,run.rival,run.seed),0,'Rung '+run.rung,true);
   render();
@@ -511,7 +520,7 @@ const sizeWord=r=>r<21?'Small':r<28?'Medium':r<36?'Big':'Huge';
 function readyBody(){
   const a=run.build,b=run.rival,compact=new Set(a.ups).size>4||new Set(b.ups).size>4;
   const row=(label,x,y,num)=>`<b class="${num&&x>y?'hi':''}">${num?Math.round(x):x}${num===2?'%':''}</b><i>${label}</i><b class="${num&&y>x?'hi':''}">${num?Math.round(y):y}${num===2?'%':''}</b>`;
-  return `<p class="stepn">Rung ${run.rung} · the matchup</p>`+
+  return `<p class="stepn">Rung ${run.rung} · the matchup ${hearts()}</p>`+
     (run.note?`<p class="ps note">${run.note}</p>`:'')+
     `<div class="duo"><div class="side"><canvas data-face="0" width="${FACE}" height="${FACE}"></canvas><small>You</small><b>${typeOf(a)}</b></div><span class="vs">vs</span>`+
       `<div class="side"><canvas data-face="1" width="${FACE}" height="${FACE}"></canvas><small>${b.owner?esc(b.owner):'House'}</small><b>${typeOf(b)}</b></div></div>`+
@@ -519,8 +528,7 @@ function readyBody(){
       row('Health',effHp(a),effHp(b),1)+row('Damage',effDmg(a)*100,effDmg(b)*100,2)+row('Speed',effSpd(a)*100,effSpd(b)*100,2)+row('Size',sizeWord(a.r),sizeWord(b.r),0)+
     `</div>`+(a.ups.length||b.ups.length?`<p class="stepn sub">Upgrades · tap one to read it</p>`:'')+
     `<div class="mu2"><div class="chips">${chips(a,0,compact)}</div><div class="chips">${chips(b,1,compact)}</div></div>`+tipLine(a,b)+
-    (run.shield>0?`<button type="button" id="btnArm" class="arm" data-act="arm" aria-pressed="${run.armed}">${run.armed?'Shield raised: lose this fight and you climb on':'Raise your shield for this fight'}</button>`:'')+
-    (run.life>0?`<p class="ps keep">Extra life held: spent the next time you lose.</p>`:'')+
+    (run.shield>0?`<button type="button" id="btnArm" class="arm" data-act="arm" aria-pressed="${run.armed}">${run.armed?'Shield raised: lose this fight and keep your lives':'Raise your shield for this fight'}</button>`:'')+
     `<button type="button" id="btnFight" class="go" data-act="fight">Fight</button>`;
 }
 function fightDone(){
@@ -544,7 +552,7 @@ function fightDone(){
     sfx('bell',.8,1,true);
   }else if(saved){
     sfx('bell',.9,.8,true);
-    nextFight(saved==='shield'?'Your shield held. A new rival steps up.':'Your extra life is spent. A new rival steps up.');
+    nextFight(saved==='shield'?'Your shield held. A new rival steps up.':'You lost a life. A new rival steps up.');
     return;
   }else{
     mode='over';
@@ -684,6 +692,7 @@ function render(){
   $('btnBoard').hidden=!(mode==='make'||mode==='over'||mode==='board');
   $('lnkVideos').hidden=!(mode==='make'||mode==='over'||mode==='board');   // the channel link only where you are between runs
   $('btnSound').hidden=mode==='pick';                                      // the upgrade screen has no footer but the replay mark
+  $('lives').innerHTML=mode==='fight'||mode==='replay'||mode==='over'?hearts():'';      // under the rung, between the two health bars
   $('btnReplay').hidden=!canReplay();                                      // a small round mark in the corner, beside the sound one
   $('btnBoard').textContent=mode==='board'?'Back':'Ladder';          // the same plate opens the ladder and leaves it
   const SH=$('sheet');SH.hidden=mode!=='pick';
@@ -693,10 +702,10 @@ function render(){
   else if(mode==='duel')P.innerHTML=duelBody();
   else if(mode==='ready'){P.innerHTML=readyBody();faces()}
   else if(mode==='fight'){
-    P.innerHTML=(run.armed?`<p class="ps keep">Shield raised: you survive a loss here.</p>`:run.life>0?`<p class="ps keep">You hold an extra life.</p>`:'')+`<p class="ps"><b>You, ${typeOf(run.build)}:</b> ${summary(run.build)}</p><p class="ps"><b>${whose(run.rival)}:</b> ${FIGHTERS[run.rival.key].desc}${run.rival.ups.length?' ('+summary(run.rival)+')':''}</p>`;
+    P.innerHTML=(run.armed?`<p class="ps keep">Shield raised: lose here and no life is lost.</p>`:'')+`<p class="ps"><b>You, ${typeOf(run.build)}:</b> ${summary(run.build)}</p><p class="ps"><b>${whose(run.rival)}:</b> ${FIGHTERS[run.rival.key].desc}${run.rival.ups.length?' ('+summary(run.rival)+')':''}</p>`;
   }else if(mode==='pick'){
     const have=id=>{let n=0;for(const x of run.build.ups)if(x===id)n++;return n};
-    P.innerHTML=head('Rung '+run.rung+' cleared','Choose an upgrade')+
+    P.innerHTML=head('Rung '+run.rung+' cleared '+hearts(),'Choose an upgrade')+
       choice.map(id=>upCard(run.build,id,have(id))).join('');
     portraits();
   }else if(mode==='replay'){

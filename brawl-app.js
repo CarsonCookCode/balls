@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 56';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 57';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -473,11 +473,14 @@ function startClimb(){
 // The rules of a climb (lives, the shield, draws) live in Climb, in brawl-proof.js; run mirrors its state.
 // Lives are shown as hearts: one for each loss the climb can still take, and an outline for each one lost.
 const HEART='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5C5.5 16 3 12.6 3 9.2 3 6.6 5 4.6 7.5 4.6c1.8 0 3.3.9 4.5 2.6 1.2-1.7 2.7-2.6 4.5-2.6C19 4.6 21 6.6 21 9.2c0 3.4-2.5 6.8-9 11.3z"/></svg>';
+const SHIELD='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2l7.5 2.6v5.6c0 4.4-3 7.9-7.5 9.6-4.5-1.7-7.5-5.2-7.5-9.6V5.8z"/></svg>';
 function hearts(){
   if(!run||!run.st)return '';
   const have=run.st.over?0:run.life+1,of=LIVES+(run.st.gotLife?1:0);
   let h='';for(let i=0;i<Math.max(have,of);i++)h+='<i class="'+(i<have?'on':'off')+'">'+HEART+'</i>';
-  return '<span class="hearts" role="img" aria-label="'+have+(have===1?' life':' lives')+' left">'+h+'</span>';
+  const up=mode==='fight'&&run.armed;                   // the shield, raised for the fight being played
+  if(up)h+='<i class="sh">'+SHIELD+'</i>';
+  return '<span class="hearts" role="img" aria-label="'+have+(have===1?' life':' lives')+' left'+(up?', shield raised':'')+'">'+h+'</span>';
 }
 function nextFight(note){
   const st=run.st;
@@ -703,7 +706,7 @@ function render(){
   else if(mode==='duel')P.innerHTML=duelBody();
   else if(mode==='ready'){P.innerHTML=readyBody();faces()}
   else if(mode==='fight'){
-    P.innerHTML=(run.armed?`<p class="ps keep">Shield raised: lose here and no life is lost.</p>`:'')+`<p class="ps"><b>You, ${typeOf(run.build)}:</b> ${summary(run.build)}</p><p class="ps"><b>${whose(run.rival)}:</b> ${FIGHTERS[run.rival.key].desc}${run.rival.ups.length?' ('+summary(run.rival)+')':''}</p>`;
+    P.innerHTML=`<p class="ps"><b>You, ${typeOf(run.build)}:</b> ${summary(run.build)}</p><p class="ps"><b>${whose(run.rival)}:</b> ${FIGHTERS[run.rival.key].desc}${run.rival.ups.length?' ('+summary(run.rival)+')':''}</p>`;
   }else if(mode==='pick'){
     const have=id=>{let n=0;for(const x of run.build.ups)if(x===id)n++;return n};
     P.innerHTML=head('Rung '+run.rung+' cleared '+hearts(),'Choose an upgrade')+

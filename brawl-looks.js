@@ -779,6 +779,83 @@ function drawPortrait(c,match,i){
 }
 // ---------- the arena ----------
 let FLOOR=null,floorTried=false;
+// The arena's border since Build 64: a low wall of chiselled stone blocks, WALL_T arena units thick, in place of the
+// gold frame with gems. The user, once the scroll and buttons were parchment and stone: "Let's change the border of the
+// battlefield to something more matching now". Each block has its own tone, a bevelled edge lit from the top left (the
+// same light as the stone buttons), a grained and pitted face, and here and there a chip; dark joints run between them
+// and a square block caps each corner. It is made once, as four strips (top, bottom, left, right), dot by dot.
+// stoneWall() returns null where there is no canvas to make it on; the old gold frame is drawn there (the tests).
+const WALL_T=6;
+let WALL=null,wallTried=false;
+function stoneWall(t){
+  const probe=offscreen(1,1);if(!probe||typeof probe.c.createImageData!=='function')return null;
+  const K=5,S=AW+2*t;                                   // K picture pixels to an arena unit; S = the wall's outer size
+  const cl=(v,lo,hi)=>v<lo?lo:v>hi?hi:v,ss=(a,b,x)=>{const q=cl((x-a)/(b-a),0,1);return q*q*(3-2*q)};
+  const hash=(x,y,s)=>{let h=(Math.imul(x|0,374761393)+Math.imul(y|0,668265263)+Math.imul(s|0,982451653))|0;h=Math.imul(h^(h>>>13),1274126177);return((h^(h>>>16))>>>0)/4294967296};
+  const noise=(x,y,s)=>{const xi=Math.floor(x),yi=Math.floor(y),fx=x-xi,fy=y-yi,sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy);
+    return (hash(xi,yi,s)*(1-sx)+hash(xi+1,yi,s)*sx)*(1-sy)+(hash(xi,yi+1,s)*(1-sx)+hash(xi+1,yi+1,s)*sx)*sy};
+  const fbm=(x,y,s)=>(noise(x/40,y/40,s)*8+noise(x/20,y/20,s+1)*4+noise(x/10,y/10,s+2)*2+noise(x/5,y/5,s+3))/15;
+  // where one block ends and the next begins along each side (arena units from the corner block), unevenly
+  const N=9,CUTS=[0,1,2,3].map(side=>{const a=[0];for(let i=1;i<N;i++)a.push((i+(hash(i,side,301)-.5)*.5)*AW/N);a.push(AW);return a});
+  // the block a point (arena units) belongs to: [x0,y0,x1,y1,id]
+  const blockAt=(x,y)=>{
+    const L=x<t,Rt=x>=S-t,T=y<t,B=y>=S-t;
+    if((L||Rt)&&(T||B)){const x0=L?0:S-t,y0=T?0:S-t;return[x0,y0,x0+t,y0+t,900+(Rt?1:0)+(B?2:0)]}
+    if(T||B){const side=T?0:1,c=CUTS[side];let i=1;while(i<N&&c[i]<x-t)i++;const y0=T?0:S-t;return[t+c[i-1],y0,t+c[i],y0+t,side*100+i]}
+    const side=L?2:3,c=CUTS[side];let i=1;while(i<N&&c[i]<y-t)i++;const x0=L?0:S-t;return[x0,t+c[i-1],x0+t,t+c[i],side*100+i];
+  };
+  // how far inside its block's worn outline a point is (picture pixels; below zero = in the joint)
+  const depth=(b,x,y)=>{
+    const id=b[4],gap=.14,r=.85,px=Math.min(x-b[0],b[2]-x)-gap,py=Math.min(y-b[1],b[3]-y)-gap;
+    let e=px<r&&py<r?r-Math.hypot(r-px,r-py):Math.min(px,py);
+    e-=.2*noise(x*.9,y*.9,id);                                                                    // an edge that is not ruler-straight
+    if(hash(id,1,310)>.55){                                                                         // a chip out of one edge
+      const along=.15+.7*hash(id,2,311),onX=b[2]-b[0]>b[3]-b[1],far=hash(id,3,312)>.5;
+      const cx=onX?b[0]+(b[2]-b[0])*along:(far?b[2]:b[0]),cy=onX?(far?b[3]:b[1]):b[1]+(b[3]-b[1])*along,rc=.7+.8*hash(id,4,313);
+      e=Math.min(e,Math.hypot(x-cx,y-cy)-rc+.25*noise(x*2,y*2,id+7));
+    }
+    return e*K;
+  };
+  const BASE=[96,99,98],JOINT=[12,13,16];
+  const strip=(ux,uy,uw,uh)=>{
+    const w=Math.round(uw*K),h=Math.round(uh*K),o=offscreen(w,h);if(!o)return null;
+    const im=o.c.createImageData(w,h),d=im.data;
+    for(let Y=0;Y<h;Y++)for(let X=0;X<w;X++){
+      const x=ux+(X+.5)/K,y=uy+(Y+.5)/K,b=blockAt(x,y),e=depth(b,x,y),i=(Y*w+X)*4,GX=X+ux*K,GY=Y+uy*K;
+      let q=JOINT;
+      if(e>0){
+        const gx=depth(b,x+1/K,y)-depth(b,x-1/K,y),gy=depth(b,x,y+1/K)-depth(b,x,y-1/K),gl=Math.hypot(gx,gy)||1,lit=(gx*.45+gy*.89)/gl;
+        const id=b[4],wide=7.5+2.5*noise(GX/26,GY/26,id+40);
+        let k=(.82+.26*hash(id,5,320)+(id>=900?.06:0))*(.76+.48*fbm(GX,GY,id));                  // the block's tone, then its grain
+        k+=.08*(noise(GX/1.6,GY/1.6,id+50)-.5);
+        const sp=noise(GX/2.2,GY/2.2,id+60);if(sp>.9)k*=1-3*(sp-.9);else if(sp<.07)k*=1.13;         // pits and pale flecks
+        k*=1+(1-ss(wide-1.8,wide,e))*.62*lit;                                                      // the chiselled edge
+        k*=1-.13*Math.exp(-(((e-wide)/1.7)**2));
+        k*=.5+.5*ss(0,2,e);
+        q=[BASE[0]*k,BASE[1]*k,BASE[2]*k];
+        if(e<1.3){const m=e/1.3;q=[JOINT[0]+(q[0]-JOINT[0])*m,JOINT[1]+(q[1]-JOINT[1])*m,JOINT[2]+(q[2]-JOINT[2])*m]}
+      }
+      d[i]=q[0];d[i+1]=q[1];d[i+2]=q[2];d[i+3]=255;
+    }
+    o.c.putImageData(im,0,0);
+    return {cv:o.cv,x:ux-t,y:uy-t,w:uw,h:uh};
+  };
+  const parts=[strip(0,0,S,t),strip(0,S-t,S,t),strip(0,t,t,AW),strip(S-t,t,t,AW)];
+  return parts.every(Boolean)?parts:null;
+}
+// draws the wall around the arena's 0..AW square; hot = sudden death, when its inner edge glows
+function drawWall(c,hot){
+  const t=WALL_T;
+  if(!wallTried){wallTried=true;try{WALL=stoneWall(t)}catch(e){WALL=null}}
+  if(!WALL){Orn.frame(c,0,0,AW,AW,t,hot);return}
+  c.save();
+  for(const p of WALL)c.drawImage(p.cv,p.x,p.y,p.w,p.h);
+  c.strokeStyle=EDGE;c.lineWidth=.9;c.strokeRect(-t-.3,-t-.3,AW+2*t+.6,AW+2*t+.6);
+  // the wall stands a little above the floor: a thin shadow at its foot (red-hot in sudden death)
+  c.strokeStyle=hot?'#ff5a3c':'rgba(0,0,0,.6)';c.lineWidth=hot?1.4:1;c.strokeRect(.5,.5,AW-1,AW-1);
+  if(hot){c.strokeStyle='rgba(255,90,60,.28)';c.lineWidth=4;c.strokeRect(2,2,AW-4,AW-4)}
+  c.restore();
+}
 // The arena floor since Build 62: small stone bricks, ten across and twenty down, every other course shifted half a
 // brick. Each brick has its own shade of grey (a few are warm, a few blue), a lit edge and a shaded edge, and moss grows
 // in the joints where the floor is damp. It is a small picture made dot by dot from a few colours and a noise, then
@@ -896,7 +973,7 @@ function drawArena(c,match,you,fx){
     if(LIVE){FX.top(g,match);resetInk(1);FX.screenFlash(g,AW);resetInk(1)}
     g.restore();
   }
-  Orn.frame(g,0,0,AW,AW,7,hot);
+  drawWall(g,hot);
   if(match){
     // numbers and shouts float above everything: pale gold for a hit, hotter and larger for a critical one
     g.textAlign='center';g.textBaseline='middle';g.lineJoin='round';

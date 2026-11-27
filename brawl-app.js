@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 63';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 64';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -332,7 +332,7 @@ function fit(){
   if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}
 }
 function draw(){
-  const cw=cv.width,ch=cv.height,M=10;
+  const cw=cv.width,ch=cv.height,M=WALL_T+.4;   // room for the arena's wall and nothing more: the arena is as large as the canvas allows
   ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,cw,ch);
   const s=Math.min(cw/(AW+M*2),ch/(AW+M*2));
   const sx=calm?0:(Math.random()-.5)*shake,sy=calm?0:(Math.random()-.5)*shake;

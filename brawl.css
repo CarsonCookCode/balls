@@ -380,3 +380,10 @@ button.opt:active{background:linear-gradient(#45494b,#45494b) center/calc(100% -
 /* the two small round buttons are rough stone discs */
 #btnSound,#btnReplay{background:url(art/ui/knob.png) center/100% 100% no-repeat;border:0;border-image:none;color:#f1e8ce;filter:drop-shadow(0 3px 2px rgba(0,0,0,.65))}
 @media (prefers-reduced-motion:reduce){.foot button:active,.foot .btn:active,button.alt:active,button.opt:active,button.go:active{transform:none}}
+
+/* Build 64. During a fight the arena runs from one edge of the screen to the other (the user: "I want the battlefield
+   during battle to be even more as full screen as possible"): the stage gives back the page's side padding, and the
+   canvas leaves room for the arena's stone wall and nothing else. The arena is square, so the screen's width is the
+   most it can ever be. */
+body[data-mode="fight"] #stage,body[data-mode="replay"] #stage,body[data-mode="duel"] #stage{margin-inline:calc(-1*max(18px,env(safe-area-inset-left,0px))) calc(-1*max(18px,env(safe-area-inset-right,0px)))}
+body[data-mode="fight"],body[data-mode="replay"]{gap:5px}

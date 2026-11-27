@@ -135,13 +135,15 @@ function typeOf(b){
 // weakened on the first rungs: easeScale multiplies health and damage, from RIVAL_START on rung 1 up to full strength
 // on rung EASE_RUNGS. A house fighter has as many upgrades as a player would have there (RIVAL_UPS for each rung below),
 // but random ones, and the players' fighters found high up are the ones good enough to get there. So the house is made
-// up to the same weight: HOUSE_GROW more health and damage for every rung above HOUSE_FROM, and a little more again
-// (HOUSE_ACC, squared) past EASE_RUNGS, where only the house is left to stop a build that has outrun every player.
-// Measured over simulated days (2026-11-27): players beat a player's fighter about 65% of the time on rungs 5-9 and
-// 50% from rung 10; these numbers make the house the same.
-const RIVAL_START=.6,EASE_RUNGS=10,HOUSE_FROM=4,HOUSE_GROW=.025,HOUSE_ACC=.002,RIVAL_UPS=1;
+// up to the same weight: above rung HOUSE_FROM its health and damage gain HOUSE_ACC times the square of the rungs above
+// it (1.09x on rung 12, 1.35x on rung 17, 1.6x on rung 20). The square matters where only the house is left to stop a
+// build that has outrun every player.
+// Measured over simulated days (2026-11-27, Build 56: a player's fighter is met once in a climb, those that went out
+// soonest first): players beat a player's fighter about 70% of the time on rungs 5-9, 55% on 10-14 and 47% on 15-19;
+// these numbers make the house the same.
+const RIVAL_START=.6,EASE_RUNGS=10,HOUSE_FROM=7,HOUSE_ACC=.0035,RIVAL_UPS=1;
 const easeScale=rung=>rung>=EASE_RUNGS?1:RIVAL_START+(1-RIVAL_START)*(rung-1)/(EASE_RUNGS-1);
-const rivalScale=rung=>easeScale(rung)*(1+(rung>HOUSE_FROM?HOUSE_GROW*(rung-HOUSE_FROM):0)+(rung>EASE_RUNGS?HOUSE_ACC*(rung-EASE_RUNGS)*(rung-EASE_RUNGS):0));
+const rivalScale=rung=>easeScale(rung)*(rung>HOUSE_FROM?1+HOUSE_ACC*(rung-HOUSE_FROM)*(rung-HOUSE_FROM):1);
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 
 // A build is everything a match needs to know about one fighter.

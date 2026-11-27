@@ -120,11 +120,12 @@ const Net={
     }
     return changed&&Net.settle();
   },
-  // A rival named in climb e's proof must be a fighter that is really on the day's ladder: another player's, written
+  // A rival named in climb e's proof must be a fighter that is really on the day's ladder: that player's, written
   // before e was, that reached that rung with exactly those upgrades, and that has not failed its own check.
+  // (That no fighter is met twice in a climb is checked by the climb's own rules, in Climb.next.)
   knows(e,spec,rung){
     const u=spec.u.join(',');
-    return Net.all.some(x=>x.id!==e.id&&!x.copy&&x.key===spec.k&&x.str===spec.s&&x.size===spec.z&&x.cleared>=rung-1&&x.t<=e.t&&
+    return Net.all.some(x=>x.id===spec.i&&x.id!==e.id&&!x.copy&&x.key===spec.k&&x.str===spec.s&&x.size===spec.z&&x.cleared>=rung-1&&x.t<=e.t&&
       x.ups.slice(0,rung-1).join(',')===u&&!(Net.verdict.has(Net.vkey(x))&&!Net.verdict.get(Net.vkey(x)).ok));
   },
   rejected(){return Net.all.filter(e=>e.copy||(Net.verdict.has(Net.vkey(e))&&!Net.verdict.get(Net.vkey(e)).ok)).map(e=>({id:e.id.slice(0,6),key:e.key,cleared:e.cleared,why:e.copy?'a copy of another climb':Net.verdict.get(Net.vkey(e)).why}))},

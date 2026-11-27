@@ -4,7 +4,7 @@
 //   node tools/video-test.js [--keep]      (takes about a minute; needs Chrome; talks to nothing outside this PC)
 const fs = require('fs'), os = require('os'), path = require('path'), http = require('http'), cp = require('child_process');
 const { load } = require('./loadbrawl');
-const S = new Function(load('sim') + '\n;' + fs.readFileSync(path.join(__dirname, '..', 'brawl-boons.js'), 'utf8') + '\n;' + fs.readFileSync(path.join(__dirname, '..', 'brawl-proof.js'), 'utf8') + ';return {Climb,mulberry32,RULES,ROSTER}')();
+const S = new Function(load('sim') + '\n;' + fs.readFileSync(path.join(__dirname, '..', 'brawl-boons.js'), 'utf8') + '\n;' + fs.readFileSync(path.join(__dirname, '..', 'brawl-proof.js'), 'utf8') + ';return {Climb,mulberry32,RULES,ROSTER,makeBuild,addUpgrade,offers,rival,quickMatch}')();
 const DAY = '2026-11-20', DAY0 = Date.parse(DAY + 'T00:00:00Z'), { Climb } = S;
 function climb(seed, key) {
   const rnd = S.mulberry32(seed ^ 77), st = Climb.start(seed, key, (rnd() * 3) | 0, (rnd() * 3) | 0);
@@ -12,14 +12,24 @@ function climb(seed, key) {
   return st;
 }
 // each player keeps the best of a few climbs. The first two must stand above every house fighter on the test day's
-// ladder, or the duel would not be between two players: they climb until they have cleared CLEAR rungs (the house's
-// best on this day is 12 under the rules of Build 55; it moves when the fights change).
-const CLEAR = 14;
+// ladder, or the duel would not be between two players. The house's best moves whenever the fights change, so it is
+// worked out here the way the page does it (addBot in brawl-app.js: keep the two in step), and the two climb past it.
+function houseBest(day) {
+  let h = 2166136261; for (let i = 0; i < day.length; i++) h = Math.imul(h ^ day.charCodeAt(i), 16777619); h >>>= 0;
+  let top = 0;
+  for (let i = 0; i < 14; i++) {
+    const rnd = S.mulberry32(h + i * 7919), b = S.makeBuild(S.ROSTER[(rnd() * S.ROSTER.length) | 0], (rnd() * 3) | 0, (rnd() * 3) | 0); let rung = 1;
+    while (rung < 40 && S.quickMatch(b, S.rival(rung, rnd), (rnd() * 2147483647) | 0) === 0) { const o = S.offers(b, rnd, 3); if (o.length) S.addUpgrade(b, o[(rnd() * o.length) | 0]); rung++; }
+    top = Math.max(top, rung - 1);
+  }
+  return top;
+}
+const CLEAR = houseBest(DAY) + 1;
 const players = [['aaaaaaaaaaaaaaaa', 'Ana', 'samurai', '#8e2f3c'], ['bbbbbbbbbbbbbbbb', 'Bo', 'railgun', '#3f6fd8'], ['cccccccccccccccc', 'sh1t head', 'duck', '#e3b23c']];
 const data = {}; let t = DAY0 + 3600000; const bests = [];
 players.forEach(([pid, name, key, c], i) => {
   let best = null;
-  for (let k = 0; k < (i < 2 ? 400 : 14) && !(i < 2 && k >= 14 && best && best.cleared >= CLEAR); k++) { const st = climb((i * 1000 + k * 7919 + 5) >>> 0, key); if (st.over && (!best || st.cleared > best.cleared)) best = st; }
+  for (let k = 0; k < (i < 2 ? 3000 : 14) && !(i < 2 && k >= 14 && best && best.cleared >= CLEAR); k++) { const st = climb((i * 1000 + k * 7919 + 5) >>> 0, key); if (st.over && (!best || st.cleared > best.cleared)) best = st; }
   if (i < 2 && best && best.cleared < CLEAR) throw new Error('the test bot could not clear ' + CLEAR + ' rungs with ' + key);
   if (!best || best.cleared < 1) throw new Error('the test bot could not clear a rung with ' + key);
   bests.push(best.cleared);

@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 55';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 56';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -115,21 +115,22 @@ function target(){
 const inDuel=()=>duelPair().some(x=>x.you);
 const owner=r=>r.you?'You':r.player?r.e.name:'House';
 // The rival on a rung is another player's fighter whenever one of them got that far today: any fighter, of any player,
-// that reached this rung, exactly as it was on it. Only when nobody has does the house send one.
-// Nobody should meet the same fighter over and over, so one met in the last FRIEND_GAP fights, or of a class met in
-// the last few, waits its turn; but when every fighter that got this far was met lately, the one met longest ago
-// comes back, because a player's fighter always comes before the house.
-// The climb itself (Climb, in brawl-proof.js) builds the rival; this page only says which fighter.
-const FRIEND_GAP=6;
+// that reached this rung, exactly as it was on it. One fighter (a player's fighter of one class) is met only once in a
+// climb, on whatever rung. Among those not yet met, the ones whose own climb ended soonest come first (one of the NEAR
+// lowest, or any that ended within a rung of the lowest; of a class not met in the last few fights if there is one),
+// so the fighters that climbed high are still there to be met on the high rungs. When every fighter that got this far
+// has been met, the house sends one.
+// The climb itself (Climb, in brawl-proof.js) builds the rival and keeps the list of those met; this page only says
+// which fighter.
+const NEAR=3;
 let fightNo=0;
-const lastMet={};
 function pickRival(st){
   fightNo++;
-  const n=st.rung-1,tag=p=>p.id+':'+p.key,can=Net.rivals().filter(p=>p.cleared>=n&&p.ups.length>=n);
-  const pool=can.filter(p=>!(fightNo-lastMet[tag(p)]<=FRIEND_GAP)&&!st.met.includes(p.key));
-  const p=pool.length?pool[(Math.random()*pool.length)|0]:can.length?can.slice().sort((a,b)=>(lastMet[tag(a)]||0)-(lastMet[tag(b)]||0))[0]:null;
-  const b=Climb.next(st,p?{k:p.key,s:p.str,z:p.size,u:p.ups.slice(0,n),n:p.name,c:p.color}:null);
-  if(st.friend&&p){b.owner=p.name;lastMet[p.id+':'+p.key]=fightNo}
+  const n=st.rung-1,can=Net.rivals().filter(p=>p.cleared>=n&&p.ups.length>=n&&!st.seen.includes(p.id+':'+p.key)).sort((a,b)=>a.cleared-b.cleared);
+  const near=can.filter((p,i)=>i<NEAR||p.cleared<=can[0].cleared+1),fresh=near.filter(p=>!st.met.includes(p.key)),from=fresh.length?fresh:near;
+  const p=from.length?from[(Math.random()*from.length)|0]:null;
+  const b=Climb.next(st,p?{i:p.id,k:p.key,s:p.str,z:p.size,u:p.ups.slice(0,n),n:p.name,c:p.color}:null);
+  if(st.friend&&p)b.owner=p.name;
   return b;
 }
 const whose=b=>(b.owner?esc(b.owner)+'\u2019s ':'')+typeOf(b);

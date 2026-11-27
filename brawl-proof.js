@@ -16,13 +16,15 @@
 // RULES names the exact rules a climb was played under: it is a fingerprint of every simulation file, written by
 // `node tools/stamp.js` (and `node tools/stamp.js --check` fails when it is stale). Climbs made under other rules cannot be
 // replayed here, so the ladder shows only climbs made under these rules: a change to the fights starts a fresh ladder.
-const RULES='f8cabc97d4';
+const RULES='38430d45e1';
 // A climb starts with LIVES lives (the page shows them as hearts): a lost fight costs one, and the climb ends with the
 // last. One more is earned after clearing rung LIFE_RUNG. A shield is earned on reaching rung SHIELD_RUNG, which the
 // player may raise before one fight of their choosing: lose that fight and no life is lost. A loss that does not end
 // the climb brings a new rival on the same rung, and no upgrade. A draw (both fall in the same instant) does the same
 // and costs nothing. st.life counts the lives to spare, so the climb has st.life+1 hearts.
 // A class met in the last CLASS_GAP fights is not picked again for a house rival.
+// One fighter of another player's (that player's fighter of that class) is met at most once in a climb, on whatever
+// rung: st.seen lists the ones met. When none is left that reached the rung, the house sends a fighter.
 const LIVES=2,SHIELD_RUNG=5,LIFE_RUNG=10,CLASS_GAP=5,PROOF_FIGHTS=400,PROOF_CHARS=24000;
 function mix32(a,b,c){
   let h=(a>>>0)^0x9e3779b9;
@@ -33,14 +35,15 @@ function mix32(a,b,c){
 const Climb={
   start(seed,key,str,size,name,color){
     return {seed:seed>>>0,key,str,size,build:makeBuild(key,str,size,name,color),rung:1,n:0,shield:0,gotShield:false,life:LIVES-1,gotLife:false,
-      met:[],log:[],rival:null,friend:null,fseed:0,choice:null,last:'',earned:'',over:false,cleared:0};
+      met:[],seen:[],log:[],rival:null,friend:null,fseed:0,choice:null,last:'',earned:'',over:false,cleared:0};
   },
   // Another player's fighter as the rival on this rung: exactly as its owner had it there, which is its class, strength
   // and size with the first rung-1 upgrades it took, in the order it took them. Only the first rungs' easing is applied.
-  // p = {k,s,z,u[,n,c]}; u may be the fighter's whole list. Null when it never stood on this rung, or is not a legal fighter.
-  // strict (checking a proof): u must be exactly the upgrades it had on this rung.
+  // p = {i,k,s,z,u[,n,c]}: i is its owner's id on the ladder; u may be the fighter's whole list. Null when it never stood
+  // on this rung, or is not a legal fighter. strict (checking a proof): u must be exactly the upgrades it had on this rung.
+  unit:p=>p.i+':'+p.k,
   friend(p,rung,strict){
-    if(!p||typeof p!=='object'||!FIGHTERS[p.k]||![0,1,2].includes(p.s)||![0,1,2].includes(p.z))return null;
+    if(!p||typeof p!=='object'||typeof p.i!=='string'||!/^[a-z0-9]{16}$/.test(p.i)||!FIGHTERS[p.k]||![0,1,2].includes(p.s)||![0,1,2].includes(p.z))return null;
     const list=Array.isArray(p.u)?p.u:[],n=rung-1,b=makeBuild(p.k,p.s,p.z,p.n,p.c);
     if(list.length<n||(strict&&list.length!==n))return null;
     for(let k=0;k<n;k++){
@@ -49,17 +52,18 @@ const Climb={
       addUpgrade(b,id);
     }
     const sc=easeScale(rung);b.hp*=sc;b.dmg*=sc;
-    return {b,spec:{k:p.k,s:p.s,z:p.z,u:b.ups.slice()}};
+    return {b,spec:{i:p.i,k:p.k,s:p.s,z:p.z,u:b.ups.slice()}};
   },
-  // Step 1 of a fight: who stands on this rung. `friend` is another player's fighter that reached this rung, or null when
-  // nobody has: then the house sends one. Sets st.rival and st.fseed (the seed of the fight itself).
+  // Step 1 of a fight: who stands on this rung. `friend` is another player's fighter that reached this rung and has not
+  // been met in this climb, or null when there is none: then the house sends one. Sets st.rival and st.fseed (the seed
+  // of the fight itself).
   next(st,friend,strict){
     st.earned='';
     if(st.rung>=SHIELD_RUNG&&!st.gotShield){st.gotShield=true;st.shield=1;st.earned='shield'}
     if(st.rung>LIFE_RUNG&&!st.gotLife){st.gotLife=true;st.life++;st.earned=st.earned?'both':'life'}
     const R=mulberry32(mix32(st.seed,st.n,1));
     let b=null;st.friend=null;
-    if(friend){const x=Climb.friend(friend,st.rung,strict);if(x){b=x.b;st.friend=x.spec}}
+    if(friend&&!st.seen.includes(Climb.unit(friend))){const x=Climb.friend(friend,st.rung,strict);if(x){b=x.b;st.friend=x.spec;st.seen.push(Climb.unit(x.spec))}}
     if(!b){b=rival(st.rung,R);for(let k=0;k<12&&st.met.includes(b.key);k++)b=rival(st.rung,R)}
     st.met.push(b.key);if(st.met.length>CLASS_GAP)st.met.shift();
     st.rival=b;st.fseed=mix32(st.seed,st.n,2)&0x7fffffff;
@@ -102,7 +106,7 @@ const Climb={
   play(a,b,seed){const m=createMatch(a,b,seed);let k=0;while(!m.over&&k++<9000){m.step();m.events.length=0}return m},
   // Plays a claimed climb again, one fight per step() so a page can spread the work over many frames.
   // e = {key,str,size,ups,cleared,proof} with proof as parsed by Climb.parse. Ends with done, ok and (when not ok) why.
-  // known(spec,rung), when given, says whether another player's fighter {k,s,z,u} really reached that rung on the ladder.
+  // known(spec,rung), when given, says whether another player's fighter {i,k,s,z,u} really reached that rung on the ladder.
   checker(e,known){
     const P=e&&e.proof,C={done:false,ok:false,why:'',fights:0,step:null};
     const end=(ok,why)=>{C.done=true;C.ok=ok;C.why=why||'';return C};
@@ -117,7 +121,7 @@ const Climb={
         const fr=x[0]&&typeof x[0]==='object'?x[0]:null;
         if(x[0]&&!fr)return end(false,'a fight that cannot be read');
         Climb.next(st,fr,true);
-        if(fr&&!st.friend)return end(false,'a rival the rules do not allow');
+        if(fr&&!st.friend)return end(false,typeof fr.i==='string'&&st.seen.includes(Climb.unit(fr))?'a rival met twice in one climb':'a rival the rules do not allow');
         if(fr&&known&&!known(st.friend,st.rung))return end(false,'a rival who is not on the ladder');
         if(x[1]&&!(st.shield>0))return end(false,'a shield that was not held');
         const m=Climb.play(st.build,st.rival,st.fseed);

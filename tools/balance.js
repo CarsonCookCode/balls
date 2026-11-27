@@ -409,12 +409,12 @@ async function main() {
     const list = [], tag = [];
     keys.forEach((key, ci) => { for (let c = 0; c < ctxN; c++) {
       const cx = context(key, 4, hash(K.indexOf(key), c, 51), ['sig']);
-      for (let j = 0; j < M; j++) { const foe = { rv: [7, hash(K.indexOf(key), c, j, 52)] }, seed = hash(K.indexOf(key), c, j, 53);
+      for (let j = 0; j < M; j++) { const foe = { rv: [8, hash(K.indexOf(key), c, j, 52)] }, seed = hash(K.indexOf(key), c, j, 53);
         for (let n = 0; n <= 3; n++) { list.push([{ k: key, s: cx.spec.s, z: cx.spec.z, u: cx.spec.u.concat(Array(n).fill('sig')) }, foe, seed]); tag.push([ci, n]); } }
     } });
     const r = await matches(list), acc = keys.map(() => [[0, 0], [0, 0], [0, 0], [0, 0]]);
     for (let q = 0; q < list.length; q++) { const [ci, n] = tag[q]; acc[ci][n][1]++; if (r.w[q] === 0) acc[ci][n][0]++; }
-    console.log("\nSIGNATURES: win rate with the class's own upgrade taken 0, 1, 2 and 3 times (4 other upgrades, rung-7 rivals); " + list.length + ' fights');
+    console.log("\nSIGNATURES: win rate with the class's own upgrade taken 0, 1, 2 and 3 times (4 other upgrades, rung-8 rivals); " + list.length + ' fights');
     const out = [];
     keys.forEach((key, ci) => {
       const wr = acc[ci].map(x => x[0] / x[1]);

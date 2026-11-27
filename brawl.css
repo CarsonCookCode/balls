@@ -401,5 +401,8 @@ body[data-mode="fight"],body[data-mode="replay"]{gap:5px}
    part of the page like actual writing"). Three small things, none of which costs contrast: the ink is a warm
    brown-black; each letter has a hair of soft bleed around it, as ink soaks into skin; and a faint pale line under it,
    as a nib presses the surface. The stone buttons and the coloured tags keep their own lettering. */
-:root{--ink:#27190e;--ink-2:#584229;--inked:0 0 .7px rgba(58,34,10,.55),0 .6px 0 rgba(255,249,228,.3)}
-#panel,.card,button.pick,button.quiet{text-shadow:var(--inked)}
+:root{--ink:#27190e;--ink-2:#584229}
+/* Build 68: the bleed and the pale line were soft shadows, and on the phone they made the writing look "very slightly
+   blurry" (the user). They are gone: the writing keeps its ink colour and nothing else. Do not put a blurred or
+   offset shadow on small text again; sharpness comes first. */
+#panel,.card,button.pick,button.quiet{text-shadow:none}

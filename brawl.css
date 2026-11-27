@@ -388,5 +388,10 @@ button.opt:active{background:linear-gradient(#45494b,#45494b) center/calc(100% -
    during battle to be even more as full screen as possible"): the stage gives back the page's side padding, and the
    canvas leaves room for the arena's stone wall and nothing else. The arena is square, so the screen's width is the
    most it can ever be. */
-body[data-mode="fight"] #stage,body[data-mode="replay"] #stage,body[data-mode="duel"] #stage{margin-inline:calc(-1*max(18px,env(safe-area-inset-left,0px))) calc(-1*max(18px,env(safe-area-inset-right,0px)))}
+/* Build 66: on the user's iPhone the arena still had the page's padding either side of it ("Battlefield could still be
+   more fullscreen for me"): Safari did not widen the stage with negative margins the way Chrome did (or worked its
+   height out from the narrower width, which gives the same picture). So the stage is no longer stretched and left to
+   work its own height out: it is given the screen's width as both its width and its height, and centred. */
+body[data-mode="fight"] #stage,body[data-mode="replay"] #stage{align-self:center;width:min(100vw,560px);height:min(100vw,560px);aspect-ratio:auto;margin-inline:0}
+body[data-mode="duel"] #stage{align-self:center;width:min(100vw,560px);margin-inline:0}
 body[data-mode="fight"],body[data-mode="replay"]{gap:5px}

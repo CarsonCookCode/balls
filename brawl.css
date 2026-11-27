@@ -362,26 +362,26 @@ body{background:linear-gradient(rgba(8,10,12,.62),rgba(8,10,12,.8)),url(art/ui/w
 #panel{
   margin-inline:0;border:solid transparent;border-width:9px 6px;
   background:linear-gradient(#ebdebd,#ebdebd) center/calc(100% - 34px) calc(100% - 20px) no-repeat border-box;
-  border-image:url(art/ui/scroll2.png) 72 fill / 24px / 6px 0 round;
+  border-image:url(art/ui/scroll-v4.png) 72 fill / 24px / 6px 0 round;
   outline:0;box-shadow:none;filter:drop-shadow(0 5px 4px rgba(0,0,0,.6));
 }
 /* stone blocks: the footer's buttons, the two under the champions, the second-rank button, and (in red stone) the main one */
 .foot button,.foot .btn,button.alt,button.opt,button.go{
   background:linear-gradient(#45494b,#45494b) center/calc(100% - 10px) calc(100% - 10px) no-repeat border-box;
-  border:5px solid transparent;border-radius:0;border-image:url(art/ui/block.png) 30 fill / 10px / 0 round stretch;
+  border:5px solid transparent;border-radius:0;border-image:url(art/ui/block-v4.png) 30 fill / 10px / 0 round stretch;
   box-shadow:none;filter:drop-shadow(0 3px 2px rgba(0,0,0,.65));
   color:#f1e8ce;text-shadow:0 -1px 0 rgba(0,0,0,.85),0 1px 0 rgba(255,255,255,.12);
 }
 .foot>*{padding:0 3px}
-button.opt{border-image-source:url(art/ui/block2.png);padding:0 4px}
-button.go{background-image:linear-gradient(#842a30,#842a30);border-image-source:url(art/ui/block-red.png);color:#f8edd4}
+button.opt{border-image-source:url(art/ui/block2-v4.png);padding:0 4px}
+button.go{background-image:linear-gradient(#842a30,#842a30);border-image-source:url(art/ui/block-red-v4.png);color:#f8edd4}
 button.go::before,button.go::after{display:none}
 .foot button:active,.foot .btn:active,button.alt:active,button.opt:active,button.go:active{
   transform:translateY(2px);box-shadow:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.65));
 }
 button.opt:active{background:linear-gradient(#45494b,#45494b) center/calc(100% - 10px) calc(100% - 10px) no-repeat border-box}
 /* the two small round buttons are rough stone discs */
-#btnSound,#btnReplay{background:url(art/ui/knob2.png) center/100% 100% no-repeat;border:0;border-image:none;color:#f1e8ce;filter:drop-shadow(0 3px 2px rgba(0,0,0,.65))}
+#btnSound,#btnReplay{background:url(art/ui/knob-v4.png) center/100% 100% no-repeat;border:0;border-image:none;color:#f1e8ce;filter:drop-shadow(0 3px 2px rgba(0,0,0,.65))}
 @media (prefers-reduced-motion:reduce){.foot button:active,.foot .btn:active,button.alt:active,button.opt:active,button.go:active{transform:none}}
 
 /* Build 64. During a fight the arena runs from one edge of the screen to the other (the user: "I want the battlefield
@@ -395,3 +395,11 @@ button.opt:active{background:linear-gradient(#45494b,#45494b) center/calc(100% -
 body[data-mode="fight"] #stage,body[data-mode="replay"] #stage{align-self:center;width:min(100vw,560px);height:min(100vw,560px);aspect-ratio:auto;margin-inline:0}
 body[data-mode="duel"] #stage{align-self:center;width:min(100vw,560px);margin-inline:0}
 body[data-mode="fight"],body[data-mode="replay"]{gap:5px}
+
+/* Build 67. The writing on the scroll is ink, not type laid over a picture (the user: "I wonder if it's possible for
+   the text on the parchment to still be just as legible but have some kind of subtle aesthetic that makes it seem a
+   part of the page like actual writing"). Three small things, none of which costs contrast: the ink is a warm
+   brown-black; each letter has a hair of soft bleed around it, as ink soaks into skin; and a faint pale line under it,
+   as a nib presses the surface. The stone buttons and the coloured tags keep their own lettering. */
+:root{--ink:#27190e;--ink-2:#584229;--inked:0 0 .7px rgba(58,34,10,.55),0 .6px 0 rgba(255,249,228,.3)}
+#panel,.card,button.pick,button.quiet{text-shadow:var(--inked)}

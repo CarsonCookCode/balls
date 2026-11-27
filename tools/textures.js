@@ -19,7 +19,14 @@
 // instead of repeated down it, so the face is one continuous piece. And "the parchment and stone buttons should still
 // retain a little bit of their old texture and character very slightly. It's slightly too just plain now": the first
 // version's coarse dotted mottling (and its specks, pits and flecks) is laid faintly over the smooth surfaces.
-// If a picture changes, give it a new file name, so no phone goes on showing the old one.
+// Build 67. Of the stone: "The level of texture on the buttons is good now but it's like there's an unevenness that's
+// unnatural like some dark spots" - the grain's largest patches and the pits were too strong, so a button had dark
+// blotches; the tone is now even across a block, with only fine grain and faint pits. Of the paper: "maybe very subtly
+// change the color or texture of the paper to be more realistic" - a fine tooth, faint veins and follicle specks as on
+// real vellum, and a gentle yellowing towards the edges; the middle stays pale and even.
+// If a picture changes, raise V: it is part of every file name, so no phone goes on showing the old one. (brawl.css and
+// the two preload lines in index.html name the files.)
+const V = 'v4';
 const fs = require('fs'), path = require('path'), zlib = require('zlib');
 const OUT = path.join(__dirname, '..', 'art', 'ui');
 
@@ -62,7 +69,7 @@ function sheet(TX, TY, C, o) {
 }
 
 // ----- the scroll: 24 screen points of corner, a middle that repeats every 160
-const PAPER = [235, 222, 189], WARM = [228, 211, 171], STAIN = [182, 146, 92], RIM = [108, 78, 44], SP = 480;
+const PAPER = [234, 220, 187], WARM = [227, 209, 169], EDGEWARD = [221, 200, 157], STAIN = [182, 146, 92], RIM = [108, 78, 44], SP = 480;
 const parchment = sheet(624, 624, 72, {
   R: [22, 30, 26, 18], soft: 1.6,
   bite(pos, s) {
@@ -76,6 +83,10 @@ const parchment = sheet(624, 624, 72, {
     let c = mixc(PAPER, WARM, ss(.5, .78, fbm(u, v, SP, 120, 4, 31)) * .3);          // faint warmer patches
     let k = 1 + (fbm(u, v, SP, 120, 3, 11) - .5) * .05;                             // faint mottling
     if (vn(u / 24, v / 1.5, SP / 24, SP / 1.5, 41) > .82) k -= .014;                 // a fibre
+    k += (vn(u / 3, v / 3, 160, 160, 43) - .5) * .009;                               // the skin's fine tooth
+    if (Math.abs(fbm(u, v, SP, 120, 4, 47) - .5) < .006) k -= .012;                  // a faint vein
+    if (vn(u / 5, v / 5, 96, 96, 45) > .88 && hash(u >> 1, v >> 1, 46) > .6) k -= .02;   // follicle specks, in loose patches
+    c = mixc(c, EDGEWARD, (1 - ss(0, 110, far)) * .16);                              // the sheet yellows gently towards its edges
     // a little of the first version's character: its coarse dots (4 picture pixels each) in five tones, its foxing and specks, all faint
     const du = Math.floor(u / 4), dv = Math.floor(v / 4);
     let tone = cl(Math.floor((vn(du / 30, dv / 30, 4, 4, 2) * .44 + vn(du / 8, dv / 8, 15, 15, 4) * .24 + hash(du, dv, 6) * .32) * 5.4) + 1, 1, 5);
@@ -93,12 +104,14 @@ const parchment = sheet(624, 624, 72, {
 const BP = 192;
 function stonePaint(base, seed) {
   return (u, v, e, gx, gy) => {
-    let k = .74 + .5 * fbm(u, v, BP, 48, 5, seed) + .1 * (vn(u / 1.5, v / 1.5, 128, 128, seed + 40) - .5);   // the grain, coarse and fine
-    const sp = vn(u / 2, v / 2, 96, 96, seed + 50); if (sp > .9) k *= 1 - 3 * (sp - .9); else if (sp < .07) k *= 1.14;   // pits and pale flecks
+    // the grain: even across the block (hardly any slow change of tone, which read as dark blotches), busy only at fine sizes
+    let k = 1 + .03 * (vn(u / 48, v / 48, 4, 4, seed) - .5) + .06 * (vn(u / 12, v / 12, 16, 16, seed + 1) - .5) + .1 * (vn(u / 6, v / 6, 32, 32, seed + 2) - .5)
+      + .1 * (vn(u / 3, v / 3, 64, 64, seed + 3) - .5) + .09 * (vn(u / 1.5, v / 1.5, 128, 128, seed + 40) - .5);
+    const sp = vn(u / 2, v / 2, 96, 96, seed + 50); if (sp > .9) k *= 1 - 1.1 * (sp - .9); else if (sp < .07) k *= 1.07;   // faint pits and pale flecks
     // a little of the first version's character: its coarse dots in four tones, its square pits and flecks, all faint
     const du = Math.floor(u / 4), dv = Math.floor(v / 4);
     k *= 1 + (cl(Math.floor((vn(du / 8, dv / 8, 6, 6, seed + 100) * .5 + vn(du / 3, dv / 3, 16, 16, seed + 101) * .26 + hash(du, dv, seed + 102) * .24) * 4.4), 0, 3) - 1.5) * .04;
-    if (hash(du, dv, seed + 103) > .985) k *= .8; else if (hash(du, dv, seed + 104) > .992) k *= 1.16;
+    if (hash(du, dv, seed + 103) > .985) k *= .91; else if (hash(du, dv, seed + 104) > .992) k *= 1.09;
     const wide = 6.5 + 3 * vn(u / 24, v / 24, 8, 8, seed + 90), g = Math.hypot(gx, gy) || 1, lit = (gx * .45 + gy * .89) / g;
     k *= 1 + (1 - ss(wide - 1.6, wide, e)) * .6 * lit;                               // the chiselled edge: lit from the top left
     k *= 1 - .14 * Math.exp(-(((e - wide) / 1.6) ** 2));                             // a fine dark line where the edge meets the face
@@ -163,7 +176,7 @@ function png(p) {
 }
 
 fs.mkdirSync(OUT, { recursive: true });
-for (const [name, p] of [['scroll2', parchment], ['block', slab(GREY, 11, [8, 13, 9, 11])], ['block2', slab(GREY, 61, [12, 8, 11, 9])], ['block-red', slab(RED, 21, [9, 11, 13, 8])], ['knob2', knob()], ['wall', wall()]]) {
+for (const [name, p] of [['scroll-' + V, parchment], ['block-' + V, slab(GREY, 11, [8, 13, 9, 11])], ['block2-' + V, slab(GREY, 61, [12, 8, 11, 9])], ['block-red-' + V, slab(RED, 21, [9, 11, 13, 8])], ['knob-' + V, knob()], ['wall', wall()]]) {
   const b = png(p); fs.writeFileSync(path.join(OUT, name + '.png'), b);
   console.log(name + '.png  ' + p.w + ' by ' + p.h + '  ' + (b.length / 1024).toFixed(1) + ' KB');
 }

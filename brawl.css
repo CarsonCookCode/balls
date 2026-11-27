@@ -1,5 +1,6 @@
-/* Duel King: "gilded". Meant to read as a fantasy game screen, not a web page: aged leather backdrop,
-   a parchment scroll for every choice, crimson ribbons for titles, carved plates for buttons, gold trim.
+/* Duel King: "gilded". Meant to read as a fantasy game screen, not a web page: a dark stone backdrop,
+   a torn parchment scroll for every choice, chipped stone blocks for buttons, gold trim on the arena.
+   (The parchment, stone and backdrop are pictures: see "Build 62" at the end of this file.)
    Layout: one phone screen. Names and health on top, the arena, the scroll, a row of plates. */
 :root{
   color-scheme:dark;
@@ -342,3 +343,36 @@ button.opt{white-space:nowrap;letter-spacing:.06em;font-size:11.5px}
 /* Build 49. The ladder takes the whole screen: no arena and no health bars above it. */
 body[data-mode="board"] #stage,body[data-mode="board"] header.top{display:none}
 body[data-mode="board"] #panel{flex:1 1 auto;max-height:none;margin-top:10px}
+
+/* Build 62. Textures in place of smooth gradients and straight box edges. The user asked for "actual parchment texture"
+   and buttons "like stone", and said of a first try that kept the box edges: it "still looks like web UI elements, maybe
+   an adjustment to the edges of the paper to look like parchment, and some subtly things to make the stone buttons look
+   like stone". So the scroll and the buttons are nine-slice pictures (made by tools/textures.js, kept in art/ui/): an
+   uneven torn or chipped outline whatever the size, with no straight edge left. Each has a plain colour underneath, set
+   in from the edge, which shows only until its picture has loaded. The pictures are drawn at 4 pixels a dot and shown at
+   a third of that, so a dot is 4 phone pixels on most phones. */
+body{background:linear-gradient(rgba(8,10,12,.62),rgba(8,10,12,.8)),url(art/ui/wall.png) 0 0/192px 192px var(--night)}
+#panel{
+  margin-inline:0;border:solid transparent;border-width:9px 6px;
+  background:linear-gradient(var(--parch),var(--parch)) center/calc(100% - 30px) calc(100% - 18px) no-repeat border-box;
+  border-image:url(art/ui/parchment.png) 128 fill / 42.67px / 6px 0 repeat;
+  outline:0;box-shadow:none;filter:drop-shadow(0 7px 0 rgba(0,0,0,.5));
+}
+/* stone blocks: the footer's buttons, the two under the champions, the second-rank button, and (in red stone) the main one */
+.foot button,.foot .btn,button.alt,button.opt,button.go{
+  background:linear-gradient(#35393c,#35393c) center/calc(100% - 14px) calc(100% - 14px) no-repeat border-box;
+  border:5px solid transparent;border-radius:0;border-image:url(art/ui/stone.png) 48 fill / 16px / 0 repeat;
+  box-shadow:none;filter:drop-shadow(0 4px 0 rgba(0,0,0,.55));
+  color:#efe6cc;text-shadow:0 -1px 0 rgba(0,0,0,.8),0 1px 0 rgba(255,255,255,.1);
+}
+.foot>*{padding:0 3px}
+button.opt{border-image-source:url(art/ui/stone2.png);padding:0 4px}
+button.go{background-image:linear-gradient(#6c2026,#6c2026);border-image-source:url(art/ui/redstone.png);color:#f8edd4}
+button.go::before,button.go::after{display:none}
+.foot button:active,.foot .btn:active,button.alt:active,button.opt:active,button.go:active{
+  transform:translateY(3px);box-shadow:none;filter:drop-shadow(0 1px 0 rgba(0,0,0,.55));
+}
+button.opt:active{background:linear-gradient(#35393c,#35393c) center/calc(100% - 14px) calc(100% - 14px) no-repeat border-box}
+/* the two small round buttons are rough stone discs */
+#btnSound,#btnReplay{background:url(art/ui/disc.png) center/100% 100% no-repeat;border:0;border-image:none;color:#efe6cc;filter:drop-shadow(0 3px 0 rgba(0,0,0,.55))}
+@media (prefers-reduced-motion:reduce){.foot button:active,.foot .btn:active,button.alt:active,button.opt:active,button.go:active{transform:none}}

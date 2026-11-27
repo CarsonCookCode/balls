@@ -779,6 +779,45 @@ function drawPortrait(c,match,i){
 }
 // ---------- the arena ----------
 let FLOOR=null,floorTried=false;
+// The arena floor since Build 62: small stone bricks, ten across and twenty down, every other course shifted half a
+// brick. Each brick has its own shade of grey (a few are warm, a few blue), a lit edge and a shaded edge, and moss grows
+// in the joints where the floor is damp. It is a small picture made dot by dot from a few colours and a noise, then
+// enlarged five times with hard edges: the recipe of the "Crypt" look the user liked, laid flat.
+// The user's words: the first try (big mossy slabs) "isn't quite what I want. Try something a bit more appealing and
+// have it have more bricks like they're smaller so more on screen"; then, of this one, "Do floor A but no diagonal
+// crack in them" (so no brick is cracked). Returns null where there is no canvas to make it on, and the plain
+// flagstones (Orn.floor) are drawn instead; the tests run that way.
+function brickFloor(){
+  const N=AW,K=5,a=offscreen(N,N),b=offscreen(N*K,N*K);
+  if(!a||!b||typeof a.c.createImageData!=='function')return null;
+  const cl=(v,lo,hi)=>v<lo?lo:v>hi?hi:v;
+  const hash=(x,y,s)=>{let h=(Math.imul(x|0,374761393)+Math.imul(y|0,668265263)+Math.imul(s|0,982451653))|0;h=Math.imul(h^(h>>>13),1274126177);return((h^(h>>>16))>>>0)/4294967296};
+  const noise=(x,y,s)=>{const xi=Math.floor(x),yi=Math.floor(y),fx=x-xi,fy=y-yi,sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy);
+    return (hash(xi,yi,s)*(1-sx)+hash(xi+1,yi,s)*sx)*(1-sy)+(hash(xi,yi+1,s)*(1-sx)+hash(xi+1,yi+1,s)*sx)*sy};
+  const GREY=[[46,49,52],[58,62,64],[71,75,76],[85,89,88],[101,104,100]],WARM=[[52,47,44],[66,60,55],[80,73,66],[95,87,78],[111,102,90]],COOL=[[40,46,56],[51,58,69],[63,71,83],[76,85,97],[91,100,111]];
+  const MOSS=[[38,62,38],[52,84,46],[74,108,56]],JOINT=[19,19,23],PIT=[27,27,31],BW=26,BH=13;
+  const im=a.c.createImageData(N,N),d=im.data;
+  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+    const row=Math.floor(y/BH),ox=row%2?BW/2:0,lx=(x+ox)%BW,ly=y%BH,id=Math.floor((x+ox)/BW)+row*31;
+    const tint=hash(id,3,71),pal=tint>.86?WARM:tint<.12?COOL:GREY;
+    let k=1+Math.floor(hash(id,5,72)*2.4)+Math.floor((noise(x/6,y/6,3)-.5)*1.8+hash(x,y,5)*.9-.35);     // the brick's own tone, then its grain
+    if(lx===1||ly===1)k++;if(lx===BW-1||ly===BH-1)k--;                                                 // lit on two edges, shaded on the other two
+    const joint=lx===0||ly===0,near=lx<=1||ly<=1||lx>=BW-1||ly>=BH-1;
+    const damp=noise(x/34,y/34,21)*.75+noise(x/7,y/7,22)*.25;
+    let q;
+    if(damp>.6&&(joint||(near&&hash(x,y,9)>.35)||(damp>.7&&hash(x,y,8)>.62)))q=MOSS[damp>.72?(hash(x,y,3)>.5?2:1):hash(x,y,4)>.5?1:0];
+    else if(joint)q=JOINT;
+    else if(hash(x,y,31)>.99)q=PIT;
+    else q=pal[cl(k,0,4)];
+    const i=(y*N+x)*4;d[i]=q[0];d[i+1]=q[1];d[i+2]=q[2];d[i+3]=255;
+  }
+  a.c.putImageData(im,0,0);
+  const c=b.c,S=N*K;c.imageSmoothingEnabled=false;c.drawImage(a.cv,0,0,S,S);
+  // a little warm light in the middle, dark towards the walls
+  const gr=c.createRadialGradient(S/2,S/2,S*.2,S/2,S/2,S*.74);gr.addColorStop(0,'rgba(255,236,190,.07)');gr.addColorStop(.5,'rgba(0,0,0,0)');gr.addColorStop(1,'rgba(0,0,0,.55)');
+  c.fillStyle=gr;c.fillRect(0,0,S,S);
+  return b.cv;
+}
 function deviceScale(c){
   try{const t=c.getTransform&&c.getTransform();if(t&&t.a)return Math.max(.5,Math.min(8,Math.hypot(t.a,t.b)))}catch(e){}
   return 2;
@@ -790,7 +829,11 @@ function drawArena(c,match,you,fx){
   const hot=!!(match&&match.t>SUDDEN&&!match.over);
   g.save();
   resetInk(1);
-  if(!floorTried){floorTried=true;const o=offscreen(AW*5,AW*5);if(o){Orn.floor(o.c,0,0,AW*5,6);FLOOR=o.cv}}
+  if(!floorTried){
+    floorTried=true;
+    try{FLOOR=brickFloor()}catch(e){FLOOR=null}
+    if(!FLOOR){const o=offscreen(AW*5,AW*5);if(o){Orn.floor(o.c,0,0,AW*5,6);FLOOR=o.cv}}
+  }
   if(FLOOR)g.drawImage(FLOOR,0,0,AW,AW);else Orn.floor(g,0,0,AW,6);
   if(match){
     // the Painter's stain soaks into the flagstones

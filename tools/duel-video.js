@@ -101,7 +101,7 @@ function words(day, d) {
   return {
     title: d.a_b[0] + ' vs ' + d.a_b[1] + ': who takes the crown? | Duel King, ' + nice(day),
     description: 'The duel for ' + nice(day) + ': ' + side(0) + ' (climbed ' + rungs(0) + ') against ' + side(1) + ' (' + rungs(1) + '). Best of three, and the winner is that day’s Duel King.\n\n' +
-      'These fighters were made by players. Make your own in three taps, climb the ladder, and the top two each day fight in the next video:\nhttps://playduelking.com\n\n#shorts #duelking #ballbattle',
+      'These fighters were made by players. Make your own in three taps, climb the ladder, and the top two each day fight in the next video:\nhttps://playduelking.com\n\nFighter emblems: game-icons.net (CC BY 3.0)\n\n#shorts #duelking #ballbattle',
     tags: ['Duel King', 'ball battle', 'ball fight', 'bouncing balls', 'shorts', d.a_b[0], d.a_b[1]],
   };
 }

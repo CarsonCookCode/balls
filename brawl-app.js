@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 53';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 54';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -391,11 +391,11 @@ function onVerdict(e,c){log('vfy',{p:e.id.slice(0,6),c:e.cid,k:e.key,r:e.cleared
 let rehearsal=null;                                    // the real round, set aside while the video rehearses it
 // Watching the last fight again. A fight is its two builds and its seed, so the replay is the same fight played once more;
 // what was on screen is set aside in `replay` and put back when it ends. It has its own speed, which starts at 1x.
+// It is asked for with the small round mark in the footer (the user wanted it out of the way, not a plate on the scroll).
 let replay=null,rspeed=1;
 const RSPEEDS=[1,2,4,.5];
 const copyOf=b=>JSON.parse(JSON.stringify(b));
 const canReplay=()=>!!(run&&run.last&&run.last.res)&&!replay&&(mode==='pick'||mode==='over'||mode==='ready');
-const replayBtn=text=>canReplay()?`<button type="button" id="btnReplay" class="rep" data-act="replay">${text}</button>`:'';
 function showSpeed(){const v=mode==='replay'?rspeed:speed;$('btnSpeed').textContent='Speed '+(v===.5?'½':v)+'×'}
 function startReplay(){
   if(!canReplay())return;
@@ -521,7 +521,7 @@ function readyBody(){
     `<div class="mu2"><div class="chips">${chips(a,0,compact)}</div><div class="chips">${chips(b,1,compact)}</div></div>`+tipLine(a,b)+
     (run.shield>0?`<button type="button" id="btnArm" class="arm" data-act="arm" aria-pressed="${run.armed}">${run.armed?'Shield raised: lose this fight and you climb on':'Raise your shield for this fight'}</button>`:'')+
     (run.life>0?`<p class="ps keep">Extra life held: spent the next time you lose.</p>`:'')+
-    `<button type="button" id="btnFight" class="go" data-act="fight">Fight</button>`+replayBtn('Replay the last fight');
+    `<button type="button" id="btnFight" class="go" data-act="fight">Fight</button>`;
 }
 function fightDone(){
   const left=f=>+Math.max(0,f.hp/f.max).toFixed(2);
@@ -683,7 +683,8 @@ function render(){
   $('btnSpeed').hidden=!(mode==='fight'||mode==='duel'||mode==='ready'||mode==='replay');
   $('btnBoard').hidden=!(mode==='make'||mode==='over'||mode==='board');
   $('lnkVideos').hidden=!(mode==='make'||mode==='over'||mode==='board');   // the channel link only where you are between runs
-  $('btnSound').hidden=mode==='pick';                                      // the upgrade screen has no footer at all
+  $('btnSound').hidden=mode==='pick';                                      // the upgrade screen has no footer but the replay mark
+  $('btnReplay').hidden=!canReplay();                                      // a small round mark in the corner, beside the sound one
   $('btnBoard').textContent=mode==='board'?'Back':'Ladder';          // the same plate opens the ladder and leaves it
   const SH=$('sheet');SH.hidden=mode!=='pick';
   if(mode==='pick'){SH.innerHTML=sheetBody();portraits()}else if(SH.innerHTML)SH.innerHTML='';
@@ -696,7 +697,7 @@ function render(){
   }else if(mode==='pick'){
     const have=id=>{let n=0;for(const x of run.build.ups)if(x===id)n++;return n};
     P.innerHTML=head('Rung '+run.rung+' cleared','Choose an upgrade')+
-      choice.map(id=>upCard(run.build,id,have(id))).join('')+replayBtn('Replay that fight');
+      choice.map(id=>upCard(run.build,id,have(id))).join('');
     portraits();
   }else if(mode==='replay'){
     const L=run.last;
@@ -706,7 +707,7 @@ function render(){
     P.innerHTML=`<h2 class="ph">${cleared?'Your '+typeOf(run.build)+' climbed '+cleared+' rung'+(cleared>1?'s':''):'Out on the first rung'}</h2>`+
       `<p class="ps">${run.record?'New best. ':'Your best is '+best+'. '}Beaten by ${run.rival.owner?'':'a '}${whose(run.rival)}.</p>`+
       `<p class="ps" id="goal">${goalLine()}</p>`+
-      `<button type="button" id="btnAgain" class="go" data-act="start">Climb again</button>`+replayBtn('Replay the last fight')+
+      `<button type="button" id="btnAgain" class="go" data-act="start">Climb again</button>`+
       `<button type="button" id="btnNew" class="alt" data-act="new">Make a different fighter</button>`;
   }
 }
@@ -781,7 +782,6 @@ const onTap=e=>{
   else if(act==='start')startClimb();
   else if(act==='fight')startFight();
   else if(act==='tip'){const side=+b.dataset.side,id=b.dataset.key;tip=tip&&tip.side===side&&tip.id===id?null:{side,id};if(mode==='ready'||mode==='pick')render()}
-  else if(act==='replay')startReplay();
   else if(act==='endreplay')endReplay();
   else if(act==='arm'){if(mode==='ready'&&run.shield>0){run.armed=!run.armed;render()}}
   else if(act==='up'){
@@ -823,6 +823,7 @@ $('btnBoard').addEventListener('click',()=>{
 $('btnSpeed').addEventListener('click',()=>{sfx('click',1,1,true);
   if(mode==='replay'){rspeed=RSPEEDS[(RSPEEDS.indexOf(rspeed)+1)%RSPEEDS.length];showSpeed();log('tap',{a:'rspeed',v:rspeed});return}
   speed=speed===1?2:speed===2?4:1;$('btnSpeed').textContent='Speed '+speed+'×';try{localStorage.setItem('brawl.speed',String(speed))}catch(e){}log('tap',{a:'speed',v:speed})});
+$('btnReplay').addEventListener('click',()=>{if(!canReplay())return;audioOn();sfx('click',1,1,true);log('tap',{a:'replay',m:mode});startReplay()});
 $('btnSound').addEventListener('click',()=>{muted=!muted;$('btnSound').setAttribute('aria-pressed',String(!muted));if(!muted){audioOn();sfx('click',1,1,true)}log('tap',{a:'sound',v:muted?0:1})});
 
 board.date=today.date=myBest.date=dayKey();

@@ -65,7 +65,7 @@ for (let n = 0; n < 30; n++) {
   assert(g.els.btnBoard.hidden === true, 'Ladder button is hidden during a fight');
   let guard = 0;
   while (g.p().mode !== 'over' && guard++ < 200000) {
-    if (g.p().mode === 'ready' && !g.p().run.last) assert(!g.els.panel.innerHTML.includes('btnReplay'), 'no replay is offered before the first fight or right after choosing an upgrade');
+    if (g.p().mode === 'ready' && !g.p().run.last) assert(g.els.btnReplay.hidden === true, 'no replay is offered before the first fight or right after choosing an upgrade');
     p = g.p();
     if (p.mode === 'ready') {
       const html = g.els.panel.innerHTML, R = p.run;
@@ -93,11 +93,11 @@ for (let n = 0; n < 30; n++) {
           sheets++;
         }
       }
-      assert(g.els.panel.innerHTML.includes('btnReplay'), 'the upgrade screen offers a replay of the fight just won');
+      assert(g.els.btnReplay.hidden === false && !g.els.panel.innerHTML.includes('eplay'), 'the upgrade screen offers a replay of the fight just won, as the small mark in the footer only');
       if ((guard + n) % 3 === 0) {                     // the replay is the same fight again, and leaves everything as it was
         const was = g.ctx.__m(), sheetWas = g.els.sheet.innerHTML, choiceWas = p.choice.join();
-        g.click('replay');
-        assert(g.p().mode === 'replay' && g.els.panel.innerHTML.includes('btnDone') && /Replay of rung \d+:<\/b> you won/.test(g.els.panel.innerHTML) && g.els.btnSpeed.hidden === false && g.els.sheet.hidden === true, 'Replay shows the fight again, with the speed button');
+        g.els.btnReplay._h.click();
+        assert(g.p().mode === 'replay' && g.els.btnReplay.hidden === true && g.els.panel.innerHTML.includes('btnDone') && /Replay of rung \d+:<\/b> you won/.test(g.els.panel.innerHTML) && g.els.btnSpeed.hidden === false && g.els.sheet.hidden === true, 'Replay shows the fight again, with the speed button');
         const again = g.ctx.__m();
         assert(again !== was && !again.over, 'the replay starts from the beginning');
         const speeds = new Set(), playSpeed = g.ctx.__speed();
@@ -107,7 +107,7 @@ for (let n = 0; n < 30; n++) {
         if ((guard + n) % 2) { g.tick(20); g.click('endreplay'); }                           // Done leaves early
         else { let k = 0; while (g.p().mode === 'replay' && k++ < 20000) g.tick(1);
           assert(again.over && again.winner === was.winner && Math.abs(again.t - was.t) < 1e-9 && again.f[0].hp === was.f[0].hp, 'the replay ends exactly as the fight did'); }
-        assert(g.p().mode === 'pick' && g.ctx.__m() === was && g.p().choice.join() === choiceWas && g.els.sheet.innerHTML === sheetWas && g.els.sheet.hidden === false && g.els.btnSpeed.hidden === true, 'after the replay the upgrade screen is back as it was');
+        assert(g.p().mode === 'pick' && g.ctx.__m() === was && g.p().choice.join() === choiceWas && g.els.sheet.innerHTML === sheetWas && g.els.sheet.hidden === false && g.els.btnSpeed.hidden === true && g.els.btnReplay.hidden === false, 'after the replay the upgrade screen is back as it was');
         replays++;
       }
       g.click('up', { key: p.choice[(guard + n) % p.choice.length] });
@@ -117,8 +117,8 @@ for (let n = 0; n < 30; n++) {
   assert(g.els.panel.innerHTML.includes('btnAgain') && clean(g.els.panel.innerHTML), 'end panel text is complete');
   {                                                    // the lost fight can be watched again from the end screen
     const was = g.ctx.__m(), html = g.els.panel.innerHTML;
-    assert(html.includes('btnReplay'), 'the end screen offers a replay');
-    g.click('replay'); assert(g.p().mode === 'replay' && /you lost/.test(g.els.panel.innerHTML), 'the lost fight replays');
+    assert(g.els.btnReplay.hidden === false, 'the end screen offers a replay');
+    g.els.btnReplay._h.click(); assert(g.p().mode === 'replay' && /you lost/.test(g.els.panel.innerHTML), 'the lost fight replays');
     let k = 0; while (g.p().mode === 'replay' && k++ < 40000) g.tick(1);
     assert(g.p().mode === 'over' && g.ctx.__m() === was && g.els.panel.innerHTML === html, 'after it the end screen is back as it was');
   }

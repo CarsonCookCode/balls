@@ -349,30 +349,34 @@ body[data-mode="board"] #panel{flex:1 1 auto;max-height:none;margin-top:10px}
    an adjustment to the edges of the paper to look like parchment, and some subtly things to make the stone buttons look
    like stone". So the scroll and the buttons are nine-slice pictures (made by tools/textures.js, kept in art/ui/): an
    uneven torn or chipped outline whatever the size, with no straight edge left. Each has a plain colour underneath, set
-   in from the edge, which shows only until its picture has loaded. The pictures are drawn at 4 pixels a dot and shown at
-   a third of that, so a dot is 4 phone pixels on most phones. */
+   in from the edge, which shows only until its picture has loaded.
+   Build 63: the pictures are drawn at full detail, three picture pixels to a screen point, after the user said the
+   edges "could be more high fidelity and like realistic" and that the parchment "could be a little more even for the
+   places where text and stuff is on there so it's clearly legible": a feathered torn outline with a brown stain that
+   stays near the edge and a pale even middle; stone with a real chiselled bevel and soft shadows. The scroll's repeats
+   are fitted to the box ("round") so the torn outline joins up at the corners. */
 body{background:linear-gradient(rgba(8,10,12,.62),rgba(8,10,12,.8)),url(art/ui/wall.png) 0 0/192px 192px var(--night)}
 #panel{
   margin-inline:0;border:solid transparent;border-width:9px 6px;
-  background:linear-gradient(var(--parch),var(--parch)) center/calc(100% - 30px) calc(100% - 18px) no-repeat border-box;
-  border-image:url(art/ui/parchment.png) 128 fill / 42.67px / 6px 0 repeat;
-  outline:0;box-shadow:none;filter:drop-shadow(0 7px 0 rgba(0,0,0,.5));
+  background:linear-gradient(#ebdebd,#ebdebd) center/calc(100% - 34px) calc(100% - 20px) no-repeat border-box;
+  border-image:url(art/ui/scroll.png) 72 fill / 24px / 6px 0 round;
+  outline:0;box-shadow:none;filter:drop-shadow(0 5px 4px rgba(0,0,0,.6));
 }
 /* stone blocks: the footer's buttons, the two under the champions, the second-rank button, and (in red stone) the main one */
 .foot button,.foot .btn,button.alt,button.opt,button.go{
-  background:linear-gradient(#35393c,#35393c) center/calc(100% - 14px) calc(100% - 14px) no-repeat border-box;
-  border:5px solid transparent;border-radius:0;border-image:url(art/ui/stone.png) 48 fill / 16px / 0 repeat;
-  box-shadow:none;filter:drop-shadow(0 4px 0 rgba(0,0,0,.55));
-  color:#efe6cc;text-shadow:0 -1px 0 rgba(0,0,0,.8),0 1px 0 rgba(255,255,255,.1);
+  background:linear-gradient(#45494b,#45494b) center/calc(100% - 10px) calc(100% - 10px) no-repeat border-box;
+  border:5px solid transparent;border-radius:0;border-image:url(art/ui/slab.png) 30 fill / 10px / 0 round repeat;
+  box-shadow:none;filter:drop-shadow(0 3px 2px rgba(0,0,0,.65));
+  color:#f1e8ce;text-shadow:0 -1px 0 rgba(0,0,0,.85),0 1px 0 rgba(255,255,255,.12);
 }
 .foot>*{padding:0 3px}
-button.opt{border-image-source:url(art/ui/stone2.png);padding:0 4px}
-button.go{background-image:linear-gradient(#6c2026,#6c2026);border-image-source:url(art/ui/redstone.png);color:#f8edd4}
+button.opt{border-image-source:url(art/ui/slab2.png);padding:0 4px}
+button.go{background-image:linear-gradient(#842a30,#842a30);border-image-source:url(art/ui/slab-red.png);color:#f8edd4}
 button.go::before,button.go::after{display:none}
 .foot button:active,.foot .btn:active,button.alt:active,button.opt:active,button.go:active{
-  transform:translateY(3px);box-shadow:none;filter:drop-shadow(0 1px 0 rgba(0,0,0,.55));
+  transform:translateY(2px);box-shadow:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.65));
 }
-button.opt:active{background:linear-gradient(#35393c,#35393c) center/calc(100% - 14px) calc(100% - 14px) no-repeat border-box}
+button.opt:active{background:linear-gradient(#45494b,#45494b) center/calc(100% - 10px) calc(100% - 10px) no-repeat border-box}
 /* the two small round buttons are rough stone discs */
-#btnSound,#btnReplay{background:url(art/ui/disc.png) center/100% 100% no-repeat;border:0;border-image:none;color:#efe6cc;filter:drop-shadow(0 3px 0 rgba(0,0,0,.55))}
+#btnSound,#btnReplay{background:url(art/ui/knob.png) center/100% 100% no-repeat;border:0;border-image:none;color:#f1e8ce;filter:drop-shadow(0 3px 2px rgba(0,0,0,.65))}
 @media (prefers-reduced-motion:reduce){.foot button:active,.foot .btn:active,button.alt:active,button.opt:active,button.go:active{transform:none}}

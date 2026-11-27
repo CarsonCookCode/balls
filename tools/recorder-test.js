@@ -152,7 +152,7 @@ assert(sawZero && !movedInIntro, 'the first round is held while it is called');
 const rounds = p.duel.score[0] + p.duel.score[1];
 const expectFrozen = (0.9 + 0.8 * (rounds - 1)) / 0.0167;
 assert(sawZero && Math.abs(frozen - expectFrozen) < 14, 'held for each round call: ' + frozen + ' frames, expected about ' + Math.round(expectFrozen));
-for (const s of ['VS', 'ROUND 1', 'ROUND 2', 'FINAL', 'is today’s Duel King', 'MAKE YOURS AT', 'example.test/balls'])
+for (const s of ['VS', 'ROUND 1', 'ROUND 2', 'FINAL', 'is today’s Duel King', 'BE IN THE NEXT VIDEO', 'BECOME THE NEXT DUEL KING', 'Make your fighter free at', 'EXAMPLE.TEST/BALLS'])
   assert(T.has(s), 'frame text drawn: ' + s + ' (have ' + [...T].slice(0, 40).join(' | ') + ')');
 if (rounds === 3) assert(T.has('DECIDER'), 'third round is announced');
 assert(g.recorders.length === 1 && g.recorders[0].starts === 1 && g.recorders[0].stops === 1, 'recorder started once and stopped once');

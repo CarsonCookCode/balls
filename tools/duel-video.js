@@ -144,7 +144,7 @@ function words(day, d) {
       if (st && (st.state === 'done' || st.state === 'skip' || st.state === 'error')) break;
       if (Date.now() - t0 > TIMEOUT) { st = { state: 'error', reason: 'timed out in state ' + last }; break; }
     }
-    Object.assign(meta, { build: st.build, players: st.players, rejected: st.rejected, sound: st.sound });
+    Object.assign(meta, { build: st.build, players: st.players, rejected: st.rejected, sound: st.sound, slow: st.slow });
     if (page.problems.length) meta.pageErrors = page.problems.slice(0, 5);
     if (st.state === 'skip') { meta.reason = st.reason; }
     else if (st.state === 'error') { meta.reason = st.reason + (page.problems.length ? ' | ' + page.problems[0] : ''); code = 1; }

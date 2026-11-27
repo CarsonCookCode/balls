@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 50';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 51';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -201,8 +201,9 @@ document.addEventListener('visibilitychange',()=>{
 });
 if(window.addEventListener)window.addEventListener('pageshow',ev=>{if(ev.persisted&&actx)audioStale=true});
 // vol and rate are multipliers; ui=true lets it play outside a fight (buttons, the scroll)
+let hush=false;                                        // the video's rehearsal is silent
 function sfx(name,vol,rate,ui){
-  if(muted||!actx||!sfxBuf||(!ui&&!loud)||typeof SFX==='undefined')return;
+  if(muted||hush||!actx||!sfxBuf||(!ui&&!loud)||typeof SFX==='undefined')return;
   const S=SFX[name];
   if(!S)return;
   const now=actx.currentTime,gap=S.gap/(ui?1:Math.max(1,speed*.6));
@@ -387,6 +388,7 @@ function refreshNet(){Net.pull(board.date).then(changed=>{if(changed)ladderChang
 // each other player's climb is played again on this device (see brawl-net.js); the verdict goes in the play log, so it
 // can be seen whether honest climbs from every kind of phone pass
 function onVerdict(e,c){log('vfy',{p:e.id.slice(0,6),c:e.cid,k:e.key,r:e.cleared,ok:c.ok?1:0,why:c.why,n:c.fights})}
+let rehearsal=null;                                    // the real round, set aside while the video rehearses it
 function frame(ts){
   const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
   if(mode==='fight'&&match&&!match.over){fps.n++;fps.t+=dt;if(dt>.034)fps.slow++}
@@ -396,15 +398,20 @@ function frame(ts){
   netT+=dt;
   if(Net.on()&&!playing&&!pinnedDay&&netT>15){netT=0;refreshNet()}                 // one house climb per frame, never during a fight
   if(Net.on()&&!playing&&!pinnedDay&&mode!=='ready'&&Net.pending()&&Net.verifyStep(6,onVerdict))ladderChanged();
+  // The automatic video opens with a stretch that is cut off (brawl-video.js). During it the same round is played ahead,
+  // fast and silent, so that no effect, number or letter is drawn for the first time on camera; then the real round is put back.
+  const warm=!!(window.Broadcast&&Broadcast.warming)&&mode==='duel'&&!!duel&&!duel.done&&duel.seed!==undefined;
+  if(warm&&!rehearsal&&match){rehearsal=match;match=createMatch(duel.a,duel.b,duel.seed);hush=true;acc=0}
+  else if(!warm&&rehearsal){match=rehearsal;rehearsal=null;hush=false;floats.length=0;sparks.length=0;rings.length=0;bolts.length=0;shake=0;overFor=0;acc=0}
   if(match&&(mode==='make'||playing)){
-    acc+=dt*(playing?speed:1);
+    acc+=dt*(rehearsal?6:playing?speed:1);
     let n=0;
     while(acc>=DT&&n<10){snap(match);match.step();onEvents(match.events);acc-=DT;n++}
     if(n===10)acc=0;
     lerpA=match.over?1:acc/DT;
     FX.rate=!playing||speed<=1?1:speed===2?.75:.55;       // at higher speeds each moment throws fewer sparks, so the arena stays readable
     if(mode!=='ready')FX.ambient(match,dt);
-    if(match.over){
+    if(match.over&&!rehearsal){
       overFor+=dt;
       if(mode==='make'&&overFor>1.2)practice();
       else if(mode==='fight'&&overFor>1)fightDone();
@@ -560,6 +567,7 @@ function startDuel(){
 function duelRound(){
   duel.tries=(duel.tries||0)+1;
   const seed=daySeed([dayKey(),duel.a.key,duel.a.ups.join('.'),duel.b.key,duel.b.ups.join('.'),duel.tries].join('|'))&0x7fffffff;
+  duel.seed=seed;
   begin(createMatch(duel.a,duel.b,seed),duel.you,'Today’s duel · round '+duel.round,true);render();
 }
 function duelDone(){
@@ -854,6 +862,7 @@ async function autoVideo(day){
     if(!f||!f.ok)throw new Error('the recording came out empty'+(f&&f.note?' ('+f.note+')':''));
     const t=[typeOf(duel.a),typeOf(duel.b)],w=duel.winner;
     out.file={name:f.name,type:f.type,size:f.blob.size,secs:f.secs,cut:!!f.cut,clap:Broadcast.CLAP};
+    try{out.slow=Broadcast.stats().slow}catch(e){}
     out.duel={a:t[0],b:t[1],who:duel.who.slice(),winner:w,score:duel.score.slice(),rungs:[pair[0].cleared,pair[1].cleared],house:[!pair[0].player,!pair[1].player]};
     out.state='done';
   }catch(e){out.state='error';out.reason=String(e&&e.message||e)}

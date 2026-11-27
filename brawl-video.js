@@ -1,7 +1,8 @@
 // Video recorder for Duel King. Defines window.Broadcast; the game works without it.
 // It records a day's duel as a 1080x1920 video with everything a Short needs drawn into the frame: the two units' names
 // either side of VS (the player's name small beneath), health bars, the arena; each round is called before it starts;
-// the deciding blow lands in slow motion; and it ends on one screen, the winner crowned, with the invitation to play.
+// the deciding blow lands in slow motion; and it ends on one screen, the winner crowned. Under the arena, all the way
+// through, is the invitation to play (be in the next video, and the site's address).
 // With Broadcast.clap set (the automatic video does this) the recording starts and ends with a white square and a beep
 // in the same instant, so tools/duel-video.js can measure how far sound and picture are apart, correct it, and cut the
 // marks off.
@@ -18,6 +19,10 @@
   // KO_LINGER after it run at KO_SLOW of normal speed; CROWN is the closing screen. CLAP_LEAD is the extra hold at the
   // very start, and CLAP_TAIL the one at the very end, that carry the sync marks and are cut off afterwards.
   const OPEN=.9,STING=.8,KO_SLOW=.22,KO_LINGER=.5,CROWN=2.3,CLAP_LEAD=2.6,CLAP_AT=2.1,CLAP_LEN=.13,CLAP_TAIL=1.2,TAIL_AT=.3;
+  // The first WARM seconds of that opening hold are a rehearsal: the round is played ahead and each of this file's own
+  // screens is drawn once, all of it cut off afterwards. Anything drawn for the first time costs a late frame (measured:
+  // 0.14 s at the first banner, 0.12 s at the first blow, 0.1 s at the crown), and this way none of them is on camera.
+  const WARM=1.4;
   // layout
   const AX=60,AY=484,AS=960;                        // where the arena's 0..AW square sits in the frame
 
@@ -25,6 +30,7 @@
   let cv=null,c=null,rec=null,stream=null,audioDest=null,chunks=[],mime='',cutShort=false,failNote='';
   let secs=0,frames=0,sting=0,stingLen=1,stingText='',lastRound=1,endT=0,armedFrames=0,armTimer=0,audioWait=0;
   let titles=['',''],overlay=null,fileUrl='',lead=0,clapped=false,clapped2=false;
+  let slow=[],prevT=0;   // frames of the game that came late while recording: [seconds into the kept video, milliseconds since the frame before]
 
   const MR=()=>typeof MediaRecorder!=='undefined'?MediaRecorder:null;
   function supported(){
@@ -84,9 +90,10 @@
     c.lineWidth=1.5;c.strokeRect(42,42,W-84,H-84);
   }
   // ----- the frame -----
-  // Laid out for a Short. YouTube draws its own caption and channel over the bottom quarter and its buttons down the
-  // lower right edge, so everything that matters sits above y=1460: who is fighting and how healthy they are at the
-  // top (the players' names lead, the fighter's type is the small print), then the arena, as large as it will go.
+  // Laid out for a Short: who is fighting and how healthy they are at the top, then the arena, as large as it will go,
+  // then the invitation. Measured on a screenshot of this video in the YouTube app on an iPhone (2026-11-27): the app
+  // shows the frame 10% enlarged, so only x 49..1028 is seen; its channel line starts at about y=1736 and its title sits
+  // at about y=1858; its buttons run down the right edge from x=898. So the invitation keeps to x 100..860, y 1460..1700.
   const side=i=>i?duel.b:duel.a;
   // the unit's plain name (Tide, Railgun), and the player who made it ('' for a house fighter)
   function unit(i){try{return FIGHTERS[side(i).key].name.toUpperCase()}catch(e){return 'FIGHTER'}}
@@ -105,6 +112,14 @@
     Orn.shield(c,540,244,44,'VS');
     const label=duel.done?'FINAL':duel.round>=3?'DECIDER':'ROUND '+duel.round;
     spaced(label,540,424,34,3,{fill:SUN,stroke:EDGE_C,lw:8,maxW:330});
+  }
+  // The invitation under the arena: what a viewer can do, and where. The video cannot carry a link, so the address is large.
+  // `last` = the closing screen, which asks for the crown instead.
+  function drawPitch(last){
+    const x=480,w=760;
+    spaced(last?'BECOME THE NEXT DUEL KING':'BE IN THE NEXT VIDEO',x,1520,46,3,{fill:SUN,stroke:EDGE_C,lw:8,maxW:w});
+    text('Make your fighter free at',x,1580,42,w,{text:true,italic:true,fill:'#c9d0d4'});
+    text(siteLine().toUpperCase(),x,1656,74,w,{fill:PAPER,stroke:EDGE_C,lw:10,weight:900,min:30});
   }
   function drawArenaBox(){
     const s=AS/AW,k=(typeof calm!=='undefined'&&calm)?0:(typeof shake==='number'?shake:0);
@@ -141,9 +156,9 @@
     c.restore();
   }
   // The ending: the arena dims, the winner is shown large in a burst of light, the crown drops onto it, and the
-  // invitation sits underneath. One screen, about two seconds, so the video loops cleanly. t = seconds since it began.
-  function drawCrowned(t){
-    const w=duel.winner===1?1:0,f=fighter(w),p=clamp01(t/.3),e=1-(1-p)*(1-p),cx=540,cy=AY+AS*.34;
+  // invitation under the arena now asks for the crown. One screen, about two seconds, so the video loops cleanly. t = seconds since it began.
+  function drawCrowned(t,who){
+    const w=who!==undefined?who:duel.winner===1?1:0,f=fighter(w),p=clamp01(t/.3),e=1-(1-p)*(1-p),cx=540,cy=AY+AS*.34;
     c.fillStyle='rgba(6,9,11,'+(.55*e).toFixed(3)+')';c.fillRect(AX,AY,AS,AS);
     c.save();c.globalCompositeOperation='lighter';
     let gr=c.createRadialGradient(cx,cy,0,cx,cy,430);gr.addColorStop(0,'rgba(255,214,140,'+(.45*e).toFixed(3)+')');gr.addColorStop(1,'rgba(0,0,0,0)');
@@ -171,14 +186,13 @@
     if(p<1)return;
     text(unit(w),540,AY+AS*.7,150,AS-80,{fill:PAPER,stroke:EDGE_C,lw:18,weight:900,min:56});
     text((maker(w)?maker(w)+' is':'is')+' today’s Duel King',540,AY+AS*.7+104,60,AS-80,{text:true,italic:true,fill:SUN,stroke:'rgba(0,0,0,.8)',lw:8});
-    Orn.plate(c,170,AY+AS-150,740,118,'',true);
-    spaced('MAKE YOURS AT',540,AY+AS-116,24,4,{fill:SUN,maxW:660});
-    text(siteLine(),540,AY+AS-72,46,660,{fill:PAPER,min:22,shadow:3});
   }
   function drawFrame(){
     drawBackground();
     drawHud();
+    drawPitch(state==='ending'&&endT>KO_LINGER||(warming()&&frames%2===1));
     drawArenaBox();
+    if(warming()){const k=frames%6;if(k<3)drawBand(['ROUND 1','ROUND 2','DECIDER'][k],'',1,AY+AS/2);else if(k<5)drawCrowned(1,k-3)}
     if(state==='rec'&&lead<=0&&sting>0)drawBand(stingText,'',Math.min((stingLen-sting)/.14,sting/.12),AY+AS/2);
     // the sync mark: a white square in the corner for the same few moments the beep sounds (cut off afterwards)
     const tail=state==='ending'&&api.clap?endT-(KO_LINGER+CROWN+TAIL_AT):-1;
@@ -187,6 +201,7 @@
     frames++;
   }
 
+  const warming=()=>state==='rec'&&!!api.clap&&lead>CLAP_LEAD-WARM;
   // ----- recording -----
   function setSpeed(v){
     try{
@@ -248,7 +263,7 @@
       if(!supported()||state==='saving')return;
       if(state==='rec'||state==='ending'||state==='armed')cancel();
       closeOverlay();
-      state='armed';secs=0;frames=0;endT=0;sting=0;lead=0;clapped=false;clapped2=false;armedFrames=0;audioWait=0;cutShort=false;failNote='';lastRound=1;
+      state='armed';secs=0;frames=0;endT=0;sting=0;lead=0;clapped=false;clapped2=false;armedFrames=0;audioWait=0;cutShort=false;failNote='';lastRound=1;slow=[];prevT=0;
       makeCanvas();
       try{if(document.fonts&&document.fonts.load){document.fonts.load('700 96px Cinzel');document.fonts.load('900 96px Cinzel');document.fonts.load('italic 500 32px "Cormorant Garamond"')}}catch(e){}
       setSpeed(0);                                   // hold the first bell until the recorder is running
@@ -276,6 +291,7 @@
       }
       if(!inDuel){if(state==='ending')stop();else cancel();return}
       dt=dt>0&&dt<.25?dt:1/60;
+      try{const now=performance.now();if(prevT&&now-prevT>30&&slow.length<200)slow.push([+(secs-(api.clap?CLAP_LEAD:0)).toFixed(2),Math.round(now-prevT)]);prevT=now}catch(e){}
       if(state==='rec'){
         if(duel.round!==lastRound){lastRound=duel.round;sting=stingLen=STING;stingText=duel.round>=3?'DECIDER':'ROUND '+duel.round}
         if(lead>0){lead-=dt;setSpeed(0);if(!clapped&&secs>=CLAP_AT){clapped=true;beep()}}
@@ -385,8 +401,9 @@
   const api={
     supported,start,onFrame,finish,
     get recording(){return state==='armed'||state==='rec'||state==='ending'},
+    get warming(){return warming()},                    // the rehearsal at the start of an automatic video (the page plays the round ahead)
     // for tests and for diagnosing a failed recording from the console
-    stats:()=>({state,frames,seconds:secs,mime,note:failNote,cutShort}),
+    stats:()=>({state,frames,seconds:secs,mime,note:failNote,cutShort,slow:slow.slice()}),
     clap:false,                                        // set by the automatic video: begin with the sync mark
     CLAP:{lead:CLAP_LEAD,at:CLAP_AT,len:CLAP_LEN,tail:CLAP_TAIL,tailAt:TAIL_AT},
   };

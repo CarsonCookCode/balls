@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 52';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 53';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -389,11 +389,34 @@ function refreshNet(){Net.pull(board.date).then(changed=>{if(changed)ladderChang
 // can be seen whether honest climbs from every kind of phone pass
 function onVerdict(e,c){log('vfy',{p:e.id.slice(0,6),c:e.cid,k:e.key,r:e.cleared,ok:c.ok?1:0,why:c.why,n:c.fights})}
 let rehearsal=null;                                    // the real round, set aside while the video rehearses it
+// Watching the last fight again. A fight is its two builds and its seed, so the replay is the same fight played once more;
+// what was on screen is set aside in `replay` and put back when it ends. It has its own speed, which starts at 1x.
+let replay=null,rspeed=1;
+const RSPEEDS=[1,2,4,.5];
+const copyOf=b=>JSON.parse(JSON.stringify(b));
+const canReplay=()=>!!(run&&run.last&&run.last.res)&&!replay&&(mode==='pick'||mode==='over'||mode==='ready');
+const replayBtn=text=>canReplay()?`<button type="button" id="btnReplay" class="rep" data-act="replay">${text}</button>`:'';
+function showSpeed(){const v=mode==='replay'?rspeed:speed;$('btnSpeed').textContent='Speed '+(v===.5?'½':v)+'×'}
+function startReplay(){
+  if(!canReplay())return;
+  const L=run.last;
+  replay={mode,match,you,loud,label:$('round').textContent};
+  mode='replay';
+  begin(createMatch(copyOf(L.a),copyOf(L.b),L.seed),0,'Replay',true);
+  showSpeed();render();
+}
+function endReplay(){
+  if(!replay)return;
+  const was=replay;replay=null;
+  mode=was.mode;
+  begin(was.match,was.you,was.label,was.loud);
+  showSpeed();render();
+}
 function frame(ts){
   const dt=Math.min(.05,(ts-last)/1000||0);last=ts;
   if(mode==='fight'&&match&&!match.over){fps.n++;fps.t+=dt;if(dt>.034)fps.slow++}
   fit();
-  const playing=mode==='fight'||mode==='duel';
+  const playing=mode==='fight'||mode==='duel'||mode==='replay',pace=mode==='replay'?rspeed:speed;
   if(!boardReady()&&!playing)addBot();
   netT+=dt;
   if(Net.on()&&!playing&&!pinnedDay&&netT>15){netT=0;refreshNet()}                 // one house climb per frame, never during a fight
@@ -404,18 +427,19 @@ function frame(ts){
   if(warm&&!rehearsal&&match){rehearsal=match;match=createMatch(duel.a,duel.b,duel.seed);hush=true;acc=0}
   else if(!warm&&rehearsal){match=rehearsal;rehearsal=null;hush=false;floats.length=0;sparks.length=0;rings.length=0;bolts.length=0;shake=0;overFor=0;acc=0}
   if(match&&(mode==='make'||playing)){
-    acc+=dt*(rehearsal?6:playing?speed:1);
+    acc+=dt*(rehearsal?6:playing?pace:1);
     let n=0;
     while(acc>=DT&&n<10){snap(match);match.step();onEvents(match.events);acc-=DT;n++}
     if(n===10)acc=0;
     lerpA=match.over?1:acc/DT;
-    FX.rate=!playing||speed<=1?1:speed===2?.75:.55;       // at higher speeds each moment throws fewer sparks, so the arena stays readable
+    FX.rate=!playing||pace<=1?1:pace===2?.75:.55;       // at higher speeds each moment throws fewer sparks, so the arena stays readable
     if(mode!=='ready')FX.ambient(match,dt);
     if(match.over&&!rehearsal){
       overFor+=dt;
       if(mode==='make'&&overFor>1.2)practice();
       else if(mode==='fight'&&overFor>1)fightDone();
       else if(mode==='duel'&&!duel.done&&overFor>1.2)duelDone();
+      else if(mode==='replay'&&overFor>1.4)endReplay();
     }
   }
   if(!(match&&(mode==='make'||playing)))lerpA=1;
@@ -458,6 +482,7 @@ function nextFight(note){
 function startFight(){
   if(mode!=='ready')return;
   fps.n=fps.t=fps.slow=0;overFor=0;acc=0;
+  run.last={a:copyOf(run.build),b:copyOf(run.rival),seed:run.seed,rung:run.rung,res:''};
   mode='fight';
   render();
 }
@@ -496,7 +521,7 @@ function readyBody(){
     `<div class="mu2"><div class="chips">${chips(a,0,compact)}</div><div class="chips">${chips(b,1,compact)}</div></div>`+tipLine(a,b)+
     (run.shield>0?`<button type="button" id="btnArm" class="arm" data-act="arm" aria-pressed="${run.armed}">${run.armed?'Shield raised: lose this fight and you climb on':'Raise your shield for this fight'}</button>`:'')+
     (run.life>0?`<p class="ps keep">Extra life held: spent the next time you lose.</p>`:'')+
-    `<button type="button" id="btnFight" class="go" data-act="fight">Fight</button>`;
+    `<button type="button" id="btnFight" class="go" data-act="fight">Fight</button>`+replayBtn('Replay the last fight');
 }
 function fightDone(){
   const left=f=>+Math.max(0,f.hp/f.max).toFixed(2);
@@ -504,6 +529,7 @@ function fightDone(){
   const next=Climb.settle(st,match,run.armed);
   const saved=st.last==='shield'||st.last==='life'?st.last:'';
   run.shield=st.shield;run.life=st.life;
+  if(run.last)run.last.res=draw?'a draw':won?'you won':'you lost';
   log('fight',{r:rung,win:won?1:0,dr:draw?1:0,sh:wasArmed?1:0,saved,t:+match.t.toFixed(1),hp:[left(match.f[0]),left(match.f[1])],seed:run.seed,sp:speed,
     fps:fps.t>0?Math.round(fps.n/fps.t):0,slow:fps.slow,me:logBuild(run.build),vs:Object.assign(logBuild(run.rival),{o:run.rival.owner||''})});
   if(draw){                                               // both fell at once: nobody wins, nothing is spent, a new rival steps up
@@ -654,7 +680,7 @@ function duelBody(){
 function render(){
   const P=$('panel'),B=document.body;
   if(B&&B.dataset){B.dataset.grid=mode==='make'&&step===0&&browse?'1':'0';B.dataset.mode=mode}                 // the stylesheet gives the arena more room while a fight is on
-  $('btnSpeed').hidden=!(mode==='fight'||mode==='duel'||mode==='ready');
+  $('btnSpeed').hidden=!(mode==='fight'||mode==='duel'||mode==='ready'||mode==='replay');
   $('btnBoard').hidden=!(mode==='make'||mode==='over'||mode==='board');
   $('lnkVideos').hidden=!(mode==='make'||mode==='over'||mode==='board');   // the channel link only where you are between runs
   $('btnSound').hidden=mode==='pick';                                      // the upgrade screen has no footer at all
@@ -670,14 +696,17 @@ function render(){
   }else if(mode==='pick'){
     const have=id=>{let n=0;for(const x of run.build.ups)if(x===id)n++;return n};
     P.innerHTML=head('Rung '+run.rung+' cleared','Choose an upgrade')+
-      choice.map(id=>upCard(run.build,id,have(id))).join('');
+      choice.map(id=>upCard(run.build,id,have(id))).join('')+replayBtn('Replay that fight');
     portraits();
+  }else if(mode==='replay'){
+    const L=run.last;
+    P.innerHTML=`<p class="ps"><b>Replay of rung ${L.rung}:</b> ${L.res}.</p><button type="button" id="btnDone" class="go" data-act="endreplay">Done</button>`;
   }else{
     const cleared=run.rung-1;
     P.innerHTML=`<h2 class="ph">${cleared?'Your '+typeOf(run.build)+' climbed '+cleared+' rung'+(cleared>1?'s':''):'Out on the first rung'}</h2>`+
       `<p class="ps">${run.record?'New best. ':'Your best is '+best+'. '}Beaten by ${run.rival.owner?'':'a '}${whose(run.rival)}.</p>`+
       `<p class="ps" id="goal">${goalLine()}</p>`+
-      `<button type="button" id="btnAgain" class="go" data-act="start">Climb again</button>`+
+      `<button type="button" id="btnAgain" class="go" data-act="start">Climb again</button>`+replayBtn('Replay the last fight')+
       `<button type="button" id="btnNew" class="alt" data-act="new">Make a different fighter</button>`;
   }
 }
@@ -752,11 +781,13 @@ const onTap=e=>{
   else if(act==='start')startClimb();
   else if(act==='fight')startFight();
   else if(act==='tip'){const side=+b.dataset.side,id=b.dataset.key;tip=tip&&tip.side===side&&tip.id===id?null:{side,id};if(mode==='ready'||mode==='pick')render()}
+  else if(act==='replay')startReplay();
+  else if(act==='endreplay')endReplay();
   else if(act==='arm'){if(mode==='ready'&&run.shield>0){run.armed=!run.armed;render()}}
   else if(act==='up'){
     if(mode!=='pick'||!choice.includes(b.dataset.key))return;
     log('pick',{r:run.rung,of:choice,got:b.dataset.key});
-    if(Climb.pick(run.st,choice.indexOf(b.dataset.key)))nextFight();
+    if(Climb.pick(run.st,choice.indexOf(b.dataset.key))){run.last=null;nextFight()}       // the matchup after a pick is a new page: no replay there
   }
   // no button asks for these three any more: the automatic video and the tests start and leave a duel through them
   else if(act==='duel')startDuel();
@@ -789,7 +820,9 @@ for(const ev of ['gesturestart','gesturechange','dblclick'])document.addEventLis
 $('btnBoard').addEventListener('click',()=>{
   if(mode==='board'){audioOn();sfx('page',1,1,true);log('tap',{a:'closeboard',m:mode,v:'foot'});mode=backTo;render();if(mode==='make')practice();return}
   if(mode!=='make'&&mode!=='over')return;audioOn();sfx('open',1,1,true);log('tap',{a:'ladder',m:mode});backTo=mode;mode='board';render()});
-$('btnSpeed').addEventListener('click',()=>{sfx('click',1,1,true);speed=speed===1?2:speed===2?4:1;$('btnSpeed').textContent='Speed '+speed+'×';try{localStorage.setItem('brawl.speed',String(speed))}catch(e){}log('tap',{a:'speed',v:speed})});
+$('btnSpeed').addEventListener('click',()=>{sfx('click',1,1,true);
+  if(mode==='replay'){rspeed=RSPEEDS[(RSPEEDS.indexOf(rspeed)+1)%RSPEEDS.length];showSpeed();log('tap',{a:'rspeed',v:rspeed});return}
+  speed=speed===1?2:speed===2?4:1;$('btnSpeed').textContent='Speed '+speed+'×';try{localStorage.setItem('brawl.speed',String(speed))}catch(e){}log('tap',{a:'speed',v:speed})});
 $('btnSound').addEventListener('click',()=>{muted=!muted;$('btnSound').setAttribute('aria-pressed',String(!muted));if(!muted){audioOn();sfx('click',1,1,true)}log('tap',{a:'sound',v:muted?0:1})});
 
 board.date=today.date=myBest.date=dayKey();
@@ -885,7 +918,7 @@ const ENGINE=(()=>{try{const u=navigator.userAgent||'';return /Firefox\//.test(u
 // here, by name only, never the address of the page. `first` is how this browser arrived the first time, kept for later
 // visits. The tag is then taken off the address bar, so a player who shares the address does not pass it on.
 const SRC=(()=>{try{const m=/[?&]src=([a-z0-9_-]{1,16})(?:&|$)/i.exec(location.search||'');return m?m[1].toLowerCase():''}catch(e){return ''}})();
-const REF=(()=>{try{const own=String(location.hostname||'').replace(/^www./,''),h=document.referrer?new URL(document.referrer).hostname.replace(/^www./,''):'';return h&&h!==own?h.slice(0,40):''}catch(e){return ''}})();
+const REF=(()=>{try{const own=String(location.hostname||'').replace(/^www\./,''),h=document.referrer?new URL(document.referrer).hostname.replace(/^www\./,''):'';return h&&h!==own?h.slice(0,40):''}catch(e){return ''}})();
 let FIRST=SRC||REF||'direct';
 try{const was=localStorage.getItem('brawl.src');if(was)FIRST=was;else localStorage.setItem('brawl.src',FIRST)}catch(e){}
 try{if(SRC&&history.replaceState){const q=location.search.replace(/([?&])src=[^&]*(&|$)/i,(m,a,b)=>b?a:'');history.replaceState(null,'',location.pathname+q+location.hash)}}catch(e){}

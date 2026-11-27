@@ -14,7 +14,7 @@ function boot(store, day) {
     localStorage: { getItem: k => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, requestAnimationFrame: f => { ctx.raf = f; },
     navigator: {}, location: { hash: '', href: 'https://example.test/duel.html' }, Math, console, setTimeout: () => 0, JSON, Set, Number, String, Array, Object, Date: FakeDate };
   vm.createContext(ctx);
-  vm.runInContext(script + ';this.__p=()=>({mode,step,me,best,run,choice,you,board,today,duel,r:match&&match.f.map(f=>f.r),labels:match&&match.f.map(f=>f.label)});this.__s=standings;this.__t=target;this.__type=typeOf;this.__text=(b,id)=>upLine(b,id,false,true);this.__mk=makeBuild;this.__add=addUpgrade;this.__check=r=>Climb.check({key:r.st.key,str:r.st.str,size:r.st.size,ups:r.st.build.ups,cleared:r.st.cleared,proof:Climb.parse(Climb.proof(r.st))});', ctx);
+  vm.runInContext(script + ';this.__p=()=>({mode,step,me,best,run,choice,you,board,today,duel,r:match&&match.f.map(f=>f.r),labels:match&&match.f.map(f=>f.label)});this.__s=standings;this.__t=target;this.__type=typeOf;this.__text=(b,id)=>upLine(b,id,false,true);this.__m=()=>match;this.__speed=()=>speed;this.__mk=makeBuild;this.__add=addUpgrade;this.__check=r=>Climb.check({key:r.st.key,str:r.st.str,size:r.st.size,ups:r.st.build.ups,cleared:r.st.cleared,proof:Climb.parse(Climb.proof(r.st))});', ctx);
   let ts = 0;
   return { ctx, els, p: () => ctx.__p(),
     click: (act, d = {}) => els.panel._h.click({ target: { closest: () => ({ dataset: { act, ...d } }) } }),
@@ -55,7 +55,7 @@ g.els.btnBoard._h.click(); assert(g.p().mode === 'make' && g.els.btnBoard.textCo
 
 // 3. climbs record today's best and can put you in the duel
 const cleared = [];
-let seenShield = false, armedFights = 0, tips = 0, sheets = 0;
+let seenShield = false, armedFights = 0, tips = 0, sheets = 0, replays = 0;
 for (let n = 0; n < 30; n++) {
   g.click('start');
   assert(g.p().mode === 'ready' && g.p().run.rung === 1 && g.els.round.textContent === 'Rung 1' && g.p().you === 0, 'climb starts on the rung 1 matchup');
@@ -65,6 +65,7 @@ for (let n = 0; n < 30; n++) {
   assert(g.els.btnBoard.hidden === true, 'Ladder button is hidden during a fight');
   let guard = 0;
   while (g.p().mode !== 'over' && guard++ < 200000) {
+    if (g.p().mode === 'ready' && !g.p().run.last) assert(!g.els.panel.innerHTML.includes('btnReplay'), 'no replay is offered before the first fight or right after choosing an upgrade');
     p = g.p();
     if (p.mode === 'ready') {
       const html = g.els.panel.innerHTML, R = p.run;
@@ -92,11 +93,35 @@ for (let n = 0; n < 30; n++) {
           sheets++;
         }
       }
+      assert(g.els.panel.innerHTML.includes('btnReplay'), 'the upgrade screen offers a replay of the fight just won');
+      if ((guard + n) % 3 === 0) {                     // the replay is the same fight again, and leaves everything as it was
+        const was = g.ctx.__m(), sheetWas = g.els.sheet.innerHTML, choiceWas = p.choice.join();
+        g.click('replay');
+        assert(g.p().mode === 'replay' && g.els.panel.innerHTML.includes('btnDone') && /Replay of rung \d+:<\/b> you won/.test(g.els.panel.innerHTML) && g.els.btnSpeed.hidden === false && g.els.sheet.hidden === true, 'Replay shows the fight again, with the speed button');
+        const again = g.ctx.__m();
+        assert(again !== was && !again.over, 'the replay starts from the beginning');
+        const speeds = new Set(), playSpeed = g.ctx.__speed();
+        for (let k = 0; k < 4; k++) { g.els.btnSpeed._h.click(); speeds.add(g.els.btnSpeed.textContent); }
+        assert(speeds.size === 4 && speeds.has('Speed ½×') && speeds.has('Speed 1×') && speeds.has('Speed 4×') && g.ctx.__speed() === playSpeed, 'the speed button gives the replay four speeds of its own: ' + [...speeds].join(', '));
+        for (let k = 0; k < 4 && g.els.btnSpeed.textContent !== 'Speed 4×'; k++) g.els.btnSpeed._h.click();     // 4x so the test is quick
+        if ((guard + n) % 2) { g.tick(20); g.click('endreplay'); }                           // Done leaves early
+        else { let k = 0; while (g.p().mode === 'replay' && k++ < 20000) g.tick(1);
+          assert(again.over && again.winner === was.winner && Math.abs(again.t - was.t) < 1e-9 && again.f[0].hp === was.f[0].hp, 'the replay ends exactly as the fight did'); }
+        assert(g.p().mode === 'pick' && g.ctx.__m() === was && g.p().choice.join() === choiceWas && g.els.sheet.innerHTML === sheetWas && g.els.sheet.hidden === false && g.els.btnSpeed.hidden === true, 'after the replay the upgrade screen is back as it was');
+        replays++;
+      }
       g.click('up', { key: p.choice[(guard + n) % p.choice.length] });
     } else g.tick(1);
   }
   p = g.p();
   assert(g.els.panel.innerHTML.includes('btnAgain') && clean(g.els.panel.innerHTML), 'end panel text is complete');
+  {                                                    // the lost fight can be watched again from the end screen
+    const was = g.ctx.__m(), html = g.els.panel.innerHTML;
+    assert(html.includes('btnReplay'), 'the end screen offers a replay');
+    g.click('replay'); assert(g.p().mode === 'replay' && /you lost/.test(g.els.panel.innerHTML), 'the lost fight replays');
+    let k = 0; while (g.p().mode === 'replay' && k++ < 40000) g.tick(1);
+    assert(g.p().mode === 'over' && g.ctx.__m() === was && g.els.panel.innerHTML === html, 'after it the end screen is back as it was');
+  }
   cleared.push(p.run.st.cleared);
   { const v = g.ctx.__check(p.run); assert(v.ok, 'a finished climb passes its own proof: ' + v.why); }
   const top = Math.max(...cleared);
@@ -105,7 +130,7 @@ for (let n = 0; n < 30; n++) {
 const top = Math.max(...cleared), inNow = g.ctx.__s().slice(0, 2).some(r => r.you);
 assert(inNow === (top >= tgt), 'you are in the duel exactly when you reached the target');
 assert(inNow ? /You are in today/.test(g.els.panel.innerHTML) : /Clear <b>\d+<\/b> rungs to get in/.test(g.els.panel.innerHTML), 'end screen says whether you are in');
-console.log('30 climbs ok. Best today', top, '| in the duel:', inNow, '| reached rung 5:', seenShield, '| fights with the shield raised:', armedFights, '| upgrade tags tapped:', tips, '| upgrades read on the sheet:', sheets);
+console.log('30 climbs ok. Best today', top, '| in the duel:', inNow, '| reached rung 5:', seenShield, '| fights with the shield raised:', armedFights, '| upgrade tags tapped:', tips, '| upgrades read on the sheet:', sheets, '| fights replayed:', replays);
 
 // 4. today's duel plays best of three to a result
 g.els.btnBoard._h.click(); g.click('duel');

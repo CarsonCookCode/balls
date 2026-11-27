@@ -15,7 +15,7 @@ const hhmm = t => new Date(t).toISOString().slice(11, 16);
   if (!URL0) throw new Error('the shared ladder is off (NET.url is empty)');
   const raw = await (await fetch(URL0 + '/log/' + day + '.json')).json();
   if (!raw) { console.log('nothing logged on ' + day + ' (UTC)'); return; }
-  const cls = {}, boons = {}, offered = {}, rungs = {};
+  const cls = {}, boons = {}, offered = {}, rungs = {}, from = {};
   let allFights = 0;
   for (const [pid, entries] of Object.entries(raw)) {
     const ev = Object.values(entries).map(x => { let d = {}; try { d = JSON.parse(x.d); } catch (e) {} return { t: x.t, e: x.e, d }; }).sort((a, b) => a.t - b.t || a.d.i - b.d.i);
@@ -24,8 +24,12 @@ const hhmm = t => new Date(t).toISOString().slice(11, 16);
     allFights += fights.length;
     const names = [...new Set(runs.map(r => r.d.n + ' (' + r.d.k + ')'))];
     const o = opens[opens.length - 1];
+    // where they came from (logged since Build 52). A visitor who never taps anything is most likely a crawler.
+    const o1 = opens.find(x => x.d.first || x.d.src || x.d.ref), came = o1 ? (o1.d.src ? 'tag ' + o1.d.src : o1.d.ref || 'direct') + (o1.d.first && o1.d.first !== (o1.d.src || o1.d.ref || 'direct') ? ' (first time: ' + o1.d.first + ')' : '') : '';
+    const kind = fights.length ? 'played' : of('tap').length ? 'tapped' : 'only looked';
+    if (came) { const f = from[came] = from[came] || { played: 0, tapped: 0, 'only looked': 0 }; f[kind]++; }
     console.log('\n=== player ' + pid.slice(0, 6) + '  ' + (names.join(', ') || 'no climb yet') + ' ===');
-    console.log('  ' + hhmm(ev[0].t) + ' to ' + hhmm(ev[ev.length - 1].t) + ' UTC, ' + new Set(ev.map(x => x.d.s)).size + ' visits' + (o ? ', ' + o.d.b + ', screen ' + o.d.w + 'x' + o.d.h + ' at ' + o.d.dpr + 'x' + (o.d.touch ? ', touch' : '') : ''));
+    console.log('  ' + hhmm(ev[0].t) + ' to ' + hhmm(ev[ev.length - 1].t) + ' UTC, ' + new Set(ev.map(x => x.d.s)).size + ' visits' + (o ? ', ' + o.d.b + ', screen ' + o.d.w + 'x' + o.d.h + ' at ' + o.d.dpr + 'x' + (o.d.touch ? ', touch' : '') : '') + (came ? ', came from: ' + came : ''));
     const wins = fights.filter(f => f.d.win).length, secs = fights.reduce((a, f) => a + f.d.t, 0);
     console.log('  ' + runs.length + ' climbs, ' + fights.length + ' fights, won ' + pct(wins, fights.length) + ', average fight ' + (fights.length ? (secs / fights.length).toFixed(1) : 0) + 's of game time');
     if (ends.length) console.log('  climbs ended at rung: ' + ends.map(x => x.d.cleared).join(' ') + '   (best ' + Math.max(...ends.map(x => x.d.cleared)) + ')');
@@ -55,6 +59,7 @@ const hhmm = t => new Date(t).toISOString().slice(11, 16);
     for (const p of of('pick')) { boons[p.d.got] = (boons[p.d.got] || 0) + 1; for (const k of p.d.of) offered[k] = (offered[k] || 0) + 1; }
   }
   console.log('\n=== everyone, ' + day + ': ' + Object.keys(raw).length + ' players, ' + allFights + ' fights ===');
+  if (Object.keys(from).length) console.log('  came from: ' + Object.entries(from).map(([k, v]) => k + ' (' + v.played + ' played, ' + v.tapped + ' only tapped, ' + v['only looked'] + ' only looked)').join(', '));
   console.log('  players win by rung: ' + Object.entries(rungs).map(([r, v]) => r + ':' + pct(v.won, v.n) + '(' + v.n + ')').join('  '));
   console.log('  as the player\'s fighter: ' + Object.entries(cls).filter(([, v]) => v.as).sort((a, b) => b[1].as - a[1].as).map(([k, v]) => k + ' ' + pct(v.asWon, v.as) + ' of ' + v.as).join(', '));
   console.log('  as the rival (how often it beat the player): ' + Object.entries(cls).filter(([, v]) => v.played >= 3).sort((a, b) => b[1].won / b[1].played - a[1].won / a[1].played).map(([k, v]) => k + ' ' + pct(v.won, v.played) + ' of ' + v.played).join(', '));

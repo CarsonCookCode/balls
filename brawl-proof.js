@@ -15,7 +15,7 @@
 // RULES names the exact rules a climb was played under: it is a fingerprint of every simulation file, written by
 // `node tools/stamp.js` (and `node tools/stamp.js --check` fails when it is stale). Climbs made under other rules cannot be
 // replayed here, so the ladder shows only climbs made under these rules: a change to the fights starts a fresh ladder.
-const RULES='3e4a546933';
+const RULES='6d76815350';
 // A climb earns two second chances: a shield on reaching rung SHIELD_RUNG, which the player may raise before one fight
 // of their choosing (lose that fight and the climb goes on), and an extra life after clearing rung LIFE_RUNG, which is
 // spent by itself on the next loss. Either way a saved loss brings a new rival on the same rung, and no boon.

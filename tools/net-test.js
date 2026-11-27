@@ -43,7 +43,7 @@ function boot(mode) {                                  // mode: 'enforce', 'chec
     matchMedia: () => ({ matches: false }), localStorage: { getItem: k => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, requestAnimationFrame: f => { ctx.raf = f; },
     navigator: { userAgent: 'test' }, location: { hash: '', search: '', href: 'x', host: 'x', pathname: '/' }, Math, console, setTimeout: () => 0, JSON, Set, Map, Number, String, Array, Object, Date: FakeDate, Promise, fetch: fakeFetch };
   vm.createContext(ctx);
-  const at = "const NET={url:'',proof:'check'}";
+  const at = "const NET={url:'',proof:'enforce'}";
   if (!base.includes(at)) throw new Error('the NET line has changed: update tools/net-test.js');
   const src = mode ? base.replace(at, "const NET={url:'" + URL0 + "',proof:'" + mode + "'}") : base;
   vm.runInContext(src + ';this.__p=()=>({mode,run,today,best,netOk:Net.ok,netId:Net.id,rows:Net.rows,pending:Net.pending()});this.__s=standings;this.__t=target;this.__pair=duelPair;this.__type=typeOf;this.__pc=()=>choice;this.__net=Net;this.__RULES=RULES;', ctx);

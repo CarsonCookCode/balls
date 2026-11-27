@@ -14,7 +14,7 @@ function boot(store, day) {
     localStorage: { getItem: k => store[k] ?? null, setItem: (k, v) => { store[k] = v; } }, requestAnimationFrame: f => { ctx.raf = f; },
     navigator: {}, location: { hash: '', href: 'https://example.test/duel.html' }, Math, console, setTimeout: () => 0, JSON, Set, Number, String, Array, Object, Date: FakeDate };
   vm.createContext(ctx);
-  vm.runInContext(script + ';this.__p=()=>({mode,step,me,best,run,choice,you,board,today,duel,r:match&&match.f.map(f=>f.r),labels:match&&match.f.map(f=>f.label)});this.__s=standings;this.__t=target;this.__type=typeOf;this.__text=upText;this.__mk=makeBuild;this.__add=addUpgrade;this.__check=r=>Climb.check({key:r.st.key,str:r.st.str,size:r.st.size,ups:r.st.build.ups,cleared:r.st.cleared,proof:Climb.parse(Climb.proof(r.st))});', ctx);
+  vm.runInContext(script + ';this.__p=()=>({mode,step,me,best,run,choice,you,board,today,duel,r:match&&match.f.map(f=>f.r),labels:match&&match.f.map(f=>f.label)});this.__s=standings;this.__t=target;this.__type=typeOf;this.__text=(b,id)=>upLine(b,id,false,true);this.__mk=makeBuild;this.__add=addUpgrade;this.__check=r=>Climb.check({key:r.st.key,str:r.st.str,size:r.st.size,ups:r.st.build.ups,cleared:r.st.cleared,proof:Climb.parse(Climb.proof(r.st))});', ctx);
   let ts = 0;
   return { ctx, els, p: () => ctx.__p(),
     click: (act, d = {}) => els.panel._h.click({ target: { closest: () => ({ dataset: { act, ...d } }) } }),

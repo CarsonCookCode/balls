@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 51';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 52';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -881,7 +881,15 @@ if(Net.on()&&!VIDEO){
 // the play log: opening, leaving and coming back, and anything that goes wrong
 const openedAt=Date.now();let errs=0;
 const ENGINE=(()=>{try{const u=navigator.userAgent||'';return /Firefox\//.test(u)?'gecko':/AppleWebKit/.test(u)&&!/Chrome\/|Chromium\/|Edg\//.test(u)?'webkit':'blink'}catch(e){return ''}})();
-log('open',{b:BUILD,ru:RULES,eng:ENGINE,w:window.innerWidth||0,h:window.innerHeight||0,dpr:+(window.devicePixelRatio||1).toFixed(2),touch:'ontouchstart' in window?1:0,back:step===3?1:0,f:me.key,best,today:today.cleared});
+// Where the visit came from: a ?src= tag on the link that was followed (playduelking.com/?src=yt) and the site that linked
+// here, by name only, never the address of the page. `first` is how this browser arrived the first time, kept for later
+// visits. The tag is then taken off the address bar, so a player who shares the address does not pass it on.
+const SRC=(()=>{try{const m=/[?&]src=([a-z0-9_-]{1,16})(?:&|$)/i.exec(location.search||'');return m?m[1].toLowerCase():''}catch(e){return ''}})();
+const REF=(()=>{try{const own=String(location.hostname||'').replace(/^www./,''),h=document.referrer?new URL(document.referrer).hostname.replace(/^www./,''):'';return h&&h!==own?h.slice(0,40):''}catch(e){return ''}})();
+let FIRST=SRC||REF||'direct';
+try{const was=localStorage.getItem('brawl.src');if(was)FIRST=was;else localStorage.setItem('brawl.src',FIRST)}catch(e){}
+try{if(SRC&&history.replaceState){const q=location.search.replace(/([?&])src=[^&]*(&|$)/i,(m,a,b)=>b?a:'');history.replaceState(null,'',location.pathname+q+location.hash)}}catch(e){}
+log('open',{b:BUILD,ru:RULES,eng:ENGINE,w:window.innerWidth||0,h:window.innerHeight||0,dpr:+(window.devicePixelRatio||1).toFixed(2),touch:'ontouchstart' in window?1:0,back:step===3?1:0,f:me.key,best,today:today.cleared,src:SRC,ref:REF,first:FIRST});
 document.addEventListener('visibilitychange',()=>log(document.hidden?'hide':'show',{m:mode,r:run?run.rung:0,secs:Math.round((Date.now()-openedAt)/1000),fights:fightNo}));
 if(window.addEventListener){
   window.addEventListener('error',ev=>{if(errs++<10)log('err',{m:String(ev.message).slice(0,200),f:String(ev.filename||'').split('/').pop().slice(0,40),l:ev.lineno|0,c:ev.colno|0,mode})});

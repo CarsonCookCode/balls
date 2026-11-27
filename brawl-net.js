@@ -11,11 +11,11 @@
 //   - its shape is checked and its name goes through the name filter (brawl-names.js);
 //   - only climbs made under the rules this page runs (RULES, brawl-proof.js) are read at all;
 //   - its proof is played again (Climb.checker), a fight at a time between frames. NET.proof says what a failed check
-//     means: 'check' keeps showing the entry and only records the verdict in the play log (for watching that honest
-//     climbs from every kind of phone pass before trusting it); 'enforce' shows only climbs that pass.
+//     means: 'enforce' shows only climbs that pass; 'check' keeps showing the entry and only records the verdict in the
+//     play log. It ran on 'check' until Build 52: 1,209 honest climbs from iPhones, Android, Chrome and Firefox all passed.
 //   - a copy of someone else's climb (the same proof under another id) loses to the earlier one.
 // The older ladder/ and fighters/ lists (entries with no proof) are no longer read.
-const NET={url:'https://ball-brawl-9b1bb-default-rtdb.firebaseio.com',proof:'check'};   // url: no trailing slash; '' turns the shared ladder off
+const NET={url:'https://ball-brawl-9b1bb-default-rtdb.firebaseio.com',proof:'enforce'};   // url: no trailing slash; '' turns the shared ladder off
 const Net={
   rows:[],        // each other player's best climb today (as far as it is believed), oldest first
   roster:[],      // every fighter anyone has climbed with today: each player's best with each class

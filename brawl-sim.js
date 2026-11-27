@@ -276,18 +276,22 @@ const BEHAVE={
     },
     fast:f=>f.s.dash>0?2.3:1,
     touch:f=>f.s.dash>0?FIGHTERS.ghost.dmg:0},
+  // Nothing caps its size. Two things keep that playable: being held against a wall counts as a few bounces a second,
+  // not one a step, and it stops growing once it fills the arena (a rival still has to fit beside it).
   snow:{
-    init(f){f.s.grow=0},
+    init(f){f.s.grow=0;f.s.last=-9},
     bounce(f,m,x,y){
-      if(f.s.grow<14)m.events.push({k:'fx',n:'flakes',x:x,y:y,num:6,jit:14,i:f.i});
-      const g=Math.min(14,f.s.grow+.9*(1+.5*f.sig));
-      f.r+=g-f.s.grow;f.s.grow=g;f.speed=f.base*(1-.012*g);
+      if(m.t-f.s.last<.15||f.r>=AW*.32)return;
+      f.s.last=m.t;
+      m.events.push({k:'fx',n:'flakes',x:x,y:y,num:6,jit:14,i:f.i});
+      const g=f.s.grow+.9*(1+.5*f.sig);
+      f.r+=g-f.s.grow;f.s.grow=g;f.speed=f.base/(1+.014*g);
     },
     hurt(f,src,dmg,m){
       if(m.t-(f.s.chip||-9)<1.2)return;                   // a hit knocks a chunk off, but not more than once a second or so
       f.s.chip=m.t;
       if(f.s.grow>1)m.events.push({k:'fx',n:'shatter',x:f.x,y:f.y,num:7,col:'#eef8ff',r:f.r,i:f.i});
-      const lose=f.s.grow*.12;f.s.grow-=lose;f.r-=lose;f.speed=f.base*(1-.012*f.s.grow);
+      const lose=f.s.grow*.12;f.s.grow-=lose;f.r-=lose;f.speed=f.base/(1+.014*f.s.grow);
     },
     touch:f=>FIGHTERS.snow.dmg*(1+f.s.grow*.1)},
   tesla:{tick(f,e,m,rage){
@@ -357,7 +361,9 @@ const BEHAVE={
       if(f.s.cd>0||mine(f,m,'bone')>=3+f.sig)return;
       f.s.cd=.8/f.spdMul;
       m.events.push({k:'fx',n:'dark',x:v.x,y:v.y,r:22,col:f.col,i:f.i});
-      m.spawn(f,v.x,v.y,{kind:'bone',r:10,hp:(6+3*f.sig)*f.max/100,dmg:FIGHTERS.necro.dmg*.5,sp:125+12*f.sig,home:400,life:9+2*f.sig,wear:3});
+      // It rises on the rival, inside the sweep of its weapon: `grace` is how long before that weapon can cut it. Its health and
+      // what each bite costs it both follow the Necromancer's health, so a minion has the same three bites on every rung.
+      m.spawn(f,v.x,v.y,{kind:'bone',r:10,hp:(6+3*f.sig)*f.max/100,dmg:FIGHTERS.necro.dmg*.5,sp:125+12*f.sig,home:400,life:9+2*f.sig,wear:3*f.max/(100*HP_SCALE),grace:.5});
     }},
   painter:{tick(f,e,m,rage){
     const D=FIGHTERS.painter,P=m.paint,w=f.sig;
@@ -411,7 +417,7 @@ function createMatch(A,B,seed){
   function spawn(f,x,y,o){
     const a=rnd()*6.283;
     minions.push({own:f.i,kind:o.kind,x:Math.min(AW-o.r,Math.max(o.r,x)),y:Math.min(AW-o.r,Math.max(o.r,y)),vx:dcos(a)*o.sp,vy:dsin(a)*o.sp,
-      r:o.r,hp:o.hp,dmg:o.dmg,sp:o.sp,home:o.home,life:o.life,wear:o.wear,cd:.35,icd:0,col:f.col});
+      r:o.r,hp:o.hp,dmg:o.dmg,sp:o.sp,home:o.home,life:o.life,wear:o.wear,cd:.35,icd:o.grace||0,col:f.col});
     for(const h of f.uh)if(h[0].minion)h[0].minion(f,minions[minions.length-1],m,h[1]);
     events.push({k:'spawn',x,y,i:f.i});
   }

@@ -5,16 +5,11 @@
 // ---------- simulation ----------
 // As in brawl-sim.js, dmg is each class's single damage dial and f.sig (0-3) is the level of its signature upgrade.
 FIGHTERS.void   ={name:'Void',     color:'#3b3160',hp:100,speed:120,spin:0,  dmg:12.62,cd:.35, arms:[],desc:'A dark well. Whatever drifts too close is dragged in and hurt.',sig:['Event horizon','Its pull reaches further and drags harder'],sfx:{hit:'thump',shot:'whoosh'}};
-FIGHTERS.echo   ={name:'Echo',     color:'#4fb8b0',hp:100,speed:170,spin:4.8,dmg:29.55,cd:.45,arms:[{a:0,l:30}],desc:'Every hit it lands rings out again a moment later, where it landed.',sig:['Reverb','Echoes ring wider and repeat once more'],sfx:{hit:'metal',shot:'whoosh'}};
-FIGHTERS.paradox={name:'Paradox',  color:'#c95fb0',hp:100,speed:180,spin:0,  dmg:13.5,cd:.5, arms:[],desc:'Every few seconds the two fighters trade health. Lovely when it is losing.',sig:['Unfair trade','It comes out of every trade a little better off'],sfx:{hit:'punch',shot:'whoosh'}};
-FIGHTERS.entropy={name:'Entropy',  color:'#8a8468',hp:100,speed:150,spin:0,  dmg:21.81, cd:.6, arms:[],desc:'A spreading rot. Everything inside it crumbles, itself included.',sig:['Heat death','The rot spreads faster and costs it less'],sfx:{hit:'tick',shot:'whoosh'}};
 FIGHTERS.dice   ={name:'Dice',     color:'#b8323a',hp:100,speed:175,spin:0,  dmg:15.99,cd:.5, arms:[],desc:'Rolls a die every couple of seconds. A six is a heavy blow; a one hurts itself.',sig:['Loaded dice','Ones turn into sixes more and more often'],sfx:{hit:'thump',shot:'tick'}};
-FIGHTERS.shadow ={name:'Shadow',   color:'#4d5273',hp:100,speed:185,spin:0,  dmg:18.53,cd:.6, arms:[],desc:'The rival’s own shadow trails behind it, and bites if they turn back into it.',sig:['Long shadows','One more shadow, further behind'],sfx:{hit:'slash',shot:'whoosh'}};
-FIGHTERS.loop   ={name:'Time Loop',color:'#3fa0cf',hp:100,speed:180,spin:0,  dmg:13.41,cd:.45,arms:[],desc:'Hurt it badly and it snaps back to where and how it was three seconds ago.',sig:['Tighter loop','Rewinds sooner and undoes more of the damage'],sfx:{hit:'punch',shot:'whoosh'}};
 FIGHTERS.monk   ={name:'Monk',     color:'#e2953a',hp:100,speed:125,spin:0,  dmg:8.51, cd:.6, arms:[],desc:'Does nothing while calm. Touch it and all that calm comes out as one palm strike.',sig:['Deeper calm','Calm builds faster and runs deeper'],sfx:{hit:'heavy',shot:'whoosh'}};
 FIGHTERS.gravity={name:'Gravity',  color:'#6f9a3c',hp:100,speed:165,spin:0,  dmg:10.35,cd:.6, arms:[],desc:'Tilts the floor. The rival slides to a wall and it drops on them there.',sig:['Heavier','The floor tilts more often and it lands harder'],sfx:{hit:'heavy',shot:'whoosh'}};
-FIGHTERS.mimic  ={name:'Mimic',    color:'#9a6a3c',hp:100,speed:180,spin:0,  dmg:13.82,cd:.5, arms:[],desc:'No attack of its own. It gives back the hardest blow it has just taken.',sig:['Perfect copy','It holds bigger blows and gives back more than it took'],sfx:{hit:'chop',shot:'whoosh'}};
-ROSTER.push('void','echo','paradox','entropy','dice','shadow','loop','monk','gravity','mimic');
+FIGHTERS.mimic  ={name:'Mimic',    color:'#9a6a3c',hp:100,speed:180,spin:0,  dmg:13.82,cd:.5, arms:[],desc:'Becomes a copy of whoever it fights, with its own strength and upgrades.',sig:['Perfect copy','Its copy has the rival’s own upgrade, one level for each'],sfx:{hit:'chop',shot:'whoosh'}};
+ROSTER.push('void','dice','monk','gravity','mimic');
 
 const p6clamp=(v,r)=>Math.min(AW-r,Math.max(r,v));
 const p6knock={dealt(f,v,dmg,m){m.knock(v,f)}};
@@ -51,80 +46,6 @@ BEHAVE.void={
     m.events.push({k:'fx',n:'seek',x:v.x,y:v.y,to:f.i,num:5,col:'#cdbfff',i:f.i});
   }};
 
-// Echo: a tuning fork. Each hit leaves a mark where the rival stood; a second later the mark rings, and hurts if they are
-// still near it. With Reverb an echo that lands leaves a fainter mark of its own.
-BEHAVE.echo={
-  init(f){f.s.q=[];f.s.mute=false;f.s.rad=52},
-  dealt(f,v,dmg,m){if(!f.s.mute){f.s.q.push({x:v.x,y:v.y,t:.9,d:dmg*(.7+.08*f.sig),gen:1});m.events.push({k:'fx',n:'wave',x:v.x,y:v.y,r0:3,r:16,life:.3,col:'#bff5ee',w:1.6,i:f.i});m.events.push({k:'fx',n:'stars',x:v.x,y:v.y,num:3,col:'#d7faf6',i:f.i})}},
-  tick(f,e,m){
-    const S=f.s,Q=S.q,rad=52+8*f.sig;
-    S.rad=rad;
-    for(let i=Q.length-1;i>=0;i--){
-      const q=Q[i];
-      q.t-=DT;
-      if(q.t>0)continue;
-      Q.splice(i,1);
-      m.events.push({k:'ring',x:q.x,y:q.y,r0:5,r:rad,life:.3,w:2,i:f.i});
-      m.events.push({k:'fx',n:'wave',x:q.x,y:q.y,r0:3,r:rad*.62,life:.42,col:'#ffffff',w:1.2,i:f.i});
-      m.events.push({k:'fx',n:'flash',x:q.x,y:q.y,r:16,col:'#bff5ee',i:f.i});
-      m.events.push({k:'fx',n:'stars',x:q.x,y:q.y,num:4,col:'#bff5ee',i:f.i});
-      if(e.gone||dhyp(e.x-q.x,e.y-q.y)>rad+e.r*.5)continue;
-      const before=e.hp;
-      S.mute=true;m.hurt(e,q.d,f);S.mute=false;
-      if(e.hp<before){m.events.push({k:'fx',n:'line',x:q.x,y:q.y,x2:e.x,y2:e.y,col:'#d7faf6',w:2.2,life:.24,i:f.i});m.events.push({k:'fx',n:'sparks',x:e.x,y:e.y,num:6,col:'#bff5ee',i:f.i})}
-      if(e.hp<before&&q.gen<1+f.sig)Q.push({x:e.x,y:e.y,t:.9,d:q.d*.7,gen:q.gen+1});
-    }
-    if(Q.length>12)Q.splice(0,Q.length-12);
-  }};
-
-// Paradox: a clock runs down and the two fighters trade health: each takes the other's share of a full bar, and the rival
-// gets a jolt for its trouble. Between trades it only jostles. A trade is only as complete as the two are evenly matched:
-// when one is much bigger and harder-hitting than the other, only part of the gap moves, whichever way it runs.
-const P6_TRADE=5.5;
-BEHAVE.paradox={
-  init(f){f.s.t=P6_TRADE;f.s.flash=0},
-  tick(f,e,m,rage){
-    const D=FIGHTERS.paradox,S=f.s;
-    if(S.flash>0)S.flash-=DT;
-    S.t-=DT;
-    if(S.t>0)return;
-    if(e.gone||e.hp<=0||f.hp<=0){S.t=.2;return}           // nobody to trade with yet
-    S.t=P6_TRADE;S.flash=.6;
-    const a=f.hp/f.max,b=e.hp/e.max,ratio=(f.max*f.dmgMul)/(e.max*e.dmgMul),pw=Math.min(ratio,1/ratio),part=pw*pw,move=(b-a)*part;
-    f.hp=Math.min(f.max,(a+move+.07*f.sig)*f.max);e.hp=Math.max(.01,b-move)*e.max;
-    S.was=a;S.got=a+move;
-    m.events.push({k:'appear',x:f.x,y:f.y,i:f.i});m.events.push({k:'ring',x:e.x,y:e.y,r0:6,r:40,life:.3,w:3,i:f.i});
-    m.events.push({k:'text',x:f.x,y:f.y-f.r,txt:'Trade',big:true,i:f.i});
-    m.events.push({k:'fx',n:'beam',x:f.x,y:f.y,x2:e.x,y2:e.y,col:'#ffc4ee',w:3.4,life:.3,i:f.i});
-    m.events.push({k:'fx',n:'seek',x:f.x,y:f.y,to:e.i,num:8,col:'#ffc4ee',i:f.i});
-    m.events.push({k:'fx',n:'seek',x:e.x,y:e.y,to:f.i,num:8,col:'#ffffff',i:f.i});
-    m.events.push({k:'fx',n:'tele',x:e.x,y:e.y,r:e.r,col:'#ffc4ee',i:f.i});
-    m.events.push({k:'fx',n:'shake',r:3,i:f.i});
-    m.hurt(e,D.dmg*P6_JOLT*(1+.2*f.sig)*f.dmgMul*rage,f);
-  },
-  touch:(f,e)=>FIGHTERS.paradox.dmg*.5*p6square(f,e),
-  dealt:p6knock.dealt};
-const P6_JOLT=1.2;
-
-// Entropy: a field of rot centred on it that grows all fight. The rival crumbles while inside it; Entropy always crumbles,
-// at a smaller rate; and the rate itself climbs with the clock. Minions inside the field age twice as fast.
-BEHAVE.entropy={
-  init(f){f.s.t=.6;f.s.rad=85;f.s.inside=false;f.vamp*=.5},     // there is little to drink in dust
-  tick(f,e,m,rage){
-    const D=FIGHTERS.entropy,S=f.s;
-    S.rad=85+(9+3*f.sig)*m.t;
-    S.inside=!e.gone&&gap(e,f)<S.rad+e.r*.5;
-    S.t-=DT;
-    if(S.t>0)return;
-    S.t=D.cd/f.spdMul;
-    const grow=1+.05*m.t,own=Math.max(.12,.3-.05*f.sig);
-    m.events.push({k:'fx',n:'wave',x:f.x,y:f.y,r0:Math.max(4,S.rad-10),r:S.rad,life:.45,col:'#d6cca4',w:1.1,i:f.i});
-    m.events.push({k:'fx',n:'dust',x:f.x,y:f.y+f.r*.3,num:2,col:'#d6cca4',jit:f.r,i:f.i});
-    if(S.inside){m.events.push({k:'fx',n:'dust',x:e.x,y:e.y,num:5,col:'#d6cca4',jit:e.r*1.4,i:f.i});m.events.push({k:'fx',n:'shards',x:e.x,y:e.y,num:3,col:'#b8ae84',lo:20,hi:70,jit:e.r,i:f.i})}
-    if(S.inside)m.hurt(e,D.dmg*grow*f.dmgMul*rage,f);
-    f.hp-=D.dmg*grow*own*rage*f.max/100;                 // its own share, as a part of its health: not a hit, so no armour and no reaction
-    for(const q of m.minions)if(q.own!==f.i&&dhyp(q.x-f.x,q.y-f.y)<S.rad)q.life-=D.cd;
-  }};
 
 // Dice: a roll every couple of seconds. 1 hurts itself, 2 mends it a little, 3 makes it quick for a while,
 // 4 throws one pip, 5 throws three, 6 is a heavy blow that lands wherever the rival is.
@@ -161,62 +82,6 @@ BEHAVE.dice={
   touch:f=>FIGHTERS.dice.dmg*(f.s.quick>0?.7:.35),
   dealt:p6knock.dealt};
 
-// Shadow: remembers the rival's path. A shadow walks it a fixed time behind them and bites when the rival comes back
-// within its reach: after a head-on bounce, a corner, or a bump from the Shadow itself.
-const P6_LAG=66,P6_GAP=30,P6_BITE=13;                     // steps behind for the first shadow, steps between shadows, bite reach
-BEHAVE.shadow={
-  init(f){f.s.path=[];f.s.sh=[];f.s.bit=0},
-  tick(f,e,m,rage){
-    const D=FIGHTERS.shadow,S=f.s,P=S.path,keep=(P6_LAG+P6_GAP*3+2)*2;
-    P.push(e.x,e.y);
-    if(P.length>keep)P.splice(0,P.length-keep);
-    if(S.bit>0)S.bit-=DT;
-    S.sh.length=0;
-    for(let k=0;k<=f.sig;k++){
-      const at=P.length-2*(P6_LAG+P6_GAP*k)-2;
-      if(at<0)break;
-      const x=P[at],y=P[at+1];
-      S.sh.push(x,y);
-      if(!e.gone&&f.cd<=0&&dhyp(e.x-x,e.y-y)<e.r+P6_BITE){
-        f.cd=D.cd/f.spdMul;S.bit=.25;S.bx=x;S.by=y;
-        m.events.push({k:'fx',n:'slash',x:e.x,y:e.y,dir:datan2(e.y-y,e.x-x),r:e.r*1.4,col:'#d9dcff',life:.22,i:f.i});
-        m.events.push({k:'fx',n:'dark',x:x,y:y,r:e.r+10,col:'#9aa0e0',i:f.i});
-        m.events.push({k:'fx',n:'smoke',x:x,y:y,num:4,col:'#0b0b18',jit:e.r,i:f.i});
-        m.hurt(e,D.dmg*f.dmgMul*rage,f);
-      }
-    }
-  },
-  touch:()=>FIGHTERS.shadow.dmg*.3};          // its own body only jostles: a bump is how it turns the rival round
-
-// Time Loop: keeps three seconds of its own history. When it has lost a lot of health inside that window it goes back to
-// the start of it: position, heading and most of its health (all of it with the signature). It has to live through the
-// damage first, so one huge blow still kills it.
-BEHAVE.loop={
-  init(f){f.s.h=[];f.s.acc=0;f.s.cd=0;f.s.jump=0},
-  tick(f,e,m){
-    const S=f.s,H=S.h;
-    if(S.cd>0)S.cd-=DT;
-    if(S.jump>0)S.jump-=DT;
-    S.acc+=DT;
-    if(S.acc>=.1){S.acc-=.1;H.push({x:f.x,y:f.y,vx:f.vx,vy:f.vy,hp:f.hp});if(H.length>30)H.shift()}
-    if(S.cd>0||H.length<30||f.hp<=0)return;
-    const old=H[0];
-    if(old.hp-f.hp<f.max*(.3-.03*f.sig))return;
-    m.events.push({k:'fade',x:f.x,y:f.y,i:f.i});
-    S.fx=f.x;S.fy=f.y;S.jump=.5;
-    f.x=old.x;f.y=old.y;f.vx=old.vx;f.vy=old.vy;f.hp+=(old.hp-f.hp)*Math.min(1,.64+.12*f.sig);f.poisonT=0;f.slowT=0;
-    m.renorm(f);
-    S.cd=S.wind=8-1.1*f.sig;H.length=0;
-    m.events.push({k:'appear',x:f.x,y:f.y,i:f.i});
-    m.events.push({k:'text',x:f.x,y:f.y-f.r,txt:'Again',big:true,i:f.i});
-    m.events.push({k:'fx',n:'beam',x:S.fx,y:S.fy,x2:f.x,y2:f.y,col:'#bfeaff',w:3.2,life:.36,i:f.i});
-    m.events.push({k:'fx',n:'seek',x:S.fx,y:S.fy,to:f.i,num:10,col:'#bfeaff',i:f.i});
-    m.events.push({k:'fx',n:'tele',x:f.x,y:f.y,r:f.r,col:'#bfeaff',i:f.i});
-    m.events.push({k:'fx',n:'plus',x:f.x,y:f.y,num:4,jit:f.r*1.4,i:f.i});
-    m.events.push({k:'fx',n:'shake',r:3,i:f.i});
-  },
-  touch:(f,e)=>FIGHTERS.loop.dmg*p6square(f,e),
-  dealt:p6knock.dealt};
 
 // Monk: calm rises every second it is left alone and halves whenever it is hit. Body contact spends all of it in one strike.
 BEHAVE.monk={
@@ -368,112 +233,7 @@ LOOKS.void={
     if(S.grip>0&&!e.gone&&gap(e,f)<R+e.r)for(let n=FX.due(f.i,'p6vg',4+9*S.grip,dt);n>0;n--)FX.seek(e.x,e.y,f.i,1,'#cdbfff',0,0,{jit:e.r*1.7,size:1.4});
   }};
 
-LOOKS.echo={
-  crest(fg){                                              // a sound, and its rings
-    g.strokeStyle=fg;g.fillStyle=fg;g.lineCap='round';
-    g.beginPath();g.arc(0,0,.13,0,P6_TAU);g.fill();
-    for(const r of [.34,.56,.78]){
-      g.lineWidth=.12-r*.06;
-      for(const s of [0,Math.PI]){g.beginPath();g.arc(0,0,r,s-.75,s+.75);g.stroke()}
-    }
-  },
-  arm(f,A,x1,y1,x2,y2,an){                                // a tuning fork
-    const L=dhyp(x2-x1,y2-y1);
-    g.save();g.translate(x1,y1);g.rotate(an);
-    g.beginPath();g.moveTo(-1,0);g.lineTo(L*.42,0);p6rod(P6.STEEL_LO,2.2);
-    g.beginPath();g.moveTo(L,-3.3);g.lineTo(L*.52,-3.3);g.quadraticCurveTo(L*.4,0,L*.52,3.3);g.lineTo(L,3.3);p6rod(P6.STEEL,2);
-    g.fillStyle=P6.GOLD;p6disc(1.5,0,2.1);g.fill();g.strokeStyle=P6.EDGE;g.lineWidth=.6;g.stroke();
-    if(f.cd>0){                                           // it hums after a hit
-      g.strokeStyle='rgba(190,245,238,.6)';g.lineWidth=.8;g.lineCap='round';
-      for(const s of [-1,1]){g.beginPath();g.arc(L*.8,s*3.3,3.4,s>0?.5:-2.6,s>0?2.6:-.5);g.stroke()}
-    }
-    g.restore();
-  },
-  under(f){                                               // echoes waiting to sound: a ring closing on the spot it will strike
-    const R=f.s.rad||52;
-    for(const q of f.s.q){
-      const u=Math.max(0,Math.min(1,q.t/.9));
-      g.setLineDash([3,4]);g.strokeStyle='rgba(170,238,230,.55)';g.lineWidth=1;p6disc(q.x,q.y,R);g.stroke();g.setLineDash([]);
-      g.strokeStyle='rgba(215,250,246,'+(.35+.5*(1-u)).toFixed(2)+')';g.lineWidth=1.4;p6disc(q.x,q.y,4+(R-4)*u);g.stroke();
-      g.fillStyle='rgba(215,250,246,.8)';p6disc(q.x,q.y,1.8);g.fill();
-      if(typeof FX!=='undefined'&&typeof LIVE!=='undefined'&&LIVE)FX.glow(g,q.x,q.y,7+9*(1-u),'#bff5ee',.25+.45*(1-u));
-    }
-  },
-  amb(f,e,m,dt){                                          // waiting echoes shimmer; the fork hums after a hit
-    const Q=f.s.q,R=f.s.rad||52;
-    if(Q&&Q.length)for(let n=FX.due(f.i,'p6eq',Math.min(10,3*Q.length),dt);n>0;n--){
-      const q=Q[(Math.random()*Q.length)|0],a=Math.random()*P6_TAU,d=4+(R-4)*Math.max(0,Math.min(1,q.t/.9));
-      FX.stars(q.x+dcos(a)*d,q.y+dsin(a)*d,1,'#bff5ee',{lo:2,hi:14,size:2.6,life:.4});
-    }
-    if(f.cd>0&&!f.gone&&f.arms[0])for(let n=FX.due(f.i,'p6eh',9,dt);n>0;n--){
-      const A=f.arms[0],an=f.ang*A.rate+A.a,d=f.r+A.l*(.75+.25*Math.random());
-      FX.sparks(f.x+dcos(an)*d,f.y+dsin(an)*d,1,'#bff5ee',{lo:10,hi:55,life:.2,size:1});
-    }
-  }};
 
-LOOKS.paradox={
-  crest(fg){                                              // two arrows passing each other
-    g.strokeStyle=fg;g.fillStyle=fg;g.lineCap='round';g.lineJoin='round';g.lineWidth=.13;
-    g.beginPath();g.moveTo(-.55,-.26);g.lineTo(.3,-.26);g.stroke();
-    g.beginPath();g.moveTo(.68,-.26);g.lineTo(.28,-.52);g.lineTo(.28,0);g.closePath();g.fill();
-    g.beginPath();g.moveTo(.55,.26);g.lineTo(-.3,.26);g.stroke();
-    g.beginPath();g.moveTo(-.68,.26);g.lineTo(-.28,0);g.lineTo(-.28,.52);g.closePath();g.fill();
-  },
-  over(f,m){                                              // the clock running down to the next trade, and the tie between the two
-    const S=f.s,e=p6foe(f,m),left=Math.max(0,Math.min(1,S.t/P6_TRADE));
-    g.lineCap='butt';g.strokeStyle='rgba(9,11,13,.6)';g.lineWidth=3;p6disc(f.x,f.y,f.r+5);g.stroke();
-    g.strokeStyle=left<.22?'#ffffff':'rgba(255,196,238,.9)';g.lineWidth=1.6;g.beginPath();g.arc(f.x,f.y,f.r+5,-1.5708,-1.5708+P6_TAU*(1-left));g.stroke();
-  },
-  top(f,m){                                               // the tie between the two as a trade nears, drawn over both of them
-    const S=f.s,e=p6foe(f,m);
-    if(e&&!e.gone&&e.hp>0&&(S.t<1.2||S.flash>0)){
-      const hot=S.flash>0,a=hot?.9:.35+.5*(1-S.t/1.2);
-      g.setLineDash(hot?[]:[4,4]);g.strokeStyle='rgba(255,196,238,'+a.toFixed(2)+')';g.lineWidth=hot?2.4:1.2;g.lineCap='round';
-      g.beginPath();g.moveTo(f.x,f.y);g.lineTo(e.x,e.y);g.stroke();g.setLineDash([]);
-      g.strokeStyle='rgba(255,196,238,'+a.toFixed(2)+')';g.lineWidth=1.2;p6disc(e.x,e.y,e.r+5);g.stroke();
-      if(typeof FX!=='undefined'&&typeof LIVE!=='undefined'&&LIVE){FX.glow(g,e.x,e.y,e.r*1.7,'#ff9ee0',a*.4);FX.glow(g,f.x,f.y,f.r*1.7,'#ff9ee0',a*.4)}
-    }
-  },
-  amb(f,e,m,dt){                                          // the last second before a trade: both of them start to sparkle
-    const S=f.s;
-    if(f.gone||e.gone||!(e.hp>0)||!(S.t<1.2))return;
-    for(let n=FX.due(f.i,'p6px',12,dt);n>0;n--){const v=Math.random()<.5?f:e,a=Math.random()*P6_TAU;FX.stars(v.x+dcos(a)*(v.r+5),v.y+dsin(a)*(v.r+5),1,'#ffc4ee',{lo:2,hi:16,size:2.8,life:.4})}
-    for(let n=FX.due(f.i,'p6pl',7,dt);n>0;n--){const u=Math.random();FX.sparks(f.x+(e.x-f.x)*u,f.y+(e.y-f.y)*u,1,'#ffc4ee',{lo:6,hi:30,life:.3,size:1})}
-  }};
-
-LOOKS.entropy={
-  crest(fg){                                              // a ring coming apart
-    g.strokeStyle=fg;g.fillStyle=fg;g.lineCap='butt';g.lineWidth=.16;
-    g.beginPath();g.arc(-.06,-.06,.5,.9,5.3);g.stroke();
-    for(const p of [[.5,-.2,.1],[.62,.06,.08],[.5,.32,.07],[.68,.4,.05],[.42,.58,.05],[.64,.66,.035]])g.fillRect(p[0]-p[2],p[1]-p[2],p[2]*2,p[2]*2);
-  },
-  under(f,m){                                             // the rot: a pale stain that keeps growing, its edge flaking
-    const R=f.s.rad||85,t=m?m.t:0;
-    g.fillStyle='rgba(150,140,104,.11)';p6disc(f.x,f.y,R);g.fill();
-    g.setLineDash([1.5,5]);g.lineDashOffset=-t*3;g.strokeStyle='rgba(214,204,164,.6)';g.lineWidth=1.3;p6disc(f.x,f.y,R);g.stroke();
-    g.setLineDash([]);g.lineDashOffset=0;
-    g.fillStyle='rgba(214,204,164,.5)';
-    for(let k=0;k<10;k++){                                 // flakes drifting down inside it
-      const a=k*2.399,rr=R*(.25+.07*k),u=(t*.5+k*.31)%1,x=f.x+dcos(a)*rr,y=f.y+dsin(a)*rr*.9+u*12,s=1.7*(1-u);
-      if(x>2&&x<AW-2&&y>2&&y<AW-2)g.fillRect(x-s/2,y-s/2,s,s);
-    }
-  },
-  over(f,m){p6shed(f,m?m.t:0,3)},                         // whoever is crumbling sheds dust
-  top(f,m){const e=p6foe(f,m);if(f.s.inside&&e&&!e.gone&&e.hp>0)p6shed(e,m?m.t:0,5)},
-  amb(f,e,m,dt){
-    if(f.gone)return;
-    const S=f.s,R=S.rad||85;
-    for(let n=FX.due(f.i,'p6es',3,dt);n>0;n--)FX.dust(f.x+(Math.random()-.5)*f.r*1.6,f.y+f.r*.4,1,'#d6cca4',{dir:1.5708,spread:.6,lo:6,hi:22,size:2.2,grav:30});
-    if(S.inside&&!e.gone){
-      for(let n=FX.due(f.i,'p6ei',7,dt);n>0;n--)FX.dust(e.x+(Math.random()-.5)*e.r*1.6,e.y+e.r*.3,1,'#d6cca4',{dir:1.5708,spread:.6,lo:8,hi:26,size:2.4,grav:30});
-      for(let n=FX.due(f.i,'p6ec',2,dt);n>0;n--){const a=Math.random()*P6_TAU;FX.shards(e.x+dcos(a)*e.r,e.y+dsin(a)*e.r,1,e.col,{dir:1.5708,spread:1,lo:10,hi:40,size:1.6,life:.5})}
-    }
-    for(let n=FX.due(f.i,'p6er',4,dt);n>0;n--){                // the edge of the rot smoulders as it creeps outward
-      const a=Math.random()*P6_TAU,x=f.x+dcos(a)*R,y=f.y+dsin(a)*R;
-      if(x>2&&x<AW-2&&y>2&&y<AW-2)FX.wisps(x,y,1,'#b8ae84',{life:.6,size:3.2});
-    }
-    for(const q of m.minions)if(q.own!==f.i&&dhyp(q.x-f.x,q.y-f.y)<R&&FX.due(f.i,'p6em',1.5,dt))FX.dust(q.x,q.y+q.r*.4,1,'#d6cca4',{lo:4,hi:14,size:1.8});
-  }};
 function p6shed(v,t,n){
   if(v.gone)return;
   g.fillStyle='rgba(226,216,180,.85)';
@@ -519,100 +279,6 @@ LOOKS.dice={
     }
   }};
 
-LOOKS.shadow={
-  crest(fg){                                              // eyes under a hood
-    g.fillStyle=fg;
-    g.beginPath();g.moveTo(0,-.72);g.bezierCurveTo(.5,-.62,.6,0,.52,.6);g.lineTo(-.52,.6);g.bezierCurveTo(-.6,0,-.5,-.62,0,-.72);g.fill();
-    g.fillStyle=P6.DARK;
-    g.beginPath();g.moveTo(0,-.44);g.bezierCurveTo(.32,-.4,.36,.1,.28,.46);g.lineTo(-.28,.46);g.bezierCurveTo(-.36,.1,-.32,-.4,0,-.44);g.fill();
-    g.fillStyle=fg;
-    g.beginPath();g.ellipse(-.12,.02,.085,.04,.3,0,P6_TAU);g.fill();g.beginPath();g.ellipse(.12,.02,.085,.04,-.3,0,P6_TAU);g.fill();
-  },
-  under(f,m){                                             // the rival's trail, and the shadows walking it
-    const S=f.s,P=S.path,e=p6foe(f,m),er=e?e.r:22;
-    if(P.length>8){
-      g.lineCap='round';g.lineJoin='round';g.strokeStyle='rgba(6,6,14,.3)';g.lineWidth=er*.5;g.beginPath();
-      const from=Math.max(0,P.length-2*(P6_LAG+P6_GAP*f.sig)-2);
-      g.moveTo(P[from],P[from+1]);
-      for(let k=from+8;k<P.length;k+=8){
-        if(dhyp(P[k]-P[k-8],P[k+1]-P[k-7])>40)g.moveTo(P[k],P[k+1]);else g.lineTo(P[k],P[k+1]);      // a blink breaks the trail
-      }
-      g.stroke();
-    }
-    for(let k=0;k<S.sh.length;k+=2){
-      const x=S.sh[k],y=S.sh[k+1],bite=S.bit>0&&dhyp(x-S.bx,y-S.by)<1;
-      p6glow(x,y,er*1.5,'4,4,12',.55);
-      g.fillStyle='rgba(5,5,12,.82)';p6disc(x,y,er*.85);g.fill();
-      g.fillStyle=bite?'#ffffff':'rgba(226,230,255,.9)';
-      g.beginPath();g.ellipse(x-er*.3,y-er*.12,er*.17,er*.08,.35,0,P6_TAU);g.fill();g.beginPath();g.ellipse(x+er*.3,y-er*.12,er*.17,er*.08,-.35,0,P6_TAU);g.fill();
-      if(bite){                                           // teeth
-        g.beginPath();for(let j=0;j<5;j++){const tx=x-er*.4+j*er*.2;g.moveTo(tx-er*.09,y+er*.2);g.lineTo(tx,y+er*.5);g.lineTo(tx+er*.09,y+er*.2)}
-        g.fill();
-      }
-    }
-  },
-  top(f,m){                                               // the bite shows over the rival it closes on
-    const S=f.s,e=p6foe(f,m),er=e?e.r:22;
-    if(!(S.bit>0)||S.bx===undefined)return;
-    const x=S.bx,y=S.by,a=Math.min(1,S.bit*5);
-    g.globalAlpha=a;g.fillStyle='#ffffff';g.strokeStyle=P6.EDGE;g.lineWidth=.5;g.lineJoin='round';
-    g.beginPath();g.ellipse(x-er*.3,y-er*.12,er*.17,er*.08,.35,0,P6_TAU);g.fill();g.beginPath();g.ellipse(x+er*.3,y-er*.12,er*.17,er*.08,-.35,0,P6_TAU);g.fill();
-    g.beginPath();for(let j=0;j<5;j++){const tx=x-er*.4+j*er*.2;g.moveTo(tx-er*.09,y+er*.2);g.lineTo(tx,y+er*.5);g.lineTo(tx+er*.09,y+er*.2);g.closePath()}
-    g.fill();g.stroke();g.globalAlpha=1;
-  },
-  amb(f,e,m,dt){                                          // the shadows smoke along the floor as they walk
-    const sh=f.s.sh,er=e?e.r:22;
-    if(!sh||!sh.length)return;
-    for(let n=FX.due(f.i,'p6sh',4.5*sh.length/2,dt);n>0;n--){
-      const k=2*((Math.random()*sh.length/2)|0);
-      FX.dust(sh[k]+(Math.random()-.5)*er*1.4,sh[k+1]+(Math.random()-.5)*er*1.4,1,'#0a0a16',{lo:4,hi:18,size:3.4,life:.6});
-    }
-    for(let n=FX.due(f.i,'p6se',1.2*sh.length/2,dt);n>0;n--){
-      const k=2*((Math.random()*sh.length/2)|0);
-      FX.wisps(sh[k],sh[k+1]-er*.4,1,'#8f96e6',{life:.5,size:3});
-    }
-  }};
-
-LOOKS.loop={
-  crest(fg){                                              // an arrow that runs backwards round a clock
-    g.strokeStyle=fg;g.fillStyle=fg;g.lineCap='round';g.lineJoin='round';g.lineWidth=.15;
-    g.beginPath();g.arc(0,0,.5,-.9,3.9);g.stroke();
-    g.beginPath();g.moveTo(.045,-.603);g.lineTo(.448,-.564);g.lineTo(.174,-.22);g.closePath();g.fill();
-    g.lineWidth=.09;g.beginPath();g.moveTo(0,-.27);g.lineTo(0,0);g.lineTo(.2,.1);g.stroke();
-  },
-  under(f){                                               // where it has been these three seconds, and where it would return to
-    const S=f.s,H=S.h;
-    for(let k=0;k<H.length;k+=3){
-      g.fillStyle='rgba(150,215,245,'+(.12+.5*k/30).toFixed(2)+')';p6disc(H[k].x,H[k].y,1.3+k*.04);g.fill();
-    }
-    if(H.length>=30&&S.cd<=0){
-      const o=H[0];
-      g.setLineDash([3,3]);g.strokeStyle='rgba(170,225,250,.75)';g.lineWidth=1.1;p6disc(o.x,o.y,f.r);g.stroke();g.setLineDash([]);
-      g.fillStyle='rgba(170,225,250,.14)';p6disc(o.x,o.y,f.r);g.fill();
-    }
-  },
-  over(f){
-    const S=f.s;
-    if(S.jump>0){                                         // the snap back: a streak from where it was
-      g.strokeStyle='rgba(190,235,255,'+Math.min(1,S.jump*1.6).toFixed(2)+')';g.lineWidth=2;g.lineCap='round';g.setLineDash([6,5]);
-      g.beginPath();g.moveTo(S.fx,S.fy);g.lineTo(f.x,f.y);g.stroke();g.setLineDash([]);
-      p6disc(S.fx,S.fy,f.r);g.stroke();
-    }
-    if(S.cd>0){                                           // winding itself up again
-      g.lineCap='butt';g.strokeStyle='rgba(170,225,250,.55)';g.lineWidth=1.2;
-      g.beginPath();g.arc(f.x,f.y,f.r+4,-1.5708,-1.5708+P6_TAU*Math.max(0,1-S.cd/(S.wind||8)));g.stroke();
-    }
-  },
-  amb(f,e,m,dt){
-    const S=f.s,H=S.h;
-    if(f.gone||!H)return;
-    if(H.length>=30&&S.cd<=0){                            // armed: the moment it would return to glints
-      const o=H[0],hurt=Math.max(0,Math.min(1,(o.hp-f.hp)/(f.max*.3)));
-      for(let n=FX.due(f.i,'p6lo',3+9*hurt,dt);n>0;n--){const a=Math.random()*P6_TAU;FX.stars(o.x+dcos(a)*f.r,o.y+dsin(a)*f.r,1,'#bfeaff',{lo:2,hi:12,size:2.6,life:.4})}
-      if(hurt>.4)for(let n=FX.due(f.i,'p6lh',10*hurt,dt);n>0;n--)FX.seek(f.x,f.y,-2,1,'#bfeaff',o.x,o.y,{jit:f.r,size:1.1,life:.8});
-    }
-    if(S.jump>0)for(let n=FX.due(f.i,'p6lj',24,dt);n>0;n--){const u=Math.random();FX.sparks(S.fx+(f.x-S.fx)*u,S.fy+(f.y-S.fy)*u,1,'#bfeaff',{lo:6,hi:40,life:.3,size:1})}
-  }};
 
 LOOKS.monk={
   crest(fg,bg){                                           // a lotus

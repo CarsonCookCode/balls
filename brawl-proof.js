@@ -16,7 +16,7 @@
 // RULES names the exact rules a climb was played under: it is a fingerprint of every simulation file, written by
 // `node tools/stamp.js` (and `node tools/stamp.js --check` fails when it is stale). Climbs made under other rules cannot be
 // replayed here, so the ladder shows only climbs made under these rules: a change to the fights starts a fresh ladder.
-const RULES='38430d45e1';
+const RULES='efca31d7d5';
 // A climb starts with LIVES lives (the page shows them as hearts): a lost fight costs one, and the climb ends with the
 // last. One more is earned after clearing rung LIFE_RUNG. A shield is earned on reaching rung SHIELD_RUNG, which the
 // player may raise before one fight of their choosing: lose that fight and no life is lost. A loss that does not end

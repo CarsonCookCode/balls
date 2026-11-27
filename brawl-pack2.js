@@ -4,8 +4,8 @@
 
 // ---------- simulation ----------
 // As in brawl-sim.js, dmg is each class's single damage dial and f.sig (0-3) is the level of its signature upgrade.
-FIGHTERS.archer ={name:'Archer',    color:'#a3b86c',hp:100,speed:165,spin:0,  dmg:8.22,cd:1.1,arms:[],desc:'Arrows that miss stay stuck in the wall as spikes.',sig:['Full quiver','Shoots faster; stuck arrows last longer']};
-FIGHTERS.hunter ={name:'Hunter',    color:'#c98b4b',hp:100,speed:175,spin:0,  dmg:14.01, cd:.7, arms:[],desc:'Throws a boomerang that hits on the way out and on the way back.',sig:['Heavy boomerang','Bigger, flies further, hits harder']};
+FIGHTERS.archer ={name:'Archer',    color:'#a3b86c',hp:100,speed:165,spin:0,  dmg:5.79,cd:1.1,arms:[],desc:'Shoots faster the longer the fight lasts. Arrows that miss stick in the wall as spikes.',sig:['Full quiver','Speeds up sooner; stuck arrows last longer']};
+FIGHTERS.hunter ={name:'Boomerang',    color:'#c98b4b',hp:100,speed:175,spin:0,  dmg:14.01, cd:.7, arms:[],desc:'Throws a boomerang that hits on the way out and on the way back.',sig:['Heavy boomerang','Bigger, flies further, hits harder']};
 FIGHTERS.beacon ={name:'Lighthouse',color:'#ffe08a',hp:100,speed:150,spin:1.9,dmg:6.83,  cd:.2, arms:[],desc:'Sweeps beams of light around the arena.',sig:['Brighter lamp','One more beam']};
 FIGHTERS.jugger ={name:'Juggernaut',color:'#b5453c',hp:100,speed:150,spin:0,  dmg:26.2, cd:.5, arms:[],desc:'Winds up, then charges in a straight line. Walls stop it cold.',sig:['Unstoppable','Charges again sooner, and hits harder']};
 FIGHTERS.drum   ={name:'Drummer',   color:'#9a8cff',hp:100,speed:160,spin:0,  dmg:10.23, cd:1,  arms:[],desc:'Beats out shockwaves that hurt as the ring passes.',sig:['Bass drum','Shockwaves travel further']};
@@ -28,7 +28,7 @@ BEHAVE.archer={
     const D=FIGHTERS.archer,A=f.s.arrows;
     f.s.t-=DT;
     if(f.s.t<=0&&!e.gone){
-      f.s.t=D.cd/f.spdMul/(1+.22*f.sig);
+      f.s.t=Math.max(.2,D.cd/f.spdMul/(1+(.05+.035*f.sig)*m.t));   // faster every second, and its own upgrade steepens that
       const d=gap(e,f)||1,lead=d/360*.6,an=datan2(e.y+e.vy*lead-f.y,e.x+e.vx*lead-f.x)+(m.rnd()-.5)*.18;
       A.push({x:f.x+dcos(an)*f.r,y:f.y+dsin(an)*f.r,an,stuck:0,age:0,tx:0,ty:0});
       m.events.push({k:'shot',x:f.x,y:f.y,i:f.i});
@@ -203,7 +203,7 @@ BEHAVE.jester={
 
 // Turtle: hits that come from the side it is heading towards mostly bounce off the shell. It fights by ramming.
 BEHAVE.turtle={
-  init(f){f.s.clang=0;f.s.arc=1.35+.3*f.sig;f.s.head=datan2(f.vy,f.vx)},
+  init(f){f.s.clang=0;f.s.arc=1.35+.4*f.sig;f.s.head=datan2(f.vy,f.vx)},
   // The heading is noted every step before bodies collide: by the time a ramming hit is scored the turtle has already
   // bounced away, and the shell must count for the side it was facing when it was hit.
   tick(f){if(f.s.clang>0)f.s.clang-=DT;f.s.head=datan2(f.vy,f.vx)},
@@ -404,20 +404,20 @@ LOOKS.archer={
   }};
 
 LOOKS.hunter={
-  crest(fg,bg){                                           // a stag's head
-    g.lineCap='round';g.lineJoin='round';g.fillStyle=fg;g.strokeStyle=fg;
-    g.beginPath();g.moveTo(0,.7);g.quadraticCurveTo(.2,.52,.2,.1);g.lineTo(.12,-.1);g.lineTo(-.12,-.1);g.lineTo(-.2,.1);g.quadraticCurveTo(-.2,.52,0,.7);g.fill();
-    for(const s of [-1,1]){
-      g.beginPath();g.moveTo(s*.15,-.02);g.lineTo(s*.44,-.06);g.lineTo(s*.2,.14);g.closePath();g.fill();
-      g.lineWidth=.075;g.beginPath();
-      g.moveTo(s*.1,-.1);g.quadraticCurveTo(s*.14,-.44,s*.52,-.6);          // main beam
-      g.moveTo(s*.17,-.34);g.lineTo(s*.1,-.66);                             // tines
-      g.moveTo(s*.32,-.5);g.lineTo(s*.3,-.74);
-      g.moveTo(s*.24,-.42);g.lineTo(s*.56,-.34);
-      g.stroke();
-    }
-    g.fillStyle=bg;for(const s of [-1,1]){g.beginPath();g.arc(s*.09,.16,.035,0,P2_TAU);g.fill()}
-    g.beginPath();g.ellipse(0,.58,.06,.035,0,0,P2_TAU);g.fill();
+  crest(fg,bg){                                           // a boomerang, mid-spin, with the arc it has just flown
+    g.lineCap='round';g.lineJoin='round';
+    g.save();g.rotate(-.5);
+    g.fillStyle=fg;g.beginPath();
+    g.moveTo(-.62,.3);g.quadraticCurveTo(-.5,-.34,0,-.5);g.quadraticCurveTo(.5,-.34,.62,.3);
+    g.quadraticCurveTo(.52,.4,.4,.3);g.quadraticCurveTo(.34,-.1,0,-.2);g.quadraticCurveTo(-.34,-.1,-.4,.3);g.quadraticCurveTo(-.52,.4,-.62,.3);
+    g.closePath();g.fill();
+    g.strokeStyle=bg;g.lineWidth=.05;                       // the painted bands near each tip
+    for(const s of [-1,1]){g.beginPath();g.moveTo(s*.6,.08);g.lineTo(s*.4,.1);g.stroke();g.beginPath();g.moveTo(s*.52,-.1);g.lineTo(s*.35,-.04);g.stroke()}
+    g.restore();
+    g.strokeStyle=fg;g.lineWidth=.045;g.globalAlpha=.55;
+    g.beginPath();g.arc(0,.05,.72,.5,1.5);g.stroke();
+    g.beginPath();g.arc(0,.05,.72,2.2,2.9);g.stroke();
+    g.globalAlpha=1;
   },
   over(f){                                                // the boomerang: in the air, or waiting in hand
     if(!f.s.b)p2boomerang(f.x+dcos(f.aim+1.3)*(f.r+7),f.y+dsin(f.aim+1.3)*(f.r+7),f.aim-.95,6);

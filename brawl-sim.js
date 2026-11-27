@@ -55,10 +55,10 @@ const FIGHTERS={
   snow:   {name:'Snowball',   color:'#dff3ff',hp:100,speed:190,spin:0,  dmg:9.84,   cd:.5, arms:[],desc:'Grows with every bounce: bigger, slower, harder hitting.',sig:['Avalanche','Grows faster']},
   tesla:  {name:'Tesla',      color:'#7fe7ff',hp:100,speed:165,spin:0,  dmg:6.06,   cd:.45,arms:[],desc:'Arcs lightning to the rival whenever they get close.',sig:['High voltage','Lightning reaches further']},
   magnet: {name:'Magnet',     color:'#e2526f',hp:100,speed:160,spin:0,  dmg:30.91,  cd:1.4,arms:[],desc:'Drags the rival in, then blasts them away.',sig:['Stronger field','A bigger, harder blast, more often']},
-  mirror: {name:'Mirror',     color:'#a9b8d9',hp:100,speed:175,spin:0,  dmg:11.3,   cd:.5, arms:[],desc:'Splits off a copy of itself whenever it is hit.',sig:['Hall of mirrors','More copies, sooner, and they hit harder']},
+  mirror: {name:'Duplicator', color:'#a9b8d9',hp:100,speed:175,spin:0,  dmg:11.3,   cd:.5, arms:[],desc:'Splits in two when it is hit, sharing out its health. A double that lasts brings its share back.',sig:['Multiply','One more double, sooner; doubles are tougher and hit harder']},
   spider: {name:'Spider',     color:'#8a6bd1',hp:100,speed:195,spin:0,  dmg:8.84,   cd:.5, arms:[],desc:'Strings webs between walls that slow whoever crosses.',sig:['More silk','More webs at once']},
   necro:  {name:'Necromancer',color:'#6fd3a0',hp:100,speed:160,spin:4.6,dmg:12.33,  cd:.45,arms:[{a:0,l:30}],desc:'Every wound it deals raises a minion.',sig:['Horde','More minions, tougher and quicker']},
-  painter:{name:'Painter',    color:'#ff7fd0',hp:100,speed:200,spin:0,  dmg:3.14, cd:.25,arms:[],desc:'Paints the floor. Its paint heals it and hurts the rival.',sig:['Wide brush','Paints a wider stripe']},
+  painter:{name:'Painter',    color:'#ff7fd0',hp:100,speed:200,spin:0,  dmg:3.25, cd:.25,arms:[],desc:'Paints the floor. Its paint heals it and hurts the rival.',sig:['Wide brush','Paints a wider stripe']},
   clock:  {name:'Clockmaker', color:'#d9b36c',hp:100,speed:160,spin:4.2,dmg:21.34,  cd:.4, arms:[{a:0,l:34},{a:Math.PI,l:20,d:.6,rate:.4}],desc:'Freezes the rival for a moment every few seconds.',sig:['Slow time','Longer freezes, more often']},
 };
 const ROSTER=Object.keys(FIGHTERS);
@@ -339,10 +339,13 @@ const BEHAVE={
     init(f){f.s.cd=0},
     tick(f){if(f.s.cd>0)f.s.cd-=DT},
     hurt(f,src,dmg,m){
-      if(f.s.cd>0||mine(f,m,'copy')>=3+f.sig)return;
-      f.s.cd=1.2/(1+.3*f.sig);
+      if(f.s.cd>0||f.hp<=0||mine(f,m,'copy')>=2+f.sig)return;
+      const give=f.hp*.3;                                 // the double's share of the health it has left
+      if(give<2)return;
+      f.s.cd=1.6/(1+.25*f.sig);f.hp-=give;
       m.events.push({k:'fx',n:'shatter',x:f.x,y:f.y,num:8,col:'#e6eeff',r:f.r,i:f.i});
-      m.spawn(f,f.x,f.y,{kind:'copy',r:13,hp:30,dmg:FIGHTERS.mirror.dmg*.7*(1+.2*f.sig),sp:190,home:0,life:6+f.sig,wear:10});
+      m.events.push({k:'text',x:f.x,y:f.y-f.r,txt:'Split',col:'#e6eeff',i:f.i});
+      m.spawn(f,f.x,f.y,{kind:'copy',r:f.r*.85,hp:give*(1+.6*f.sig),dmg:FIGHTERS.mirror.dmg*(1+.5*f.sig),sp:f.speed,home:0,life:7+f.sig,wear:0,back:1});
     },
     touch:()=>FIGHTERS.mirror.dmg},
   spider:{
@@ -378,7 +381,7 @@ const BEHAVE={
   painter:{tick(f,e,m,rage){
     const D=FIGHTERS.painter,P=m.paint,w=f.sig;
     const cx=Math.min(GP-1,Math.max(0,(f.x/PC)|0)),cy=Math.min(GP-1,Math.max(0,(f.y/PC)|0));
-    for(let y=Math.max(0,cy-w);y<=Math.min(GP-1,cy+w);y++)for(let x=Math.max(0,cx-w);x<=Math.min(GP-1,cx+w);x++)P[y*GP+x]=f.i;
+    for(let y=Math.max(0,cy-w);y<=Math.min(GP-1,cy+w);y++)for(let x=Math.max(0,cx-w);x<=Math.min(GP-1,cx+w);x++){const k=y*GP+x;if(!(x===cx&&y===cy&&P[k]===1-f.i))P[k]=f.i}   // not the rival's paint under its own feet: that burns it first
     f.hp=Math.min(f.max,f.hp+f.max*.006*DT);              // it is always standing on its own paint
     const c=Math.min(GP-1,Math.max(0,(e.y/PC)|0))*GP+Math.min(GP-1,Math.max(0,(e.x/PC)|0));
     if(P[c]===f.i&&f.cd<=0&&!e.gone){P[c]=-1;f.cd=D.cd;m.events.push({k:'fx',n:'splash',x:e.x,y:e.y+e.r*.5,num:4,i:f.i});m.hurt(e,D.dmg*f.dmgMul*rage,f)}   // the rival scuffs the paint away as it burns
@@ -399,16 +402,20 @@ function createMatch(A,B,seed){
   const F=[mk(A,0),mk(B,1)];
   const m={f:F,bullets,minions,events,paint,t:0,over:false,winner:-1,draw:false,step,rnd,hurt,knock,renorm,shoot,spawn};
   for(const f of F){const H=BEHAVE[f.key];if(H&&H.init)H.init(f,m);for(const h of f.uh)if(h[0].init)h[0].init(f,h[1],m)}
-  function mk(b,i){
-    const D=FIGHTERS[b.key],P=b.p||{},sig=P.sig||0,a=rnd()*6.283,spd=effSpd(b),sp=D.speed*spd,hp=effHp(b),reach=1+.3*(P.reach||0);
+  for(const f of F)if(f.was){events.push({k:'fx',n:'poof',x:f.x,y:f.y,r:f.r*1.5,i:f.i});events.push({k:'text',x:f.x,y:f.y-f.r,txt:'Copied',col:'#ffce78',i:f.i})}
+  function mk(b0,i){
+    // The Mimic fights as a copy of whoever it faces: the rival's class, with the Mimic's own strength, size, upgrades
+    // and colour, and its own upgrade counting as the rival's own. Two Mimics have nothing to copy and stay as they are.
+    const other=i?A:B,key=b0.key==='mimic'&&other.key!=='mimic'&&FIGHTERS[other.key]?other.key:b0.key,b=key===b0.key?b0:Object.assign({},b0,{key});
+    const D=FIGHTERS[key],P=b.p||{},sig=P.sig||0,a=rnd()*6.283,spd=effSpd(b),sp=D.speed*spd,hp=effHp(b),reach=1+.3*(P.reach||0);
     const arms=D.arms.map(o=>({a:o.a,l:o.l*reach,head:o.head||0,dmg:D.dmg*(o.d||1),extra:0,rate:o.rate||1}));
-    if(b.key==='blade')for(const o of arms){o.l*=1+.25*sig;o.dmg*=1+.15*sig}
-    if(b.key==='mace')for(const o of arms){o.head+=3*sig;o.dmg*=1+.2*sig}
-    if(b.key==='twin')for(let k=0;k<sig;k++)arms.push({a:[Math.PI/2,Math.PI*1.5,Math.PI/4][k],l:24*reach,head:0,dmg:D.dmg,extra:0,rate:1});
-    const slots=b.key==='twin'?[2.2,5.3,.9]:D.arms.length===1?[Math.PI,Math.PI/2,Math.PI*1.5]:D.arms.length===2?[Math.PI/2,Math.PI*1.5,Math.PI/4]:[0,Math.PI,Math.PI/2];
+    if(key==='blade')for(const o of arms){o.l*=1+.4*sig;o.dmg*=1+.12*sig}
+    if(key==='mace')for(const o of arms){o.head+=3*sig;o.dmg*=1+.2*sig}
+    if(key==='twin')for(let k=0;k<sig;k++)arms.push({a:[Math.PI/2,Math.PI*1.5,Math.PI/4][k],l:24*reach,head:0,dmg:D.dmg,extra:0,rate:1});
+    const slots=key==='twin'?[2.2,5.3,.9]:D.arms.length===1?[Math.PI,Math.PI/2,Math.PI*1.5]:D.arms.length===2?[Math.PI/2,Math.PI*1.5,Math.PI/4]:[0,Math.PI,Math.PI/2];
     for(let k=0;k<(P.blade||0)&&k<3;k++)arms.push({a:slots[k],l:28*reach,head:0,dmg:10,extra:1,rate:1});
     const uh=[];for(const id in P){const U=UPGRADES[id];if(U&&U.hooks&&P[id]>0)uh.push([U.hooks,P[id]])}
-    return {u:{},uh,p:P,key:b.key,i,x:i?AW-80:80,y:AW/2+(rnd()-.5)*80,vx:dcos(a)*sp,vy:dsin(a)*sp,r:b.r,speed:sp,base:sp,hp,max:hp,
+    return {u:{},uh,p:P,key,was:key===b0.key?'':b0.key,i,x:i?AW-80:80,y:AW/2+(rnd()-.5)*80,vx:dcos(a)*sp,vy:dsin(a)*sp,r:b.r,speed:sp,base:sp,hp,max:hp,
       dmgMul:effDmg(b),spdMul:spd,sig,ang:rnd()*6.283,dir:i?-1:1,cd:0,xcd:0,pcd:0,timer:.4+rnd()*.6,flash:0,aim:0,arms,
       spin:D.spin||(arms.length?4.5:0),label:b.name,col:b.color,stunT:0,gone:false,s:{},
       regen:3*(P.regen||0),armor:dpow(.85,P.armor||0),vamp:.2*(P.vampire||0)+(D.heal?D.heal*(1+.3*sig):0),thorns:.2*(P.thorns||0),
@@ -427,7 +434,7 @@ function createMatch(A,B,seed){
   function spawn(f,x,y,o){
     const a=rnd()*6.283;
     minions.push({own:f.i,kind:o.kind,x:Math.min(AW-o.r,Math.max(o.r,x)),y:Math.min(AW-o.r,Math.max(o.r,y)),vx:dcos(a)*o.sp,vy:dsin(a)*o.sp,
-      r:o.r,hp:o.hp,dmg:o.dmg,sp:o.sp,home:o.home,life:o.life,wear:o.wear,cd:.35,icd:o.grace||0,col:f.col});
+      r:o.r,hp:o.hp,dmg:o.dmg,sp:o.sp,home:o.home,life:o.life,wear:o.wear,back:o.back||0,cd:.35,icd:o.grace||0,col:f.col});
     for(const h of f.uh)if(h[0].minion)h[0].minion(f,minions[minions.length-1],m,h[1]);
     events.push({k:'spawn',x,y,i:f.i});
   }
@@ -537,6 +544,7 @@ function createMatch(A,B,seed){
         for(const h of a.uh)if(h[0].bump)h[0].bump(a,b,m,h[1]);
         for(const h of b.uh)if(h[0].bump)h[0].bump(b,a,m,h[1]);
         const Ha=BEHAVE[a.key],Hb=BEHAVE[b.key];
+        if(Ha&&Ha.bump)Ha.bump(a,b,m);if(Hb&&Hb.bump)Hb.bump(b,a,m);
         const ta=Ha&&Ha.touch&&a.cd<=0&&a.stunT<=0?Ha.touch(a,b):0,tb=Hb&&Hb.touch&&b.cd<=0&&b.stunT<=0?Hb.touch(b,a):0;
         if(ta>0){a.cd=FIGHTERS[a.key].cd/a.spdMul;hurt(b,ta*a.dmgMul*rage,a)}
         if(tb>0){b.cd=FIGHTERS[b.key].cd/b.spdMul;hurt(a,tb*b.dmgMul*rage,b)}
@@ -583,7 +591,10 @@ function createMatch(A,B,seed){
           if(q.cd<=0){q.cd=.6;q.hp-=q.wear;hurt(e,q.dmg*o.dmgMul*rage,o)}
         }
       }
-      if(q.hp<=0||q.life<=0){events.push({k:'pop',x:q.x,y:q.y,i:q.own});minions.splice(i,1)}
+      if(q.hp<=0||q.life<=0){
+        if(q.back&&q.hp>0&&o.hp>0&&!o.gone){o.hp=Math.min(o.max,o.hp+q.hp);events.push({k:'heal',x:o.x,y:o.y-o.r,dmg:q.hp,i:o.i});events.push({k:'fx',n:'seek',x:q.x,y:q.y,to:o.i,num:6,col:q.col,i:o.i})}
+        events.push({k:'pop',x:q.x,y:q.y,i:q.own});minions.splice(i,1);
+      }
     }
     for(const f of F)if(f.hp<=0)for(const h of f.uh)if(h[0].lethal&&f.hp<=0)h[0].lethal(f,F[1-f.i],m,h[1]);
     for(const f of F)if(f.hp<=0&&f.revives>0){f.revives--;f.hp=f.max*.15;f.poisonT=0;events.push({k:'revive',x:f.x,y:f.y,i:f.i})}

@@ -9,12 +9,11 @@ FIGHTERS.cat     ={name:'Cat',     color:'#f0895a',hp:100,speed:175,spin:0,dmg:1
 FIGHTERS.frog    ={name:'Frog',    color:'#6cc24a',hp:100,speed:170,spin:0,dmg:15.3,  cd:1.6,arms:[],desc:'Hops about, then snaps out its tongue and yanks the rival in for a bite.',sig:['Longer tongue','The tongue reaches further and is ready sooner'],sfx:{hit:'thump',shot:'loose'}};
 FIGHTERS.crab    ={name:'Crab',    color:'#e0563f',hp:100,speed:175,spin:0,dmg:9.02,  cd:.55,arms:[{a:-.5,l:15,head:7},{a:.5,l:15,head:7}],desc:'Scuttles in straight lines. Heavy pincers in front, a hard shell behind.',sig:['Bigger claws','Larger pincers that pinch harder'],sfx:{hit:'chop'}};
 FIGHTERS.bull    ={name:'Bull',    color:'#a5482f',hp:100,speed:160,spin:0,dmg:20.2,  cd:.5, arms:[],desc:'Charges whenever the rival is dead ahead. Hitting it only makes it angrier.',sig:['Sharper horns','Gores harder and shakes off a crash sooner'],sfx:{hit:'heavy'}};
-FIGHTERS.snail   ={name:'Snail',   color:'#b08a5a',hp:100,speed:115,spin:0,dmg:18.5,  cd:.45,arms:[],desc:'Slow, on a trail of slowing slime. Hit it and it becomes a spinning shell.',sig:['Harder shell','Spins for longer and hits harder'],sfx:{hit:'thump'}};
+FIGHTERS.snail   ={name:'Snail',   color:'#b08a5a',hp:100,speed:115,spin:0,dmg:19.81,  cd:.45,arms:[],desc:'Slow, on a trail of slowing slime. Hit it and it becomes a spinning shell.',sig:['Harder shell','Spins for longer and hits harder'],sfx:{hit:'thump'}};
 FIGHTERS.moth    ={name:'Moth',    color:'#b9a6d9',hp:100,speed:185,spin:0,dmg:8.7,  cd:.6, arms:[],desc:'Flutters after its rival and sheds dust that makes their hits miss.',sig:['Thicker dust','The dust blinds for longer'],sfx:{hit:'soft'}};
 FIGHTERS.octopus ={name:'Octopus', color:'#d0679d',hp:100,speed:165,spin:3.4,dmg:11.65,cd:.3, arms:[{a:.7854,l:15},{a:2.3562,l:15},{a:3.927,l:15},{a:5.4978,l:15}],desc:'A whirl of short arms. Hit it and it hides in a cloud of ink.',sig:['More ink','A bigger cloud, more often, that hides it for longer'],sfx:{hit:'punch'}};
 FIGHTERS.penguin ={name:'Penguin', color:'#3b4a6b',hp:100,speed:150,spin:0,dmg:7.72,  cd:.5, arms:[],desc:'Slides faster with every wall it bounces off, and slams harder the faster it goes.',sig:['Waxed belly','Builds speed faster, to a higher top speed'],sfx:{hit:'thump'}};
-FIGHTERS.capybara={name:'Capybara',color:'#c08a4f',hp:100,speed:130,spin:0,dmg:18.74,  cd:1.2,arms:[],desc:'Unbothered. Everything near it slows down, and it shrugs off hits while it stays calm.',sig:['Hot spring','A wider calm that soothes: rivals inside it hit more softly'],sfx:{hit:'thump'}};
-ROSTER.push('duck','cat','frog','crab','bull','snail','moth','octopus','penguin','capybara');
+ROSTER.push('duck','cat','frog','crab','bull','snail','moth','octopus','penguin');
 
 const p3clamp=(v,r)=>Math.min(AW-r,Math.max(r,v));
 // signed difference between two angles, in -PI..PI
@@ -352,37 +351,6 @@ BEHAVE.penguin={
     }
   }};
 
-// Capybara: the rival, its shots and its minions all slow down inside the calm. While it has not attacked for a couple
-// of seconds it takes much less from hits. Its signature widens the calm, softens the hits of a rival standing in it,
-// and lets it mend a little while calm. Its own attack is a slow headbutt.
-BEHAVE.capybara={
-  init(f){f.s.busy=0;f.s.r=78+14*f.sig},
-  tick(f,e,m){
-    const S=f.s,R=S.r;
-    if(S.busy>0){S.busy-=DT;if(S.busy<=0){m.events.push({k:'fx',n:'wave',x:f.x,y:f.y,r0:f.r,r:R,w:1.6,life:.6,col:'#ffe8ba',i:f.i});m.events.push({k:'fx',n:'wisps',x:f.x,y:f.y,num:6,col:'#ffe8ba',jit:f.r*2,i:f.i})}}      // calm again: the warmth spreads back out
-    if(!e.gone&&gap(e,f)<R+e.r)e.slowT=Math.max(e.slowT,.15);
-    for(const q of m.bullets)if(q.own!==f.i){
-      const near=dhyp(q.x-f.x,q.y-f.y)<R;
-      if(near&&!q.p3c){q.p3c=1;q.vx*=.4;q.vy*=.4}else if(!near&&q.p3c){q.p3c=0;q.vx*=2.5;q.vy*=2.5}
-    }
-    for(const q of m.minions)if(q.own!==f.i){
-      const near=dhyp(q.x-f.x,q.y-f.y)<R+q.r;
-      if(near&&!q.p3c){q.p3c=q.sp;q.sp*=.45}else if(!near&&q.p3c){q.sp=q.p3c;q.p3c=0}else continue;
-      const sp=dhyp(q.vx,q.vy)||1;q.vx*=q.sp/sp;q.vy*=q.sp/sp;
-    }
-    if(S.busy<=0&&f.sig&&f.hp>0)f.hp=Math.min(f.max,f.hp+f.max*.008*f.sig*DT);
-  },
-  touch:()=>FIGHTERS.capybara.dmg,
-  dealt(f,v,dmg,m){
-    const x=(f.x+v.x)/2,y=(f.y+v.y)/2;                   // the headbutt, and the bird takes off
-    m.events.push({k:'fx',n:'poof',x,y,r:16,i:f.i});m.events.push({k:'fx',n:'stars',x,y,num:4,col:'#fff1cf',lo:30,hi:110,i:f.i});m.events.push({k:'fx',n:'shake',r:2.5,i:f.i});
-    if(!(f.s.busy>0))m.events.push({k:'fx',n:'leaves',x:f.x+f.r*.7,y:f.y-f.r*.8,num:4,col:'#f4d35e',dir:-1.2,spread:1.4,lo:40,hi:110,i:f.i});
-    f.s.busy=2;m.knock(v,f);
-  },
-  guard(f,src,dmg,m){
-    if(!(f.s.busy>0)){const a=datan2(src.y-f.y,src.x-f.x);m.events.push({k:'fx',n:'wave',x:f.x+dcos(a)*f.r*.6,y:f.y+dsin(a)*f.r*.6,r0:f.r*.5,r:f.r*.9,w:1.6,life:.24,col:'#ffe8ba',i:f.i});m.events.push({k:'fx',n:'wisps',x:f.x+dcos(a)*f.r,y:f.y+dsin(a)*f.r,num:3,col:'#ffe8ba',life:.5,i:f.i})}      // unbothered: the hit sinks in
-    return (f.s.busy>0?1:.68)*(f.sig&&gap(src,f)<f.s.r+src.r?1-.12*f.sig:1);
-  }};
 
 // ---------- art ----------
 // "Gilded": every fighter is a medallion drawn by the shared drawFighter in brawl-looks.js. These blocks add each class's
@@ -785,52 +753,3 @@ LOOKS.penguin={
     if(n0>=3)for(let n=p3due(f,'ps',2.5*n0,dt);n>0;n--){const off=p3r1()*r*.85,x=f.x-u[0]*r*.6-u[1]*off,y=f.y-u[1]*r*.6+u[0]*off,l=10+Math.random()*16;FX.line(x,y,x-u[0]*l,y-u[1]*l,'#eaf7ff',1,.2)}
   }};
 
-LOOKS.capybara={
-  crest(fg,bg){                                           // a capybara in profile: barrel body, blunt square muzzle, an orange on its head
-    g.lineJoin='round';g.lineCap='round';g.fillStyle=fg;
-    g.beginPath();                                                                   // one outline, so no seam shows where the parts meet
-    g.ellipse(-.14,.2,.5,.3,0,0,P3_TAU);                                             // the body
-    for(const x of [-.46,-.2,.06,.3]){g.moveTo(x,.36);g.lineTo(x+.14,.36);g.lineTo(x+.14,.6);g.lineTo(x,.6);g.closePath()}   // four short legs
-    g.moveTo(.12,-.3);g.lineTo(.6,-.3);g.quadraticCurveTo(.78,-.3,.78,-.13);g.lineTo(.78,.0);g.quadraticCurveTo(.78,.16,.6,.16);   // the head: long, flat on top, square at the nose
-    g.lineTo(.2,.3);g.lineTo(-.02,.02);g.quadraticCurveTo(-.02,-.3,.12,-.3);g.closePath();
-    g.moveTo(.24,-.32);g.arc(.16,-.32,.08,0,P3_TAU);                                  // a small round ear
-    g.fill();
-    g.fillStyle=bg;
-    g.beginPath();g.arc(.7,-.15,.03,0,P3_TAU);g.fill();                               // the nostril
-    g.strokeStyle=bg;g.lineWidth=.045;
-    g.beginPath();g.moveTo(.36,-.13);g.lineTo(.5,-.13);g.stroke();                    // a half-closed eye
-    g.beginPath();g.moveTo(.58,.05);g.lineTo(.76,.03);g.stroke();                     // the mouth
-    g.fillStyle=P3.BEAK;g.beginPath();g.arc(.42,-.45,.15,0,P3_TAU);g.fill();          // the orange
-    g.fillStyle='#7fb069';g.beginPath();g.ellipse(.5,-.61,.08,.035,-.5,0,P3_TAU);g.fill();
-  },
-  under(f){                                               // the calm: a warm pool of light with a slow dotted edge
-    const R=f.s.r||78,t=p3now();
-    p3glow(f.x,f.y,R,'255,232,186',f.s.busy>0?.06:.13);
-    g.strokeStyle='rgba(240,220,164,'+(f.s.busy>0?.22:.42)+')';g.lineWidth=1;g.setLineDash([2,6]);g.lineDashOffset=-t*5;
-    p3disc(f.x,f.y,R);g.stroke();g.setLineDash([]);g.lineDashOffset=0;
-  },
-  over(f){
-    const r=f.r,t=p3now(),x=f.x+dcos(-.85)*(r+2.5),y=f.y+dsin(-.85)*(r+2.5);
-    if(f.s.busy>0){                                       // bothered: a bead of sweat, and the bird has flown
-      g.beginPath();g.moveTo(x,y-4);g.quadraticCurveTo(x+2.6,y,x,y+1.6);g.quadraticCurveTo(x-2.6,y,x,y-4);p3solid('#9fd8ff');
-      return;
-    }
-    const bob=dsin(t*3)*.5;                           // calm: a small bird rides along
-    p3disc(x,y+bob,3);p3solid(P3.DOWN);
-    g.beginPath();g.moveTo(x+2.6,y+bob-.9);g.lineTo(x+5.4,y+bob);g.lineTo(x+2.6,y+bob+.9);g.closePath();p3solid(P3.BEAK);
-    g.fillStyle=P3.EDGE;p3disc(x+1,y+bob-.9,.55);g.fill();
-    g.strokeStyle='rgba(243,234,214,.5)';g.lineWidth=.9;g.lineCap='round';   // steam
-    for(let k=0;k<2;k++){
-      const sx=f.x-r*.5+k*r*.45,u=(t*.5+k*.5)%1,sy=f.y-r-2-u*8;
-      g.globalAlpha=1-u;g.beginPath();g.moveTo(sx,sy);g.quadraticCurveTo(sx+2,sy-2.5,sx,sy-5);g.stroke();
-    }
-    g.globalAlpha=1;
-  },
-  amb(f,e,m,dt){
-    const S=f.s,R=S.r||78,r=f.r,calm=!(S.busy>0);
-    if(f.gone)return;
-    for(let n=p3due(f,'cs',calm?5:1.5,dt);n>0;n--){const a=Math.random()*P3_TAU,d=Math.sqrt(Math.random())*R*.95;FX.wisps(f.x+dcos(a)*d,f.y+dsin(a)*d,1,'#ffe8ba',{lo:2,hi:10,life:.9,size:3.2})}      // steam off the calm
-    if(!e.gone&&e.hp>0&&gap(e,f)<R+e.r)for(let n=p3due(f,'ce',5,dt);n>0;n--)FX.wisps(e.x+p3r1()*e.r*.8,e.y-e.r*.3+p3r1()*e.r*.5,1,'#ffe8ba',{life:.7,size:3});      // the rival, soothed
-    for(const q of m.bullets)if(q.own!==f.i&&q.p3c&&p3due(f,'cb',10,dt))FX.wisps(q.x,q.y,1,'#ffe8ba',{lo:0,hi:6,life:.4,size:2.4});      // shots wading through it
-    if(calm&&f.sig&&f.hp<f.max-.5)for(let n=p3due(f,'ch',1.6,dt);n>0;n--)FX.plus(f.x+p3r1()*r*.8,f.y+p3r1()*r*.6,1);      // the hot spring mends it
-  }};

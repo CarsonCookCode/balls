@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 57';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 58';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -230,14 +230,14 @@ function sfx(name,vol,rate,ui){
 // change who sounds like what HERE, never in the class files, which are part of the rules fingerprint.
 const HIT_KINDS={
   slash:'blade leech pirate',                                              // swords (and, for now, the Vampire)
-  katana:'samurai',dagger:'twin shadow',axe:'fury viking mimic',
+  katana:'samurai',dagger:'twin',axe:'fury viking mimic',
   heavy:'mace jugger',punch:'spikes jester blaster',
-  slam:'ghost snow drum frog snail penguin capybara medusa roomba void dice tornado tide quake fisher',   // body slams
+  slam:'ghost snow drum frog snail penguin medusa roomba void dice tornado tide quake fisher',   // body slams
   metal:'turtle spartan smith railgun',                                    // armour and shells
-  clunk:'clock engineer emperor gladiator echo',                           // clockwork and machines
+  clunk:'clock engineer emperor gladiator',                           // clockwork and machines
   thorn:'bramble cactus archer',goo:'spider plague mushroom moth chef',buzz:'chainsaw',sting:'bees',knock:'yoyo',
-  spark:'netrunner glitch drone battery',touch:'duck firefly candle painter pharaoh comet beacon',
-  glass:'mirror wizard',wood:'necro hunter','':'miner volcano tesla magnet',
+  spark:'netrunner drone battery',touch:'duck firefly candle painter pharaoh comet beacon',
+  glass:'wizard',soft:'mirror',wood:'necro hunter','':'miner volcano tesla magnet',
 };
 const HIT_SFX={};
 for(const [snd,who] of Object.entries(HIT_KINDS))for(const k of who.split(' '))HIT_SFX[k]=snd;
@@ -759,7 +759,7 @@ function portraits(){
   if(!P.querySelectorAll||!run)return;
   for(const el of P.querySelectorAll('canvas[data-me]')){
     try{
-      const m=createMatch(run.build,makeBuild('turtle',-1,1),7),f=m.f[0];
+      const m=createMatch(run.build,makeBuild(run.build.key,-1,1),7),f=m.f[0];
       f.x=AW/2;f.y=AW/2;f.ang=-.6;
       picture(el,m,0);
     }catch(e){}

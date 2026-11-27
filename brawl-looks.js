@@ -513,12 +513,15 @@ Object.assign(LOOKS,{
     }},
   // Mirror: a hand mirror; glints wink at its rim
   mirror:{
-    crest(fg,bg){
-      g.fillRect(-.07,.2,.14,.46);disc(0,.68,.1);g.fill();
-      g.beginPath();g.ellipse(0,-.2,.4,.46,0,0,TAU);g.fill();
-      g.fillStyle=bg;g.beginPath();g.ellipse(0,-.2,.3,.36,0,0,TAU);g.fill();
-      g.fillStyle='rgba(255,255,255,.3)';g.beginPath();g.ellipse(0,-.2,.3,.36,0,0,TAU);g.fill();
-      g.lineWidth=.055;g.beginPath();g.moveTo(-.14,-.12);g.lineTo(.06,-.38);g.moveTo(-.02,0);g.lineTo(.16,-.22);g.stroke();
+    crest(fg,bg){                                           // the Duplicator: one disc pulling apart into two
+      g.fillStyle=fg;
+      disc(-.3,0,.36);g.fill();disc(.3,0,.36);g.fill();
+      g.fillRect(-.3,-.2,.6,.4);                            // the waist still joining them
+      g.fillStyle=bg;
+      g.beginPath();g.ellipse(0,-.37,.17,.19,0,0,TAU);g.fill();g.beginPath();g.ellipse(0,.37,.17,.19,0,0,TAU);g.fill();   // pinched in, top and bottom
+      disc(-.34,0,.13);g.fill();disc(.34,0,.13);g.fill();   // a core in each half
+      g.strokeStyle=fg;g.lineWidth=.05;g.lineCap='round';   // and the two pulling away
+      g.beginPath();g.moveTo(-.74,-.14);g.lineTo(-.86,0);g.lineTo(-.74,.14);g.moveTo(.74,-.14);g.lineTo(.86,0);g.lineTo(.74,.14);g.stroke();
     },
     over(f){
       g.fillStyle='#ffffff';
@@ -632,12 +635,15 @@ const MINION_LOOKS={
     g.beginPath();g.arc(r*1.05,0,r*.42,0,TAU);g.fill();
     g.restore();
   },
-  // a pale reflection of the Mirror: silver ring, washed-out enamel
+  // a double of the Duplicator: the fighter again, a little paler, wearing the same crest
   copy(q,t){
-    const r=q.r;
-    g.globalAlpha=.62;
-    smallMedal(q.x,q.y,r,shade(q.col,.35),'#cfd6dd','#7f8992');
-    g.strokeStyle='rgba(255,255,255,.85)';g.lineWidth=r*.1;g.lineCap='round';g.beginPath();g.moveTo(q.x-r*.3,q.y+r*.05);g.lineTo(q.x+r*.1,q.y-r*.38);g.stroke();
+    const r=q.r,col=shade(q.col,.18);
+    g.globalAlpha=.9;
+    smallMedal(q.x,q.y,r,col,GOLD,GOLD_LO);
+    g.save();g.translate(q.x,q.y);g.scale(r*.66,r*.66);
+    g.fillStyle='#fbf3df';g.strokeStyle='#fbf3df';
+    try{LOOKS.mirror.crest('#fbf3df',col)}catch(e){}
+    g.restore();
     g.globalAlpha=1;
   },
   // a raised skull with green light in its sockets

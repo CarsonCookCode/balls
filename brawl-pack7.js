@@ -8,10 +8,10 @@ FIGHTERS.tornado  ={name:'Tornado',    color:'#8fb4c9',hp:100,speed:185,spin:0, 
 FIGHTERS.storm    ={name:'Storm Cloud',color:'#5c6f9c',hp:100,speed:120,spin:0,  dmg:25.7,cd:1.15,arms:[],desc:'Drifts slowly while lightning strikes the marked spots.',sig:['Thunderhead','One more bolt in every volley'],sfx:{hit:'',shot:'cast'}};
 FIGHTERS.glacier  ={name:'Glacier',    color:'#9fd6e8',hp:100,speed:150,spin:0,  dmg:25.61,cd:1.2,arms:[],desc:'Leaves ice in its wake. Rivals bounce off it until it shatters on them.',sig:['Pack ice','Lays ice faster, and it shatters wider'],sfx:{hit:'glass'}};
 FIGHTERS.mushroom ={name:'Mushroom',   color:'#c9584c',hp:100,speed:150,spin:0,  dmg:8.32,cd:1.1,arms:[],desc:'Scatters spores that grow into mushrooms and burst into poison.',sig:['Fairy ring','More mushrooms, bigger clouds'],sfx:{hit:'soft',shot:'pop'}};
-FIGHTERS.cactus   ={name:'Cactus',     color:'#5fae5a',hp:100,speed:160,spin:0,  dmg:10.57,cd:.5, arms:[],desc:'Every hit it takes sends needles flying in all directions.',sig:['More needles','More needles in every burst'],sfx:{hit:'tick',shot:'loose'}};
+FIGHTERS.cactus   ={name:'Cactus',     color:'#5fae5a',hp:100,speed:160,spin:0,  dmg:6.44,cd:.5, arms:[],desc:'Any bump or hit sends needles flying in all directions.',sig:['More needles','More needles in every burst'],sfx:{hit:'tick',shot:'loose'}};
 FIGHTERS.tide     ={name:'Tide',       color:'#3f8fd1',hp:100,speed:165,spin:0,  dmg:35.6,cd:3.2,arms:[],desc:'Sends a wave across the arena that slams the rival into the far wall.',sig:['Spring tide','Waves come more often'],sfx:{hit:'thump',shot:'whoosh'}};
 FIGHTERS.quake    ={name:'Quake',      color:'#a8794a',hp:100,speed:200,spin:0,  dmg:19.5,cd:.6, arms:[],desc:'Shakes the ground when it hits a wall. Rivals near any wall are hurt.',sig:['Aftershock','The danger reaches further from the walls'],sfx:{hit:'thump'}};
-FIGHTERS.firefly  ={name:'Firefly',    color:'#e8d24a',hp:75, speed:230,spin:0,  dmg:4.54,cd:.35,arms:[],desc:'Quick and frail. Every touch leaves an ember that keeps burning.',sig:['Wildfire','More embers that burn hotter and for longer'],sfx:{hit:'tick'}};
+FIGHTERS.firefly  ={name:'Firefly',    color:'#e8d24a',hp:75, speed:230,spin:0,  dmg:4.54,cd:.35,arms:[],desc:'Quick and frail. Each touch lights one more ember on its rival, and every ember keeps burning.',sig:['Wildfire','More embers that burn hotter and for longer'],sfx:{hit:'tick'}};
 FIGHTERS.crystal  ={name:'Crystal',    color:'#b9a7f0',hp:100,speed:165,spin:4.4,dmg:15.49,cd:.4, arms:[{a:0,l:24,d:.8},{a:Math.PI,l:24,d:.8}],desc:'Part of every hit from a distance bounces back at whoever sent it.',sig:['Flawless','Sends back more, and grows another shard'],sfx:{hit:'glass'}};
 FIGHTERS.sandstorm={name:'Sandstorm',  color:'#d9b06a',hp:100,speed:170,spin:0,  dmg:9.86,cd:.5, arms:[],desc:'Rivals caught in its sand take more and more damage from everything.',sig:['Dust devil','A wider cloud of sand'],sfx:{hit:''}};
 ROSTER.push('tornado','storm','glacier','mushroom','cactus','tide','quake','firefly','crystal','sandstorm');
@@ -194,7 +194,10 @@ BEHAVE.mushroom={
 // sure to find the attacker; from across the arena most of them miss.
 BEHAVE.cactus={
   init(f){f.s.cd=0;f.s.needles=[]},
-  hurt(f,src,dmg,m){
+  hurt(f,src,dmg,m){BEHAVE.cactus.burst(f,m)},
+  bounce(f,m){BEHAVE.cactus.burst(f,m)},                  // any bump sets it off: a wall,
+  bump(f,e,m){BEHAVE.cactus.burst(f,m)},                  // or its rival
+  burst(f,m){
     const S=f.s;
     if(S.cd>0)return;
     S.cd=Math.max(.4,.5/f.spdMul);
@@ -299,7 +302,7 @@ BEHAVE.firefly={
     const D=FIGHTERS.firefly,S=f.s;
     if(!e.gone){const d=gap(e,f)||1;f.vx+=(e.x-f.x)/d*240*DT;f.vy+=(e.y-f.y)/d*240*DT;m.renorm(f)}
     if(S.n>0){
-      if(m.t-S.last>3+.8*f.sig){S.n=0;m.events.push({k:'fx',n:'smoke',x:e.x,y:e.y,num:5,jit:e.r,i:f.i});return}       // the embers go out
+      if(m.t-S.last>3+.8*f.sig){S.n=0;m.events.push({k:'fx',n:'smoke',x:e.x,y:e.y,num:5,jit:e.r,i:f.i});m.events.push({k:'text',x:e.x,y:e.y-e.r,txt:'Embers out',col:'#c9d0d4',i:f.i});return}       // the embers go out
       S.bt-=DT;
       if(S.bt<=0){S.bt=.5;if(!e.gone)m.events.push({k:'fx',n:'fire',x:e.x,y:e.y,num:2+S.n,i:f.i});m.hurt(e,D.dmg*.5*(1+.2*f.sig)*S.n*f.dmgMul*rage,f,true)}
     }
@@ -307,6 +310,7 @@ BEHAVE.firefly={
   touch:()=>FIGHTERS.firefly.dmg*.6,
   dealt(f,v,dmg,m){
     const S=f.s;if(S.n===0)S.bt=.5;S.n=Math.min(4+2*f.sig,S.n+1);S.last=m.t;
+    m.events.push({k:'text',x:v.x,y:v.y-v.r,txt:S.n>1?'Embers ×'+S.n:'Ember',col:'#ffb04a',i:f.i});
     m.events.push({k:'fx',n:'embers',x:v.x,y:v.y,num:4,col:'#ffb04a',jit:v.r,i:f.i});                                 // another ember catches
     m.events.push({k:'fx',n:'sparks',x:(f.x+v.x)/2,y:(f.y+v.y)/2,num:4,col:'#ffe27a',lo:50,hi:150,life:.22,i:f.i});
   }};
@@ -647,11 +651,14 @@ LOOKS.firefly={
   top(f,m){                                               // embers burning on the rival, drawn above both fighters so its medallion cannot hide them
     const S=f.s,e=m&&m.f[1-f.i];
     if(!e||e.hp<=0||e.gone||!(S.n>0))return;
-    const t=m.t;
+    const t=m.t,left=Math.max(0,1-(t-S.last)/(3+.8*f.sig));
+    g.strokeStyle='rgba(255,170,70,.75)';g.lineWidth=1.3;g.lineCap='round';        // the time they have left, running down
+    g.beginPath();g.arc(e.x,e.y,e.r+8,-1.5708,-1.5708+P7_TAU*left);g.stroke();
     for(let k=0;k<S.n;k++){
-      const a=k/S.n*P7_TAU+t*2.2,x=e.x+dcos(a)*(e.r+3),y=e.y+dsin(a)*(e.r+3)+dsin(t*9+k)*1.2;
-      p7glow(x,y,6.5,'255,150,50',.6);
-      g.fillStyle='#ffe9a8';p7disc(x,y,1.5);g.fill();
+      const a=k/S.n*P7_TAU+t*2.2,x=e.x+dcos(a)*(e.r+8),y=e.y+dsin(a)*(e.r+8),fl=1+dsin(t*11+k*1.7)*.12,h=6.5*fl;
+      p7glow(x,y,8,'255,150,50',.7);
+      g.fillStyle='#ff8a3a';g.beginPath();g.moveTo(x,y-h);g.quadraticCurveTo(x+3.6,y-h*.2,x+2.6,y+2);g.quadraticCurveTo(x,y+4.2,x-2.6,y+2);g.quadraticCurveTo(x-3.6,y-h*.2,x,y-h);g.fill();
+      g.fillStyle='#ffe9a8';g.beginPath();g.moveTo(x,y-h*.45);g.quadraticCurveTo(x+1.7,y,x+1.2,y+1.6);g.quadraticCurveTo(x,y+2.6,x-1.2,y+1.6);g.quadraticCurveTo(x-1.7,y,x,y-h*.45);g.fill();
     }
   }};
 

@@ -8,14 +8,13 @@
 FIGHTERS.netrunner={name:'Netrunner',  color:'#6a4fb0',hp:100,speed:170,spin:0,  dmg:10.69,cd:.5, arms:[],desc:'Sends data packets that jam the rival’s weapons, then rushes in.',sig:['Deep hack','Weapons stay jammed for longer'],sfx:{hit:'tick',shot:'cast'}};
 FIGHTERS.drone    ={name:'Drone Pilot',color:'#4fa8a0',hp:100,speed:165,spin:0,  dmg:6.93, cd:1.5,arms:[],desc:'Harmless itself. Its drones circle it and fire in bursts.',sig:['Bigger swarm','One more drone'],sfx:{hit:'tick',shot:'pop'}};
 FIGHTERS.mech     ={name:'Mech',       color:'#7d8b57',hp:100,speed:130,spin:0,  dmg:38.18,cd:.8, arms:[],desc:'Slow and heavy. Marks the floor, then a missile lands there.',sig:['Salvo','One more missile in every volley'],sfx:{hit:'',shot:'whoosh'}};
-FIGHTERS.glitch   ={name:'Glitch',     color:'#c23bd4',hp:100,speed:175,spin:0,  dmg:10.89,cd:.5, arms:[],desc:'Blinks next to the rival and leaves a copy that hurts to touch.',sig:['Corruption','Blinks sooner and hits harder as it lands'],sfx:{hit:'glass'}};
 FIGHTERS.laser    ={name:'Laser',      color:'#d43b3b',hp:100,speed:170,spin:0,  dmg:12.71, cd:1.5,arms:[],desc:'Stops, charges, then burns a beam right across the arena.',sig:['Overcharge','A wider beam that burns for longer'],sfx:{hit:''}};
 FIGHTERS.railgun  ={name:'Railgun',    color:'#3f6fd8',hp:100,speed:160,spin:0,  dmg:44.62,cd:2.55,arms:[],desc:'Takes aim for a second, then one shot that really hurts.',sig:['Capacitors','Reloads sooner and locks on later'],sfx:{hit:'iron',shot:'gun'}};
-FIGHTERS.engineer ={name:'Engineer',   color:'#d98a2b',hp:100,speed:165,spin:4.4,dmg:16.58,cd:.5, arms:[{a:0,l:16,d:.6}],desc:'Builds little turrets. Run them over to get rid of them.',sig:['Better turrets','One more turret, and they all shoot faster'],sfx:{hit:'metal',shot:'pop'}};
+FIGHTERS.engineer ={name:'Engineer',   color:'#d98a2b',hp:100,speed:165,spin:4.4,dmg:12.55,cd:.5, arms:[{a:0,l:16,d:.6}],desc:'Builds little turrets. Each one takes three knocks to break.',sig:['Better turrets','One more turret, and they all shoot faster'],sfx:{hit:'metal',shot:'pop'}};
 FIGHTERS.battery  ={name:'Battery',    color:'#8fbf2f',hp:100,speed:185,spin:0,  dmg:24.35,cd:.5, arms:[],desc:'Stores every hit it takes and gives it back on the next touch.',sig:['Bigger cells','A stronger discharge'],sfx:{hit:'punch'}};
 FIGHTERS.chainsaw ={name:'Chainsaw',   color:'#c9562e',hp:100,speed:165,spin:0,  dmg:7.49, cd:.5, arms:[],desc:'Cuts faster the longer it stays on you. A hard hit knocks it loose.',sig:['Bigger engine','Revs up sooner and cuts faster'],sfx:{hit:'tin'}};
 FIGHTERS.roomba   ={name:'Roomba',     color:'#8e9aa6',hp:100,speed:175,spin:0,  dmg:14.75,cd:.45,arms:[],desc:'Bumps and turns. Its vacuum eats traps, shots and minions to heal.',sig:['Stronger suction','Pulls harder, reaches further, heals more and bumps harder'],sfx:{hit:'thump'}};
-ROSTER.push('netrunner','drone','mech','glitch','laser','railgun','engineer','battery','chainsaw','roomba');
+ROSTER.push('netrunner','drone','mech','laser','railgun','engineer','battery','chainsaw','roomba');
 
 const P5_TAU=6.2832;
 const p5clamp=(v,r)=>Math.min(AW-r,Math.max(r,v));
@@ -145,44 +144,6 @@ BEHAVE.mech={
   },
   touch:()=>FIGHTERS.mech.dmg*.3};
 
-// Glitch: every couple of seconds it vanishes and reappears right beside the rival, already heading for it. Where it
-// stood it leaves a copy of itself that bursts on whoever touches it.
-BEHAVE.glitch={
-  init(f){f.s.t=1.4;f.s.im=[];f.s.blink=0;f.s.fresh=0},
-  tick(f,e,m,rage){
-    const D=FIGHTERS.glitch,S=f.s,Q=S.im,life=2.4+.6*f.sig;
-    S.life=life;
-    if(S.blink>0){S.blink-=DT;if(S.blink<=0)f.gone=false}
-    if(S.fresh>0)S.fresh-=DT;
-    S.t-=DT;
-    if(S.t<=0&&!e.gone&&!f.gone){
-      S.t=Math.max(1.2,2.4-.3*f.sig)/f.spdMul;
-      Q.push({x:f.x,y:f.y,r:f.r,t:0});
-      if(Q.length>2+f.sig)Q.shift();
-      m.events.push({k:'fade',x:f.x,y:f.y,i:f.i});
-      const fx0=f.x,fy0=f.y;
-      m.events.push({k:'fx',n:'shards',x:fx0,y:fy0,num:6,col:'#55e6ff',lo:40,hi:150,i:f.i});
-      const a=m.rnd()*P5_TAU,d=e.r+f.r+14+m.rnd()*24;
-      f.x=p5clamp(e.x+dcos(a)*d,f.r);f.y=p5clamp(e.y+dsin(a)*d,f.r);
-      p5seek(f,e);f.gone=true;S.blink=.2;S.fresh=.9;
-      m.events.push({k:'appear',x:f.x,y:f.y,i:f.i});
-      m.events.push({k:'fx',n:'line',x:fx0-2,y:fy0,x2:f.x-2,y2:f.y,col:'#55e6ff',w:2,life:.22,i:f.i});                // the jump, split into its two colours
-      m.events.push({k:'fx',n:'line',x:fx0+2,y:fy0,x2:f.x+2,y2:f.y,col:'#ff4fd8',w:2,life:.26,i:f.i});
-      m.events.push({k:'fx',n:'shards',x:f.x,y:f.y,num:6,col:'#ff4fd8',lo:40,hi:150,i:f.i});
-    }
-    for(let i=Q.length-1;i>=0;i--){
-      const q=Q[i];
-      q.t+=DT;
-      if(q.t>.35&&!e.gone&&dhyp(e.x-q.x,e.y-q.y)<e.r+q.r*.7){
-        m.events.push({k:'burst',x:q.x,y:q.y,n:10,i:f.i});
-        m.events.push({k:'fx',n:'shatter',x:q.x,y:q.y,num:9,col:'#55e6ff',r:q.r,i:f.i});
-        m.events.push({k:'fx',n:'wave',x:q.x,y:q.y,r0:q.r*.4,r:q.r+16,life:.3,col:'#ff4fd8',w:2.6,fill:.3,i:f.i});
-        m.hurt(e,D.dmg*.8*f.dmgMul*rage,f);Q.splice(i,1);continue;
-      }
-      if(q.t>life){m.events.push({k:'fx',n:'wisps',x:q.x,y:q.y,num:5,jit:q.r,i:f.i});Q.splice(i,1)}
-    }
-  },
-  touch:f=>FIGHTERS.glitch.dmg*(f.s.fresh>0?1+.3*f.sig:1)};
 
 // Laser: roam, stop and charge (the aiming line follows the rival until the last moment), then a beam from the laser
 // to the wall that burns whatever is standing in it. It cannot move while it charges or fires.
@@ -260,14 +221,19 @@ BEHAVE.engineer={
     if(S.t<=0){
       S.t=.5;
       let near=false;for(const q of T)if(dhyp(q.x-f.x,q.y-f.y)<46)near=true;
-      if(T.length<2+f.sig&&!near){S.t=(2.4-.15*f.sig)/f.spdMul;T.push({x:p5clamp(f.x,8),y:p5clamp(f.y,8),t:.7,life:9+f.sig,an:f.aim});m.events.push({k:'mine',x:f.x,y:f.y,i:f.i});
+      if(T.length<2+f.sig&&!near){S.t=(2.4-.15*f.sig)/f.spdMul;T.push({x:p5clamp(f.x,8),y:p5clamp(f.y,8),t:.7,life:12+f.sig,an:f.aim,hp:3,hit:0});m.events.push({k:'mine',x:f.x,y:f.y,i:f.i});
         m.events.push({k:'fx',n:'sparks',x:f.x,y:f.y,num:9,col:'#ffd27a',lo:60,hi:180,life:.3,grav:220,i:f.i});m.events.push({k:'fx',n:'poof',x:f.x,y:f.y,r:10,i:f.i})}
     }
     for(let i=T.length-1;i>=0;i--){
       const q=T[i];
       q.life-=DT;
       if(!e.gone)q.an=datan2(e.y-q.y,e.x-q.x);
-      if(q.life<=0||(!e.gone&&(dhyp(q.x-e.x,q.y-e.y)<e.r+7||p5cut(e,q.x,q.y,6)))){
+      if(q.hit>0)q.hit-=DT;                                // a turret takes three knocks, not one, and not more than one in half a second
+      else if(!e.gone&&(dhyp(q.x-e.x,q.y-e.y)<e.r+7||p5cut(e,q.x,q.y,6))){
+        q.hp--;q.hit=.6;
+        if(q.hp>0){m.events.push({k:'fx',n:'sparks',x:q.x,y:q.y,num:6,col:'#ffd27a',lo:60,hi:170,life:.26,i:f.i});m.events.push({k:'fx',n:'shards',x:q.x,y:q.y,num:2,col:'#8b959d',i:f.i})}
+      }
+      if(q.life<=0||q.hp<=0){
         m.events.push({k:'pop',x:q.x,y:q.y,i:f.i});
         if(q.life<=0)m.events.push({k:'fx',n:'smoke',x:q.x,y:q.y,num:5,i:f.i});                                         // worn out: it just gives up
         else{m.events.push({k:'fx',n:'explode',x:q.x,y:q.y,r:15,col:'#ffb347',i:f.i});m.events.push({k:'fx',n:'shards',x:q.x,y:q.y,num:6,col:'#8b959d',i:f.i})}
@@ -602,46 +568,6 @@ LOOKS.mech={
     if(!f.gone)for(let n=FX.due(f.i,'p5st',2.4,dt);n>0;n--)FX.dust(f.x+(p5rnd()-.5)*f.r*1.4,f.y+f.r*.75,1,null,{lo:6,hi:26,life:.45});   // heavy feet
   }};
 
-LOOKS.glitch={
-  crest(fg,bg){                                           // a block sliced into three and knocked out of line
-    g.fillStyle=fg;
-    g.fillRect(-.5,-.5,.84,.28);g.fillRect(-.26,-.16,.84,.3);g.fillRect(-.56,.2,.84,.28);
-    g.fillStyle=P5.CYAN;g.fillRect(.4,-.5,.12,.28);
-    g.fillStyle=P5.MAGENTA;g.fillRect(-.42,-.16,.12,.3);
-    g.fillStyle=bg;g.fillRect(.04,-.08,.18,.14);g.fillRect(-.3,.28,.14,.1);
-  },
-  under(f){                                               // the copies it leaves: a medallion's outline, split into colours
-    const life=f.s.life||2.4,t=p5now();
-    for(const q of f.s.im){
-      const a=Math.max(.15,1-q.t/life),j=dsin(t*23+q.x)*1.2;
-      g.globalAlpha=a*.85;
-      g.lineWidth=1.6;g.strokeStyle=P5.CYAN;p5disc(q.x-2+j,q.y,q.r);g.stroke();
-      g.strokeStyle=P5.MAGENTA;p5disc(q.x+2-j,q.y,q.r);g.stroke();
-      g.fillStyle='rgba(255,255,255,.14)';
-      for(let k=-1;k<=1;k++)g.fillRect(q.x-q.r+k*3,q.y+k*q.r*.5-2,q.r*2,3.5);
-      g.globalAlpha=1;
-    }
-  },
-  back(f){                                                // its own edges never quite line up
-    const j=dsin(p5now()*29)*1.1+1.6;
-    g.lineWidth=1.3;g.strokeStyle='rgba(85,230,255,.75)';p5disc(f.x-j,f.y,f.r+.6);g.stroke();
-    g.strokeStyle='rgba(255,79,216,.75)';p5disc(f.x+j,f.y,f.r+.6);g.stroke();
-    if(f.s.fresh>0)p5lite(f.x,f.y,f.r*2,P5.MAGENTA,.5*Math.min(1,f.s.fresh/.5));        // just landed: it hits harder
-  },
-  amb(f,e,m,dt){
-    const S=f.s,Q=S.im;
-    if(!Q||m.over)return;
-    if(Q.length){
-      for(let n=FX.due(f.i,'p5im',4*Q.length,dt);n>0;n--){              // the copies flicker
-        const q=Q[(p5rnd()*Q.length)|0],a=p5rnd()*P5_TAU;
-        FX.sparks(q.x+dcos(a)*q.r,q.y+dsin(a)*q.r,1,p5rnd()<.5?P5.CYAN:P5.MAGENTA,{lo:6,hi:36,life:.26,size:1});
-      }
-      for(let n=FX.due(f.i,'p5ib',1.6*Q.length,dt);n>0;n--){const q=Q[(p5rnd()*Q.length)|0],yy=q.y+(p5rnd()-.5)*q.r*1.5,ox=(p5rnd()-.5)*10;FX.line(q.x-q.r+ox,yy,q.x+q.r+ox,yy,p5rnd()<.5?P5.CYAN:P5.MAGENTA,1.6,.1)}
-    }
-    if(f.gone)return;
-    for(let n=FX.due(f.i,'p5gb',1.6,dt);n>0;n--){const yy=f.y+(p5rnd()-.5)*f.r*1.5,ox=(p5rnd()-.5)*12;FX.line(f.x-f.r+ox,yy,f.x+f.r+ox,yy,p5rnd()<.5?P5.CYAN:P5.MAGENTA,1.6,.09)}   // a torn scan line now and then
-    if(S.fresh>0)for(let n=FX.due(f.i,'p5fr',14,dt);n>0;n--){const a=p5rnd()*P5_TAU;FX.sparks(f.x+dcos(a)*f.r,f.y+dsin(a)*f.r,1,P5.MAGENTA,{dir:a,spread:1,lo:20,hi:90,life:.24})}
-  }};
 
 LOOKS.laser={
   crest(fg){                                              // a lens, and the beam leaving it

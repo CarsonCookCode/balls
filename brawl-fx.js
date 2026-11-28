@@ -228,6 +228,7 @@ const FX=(()=>{
     }
     else if(k==='wall'){
       if(!own)return;
+      wallHit(e,own);
       const sp=Math.min(2.2,Math.hypot(own.vx,own.vy)/170),big=own.r/24,al=Math.atan2(e.ny,e.nx);
       // dust rolls out along the wall both ways, chips fly back into the arena
       dust(e.x,e.y,2.2*big*sp,null,{dir:al+1.5708,spread:.5,lo:30,hi:80*sp});dust(e.x,e.y,2.2*big*sp,null,{dir:al-1.5708,spread:.5,lo:30,hi:80*sp});
@@ -276,7 +277,7 @@ const FX=(()=>{
     else if(k==='ko'){
       if(!own)return;
       const r=own.r,win=m.f[1-own.i];
-      if(breakApart(own,col,win,e.x,e.y,m)){                    // it breaks into pieces: dust and chips of stone, no light
+      if(breakApart(own,col,win,e.x,e.y,m)){                    // it bursts into chunks: dust and chips of stone, no light
         dust(e.x,e.y,12,null,{jit:r,lo:14,hi:70});smoke(e.x,e.y,5,null,{jit:r});
         shards(e.x,e.y,16,'#8d8b86',{lo:70,hi:260,life:.7,size:1.6,jit:r});shards(e.x,e.y,8,col,{lo:60,hi:220,life:.6,size:1.4,jit:r});
         wave(e.x,e.y,r*.7,r*2.6,.4,'#b9b4a8',1.6);
@@ -407,96 +408,215 @@ const FX=(()=>{
     line(x,y,x+bx*l,y+by*l,col,1,.2);
   }
 
-  // ----- a fallen fighter breaks apart (Build 82) -----
-  // The user: "When a unit dies have it explode into pieces maybe similarly to the way it did in our Crypt art style idea
-  // before." The ball is stone, so it breaks like stone: its own picture, as it looked at that moment, is cut into a
-  // dozen chunks along straight cracks; they are thrown outwards (and away from the blow), tumble, slow on the floor and
-  // lie there as rubble until the next fight. Each chunk has a shadow and a grey broken edge under it, so it reads as a
-  // piece of a ball and not a flat scrap. Its weapons are thrown clear and come to rest too. Dust, not sparks or light.
-  // Needs brawl-art.js (the ball's picture); without it the old burst of light is used (the tests take that path).
-  const RUB=[];let rubOf=null;                       // the pieces, and the fight they belong to: a new fight sweeps them away
-  // cuts a circle of radius r into cells round the given points: each cell is the circle clipped by the lines halfway
-  // to every other point
-  function cells(pts,r){
-    const out=[];
-    for(let i=0;i<pts.length;i++){
-      let poly=[];for(let k=0;k<28;k++){const a=k/28*TAU;poly.push([Math.cos(a)*r,Math.sin(a)*r])}
-      for(let j=0;j<pts.length&&poly.length>2;j++){
-        if(j===i)continue;
-        const nx=pts[j][0]-pts[i][0],ny=pts[j][1]-pts[i][1],c=(pts[j][0]*pts[j][0]+pts[j][1]*pts[j][1]-pts[i][0]*pts[i][0]-pts[i][1]*pts[i][1])/2,nw=[];
-        for(let k=0;k<poly.length;k++){
-          const A=poly[k],B=poly[(k+1)%poly.length],da=A[0]*nx+A[1]*ny-c,db=B[0]*nx+B[1]*ny-c;
-          if(da<=0)nw.push(A);
-          if((da<0&&db>0)||(da>0&&db<0)){const t=da/(da-db);nw.push([A[0]+(B[0]-A[0])*t,A[1]+(B[1]-A[1])*t])}
-        }
-        poly=nw;
+  // ----- a fallen fighter explodes (Build 85; it broke along cracks in Builds 82 to 84) -----
+  // The user asked for the knockout of the "Crypt" sample (the 3D art idea of Build 61's time): "When a unit dies have it
+  // explode into pieces maybe similarly to the way it did in our Crypt art style idea before." Build 82 instead cut the
+  // ball's picture into flat slabs that slid apart, and the user said: "The explosion effect when you die is not like the
+  // crypt one, I want it more like that." So this is the Crypt's, seen from above: the ball is gone at once and eighteen
+  // faceted chunks (eight-sided, uneven, like rough-cut rock) are thrown UP and outwards, tumbling, fall back under gravity, bounce two or three
+  // times losing speed, and lie where they stop until the next fight. The sample's numbers, a little closer in: out at 45 to 170,
+  // up at 130 to 330, gravity 600, 0.42 of the speed kept on a bounce. A chunk is solid: each face is lit by the arena's
+  // lamp (hard, no glow), it throws a shadow that moves away from it as it rises, and it looks a little larger when high.
+  // One side of a chunk is the fighter's paint (the ball's skin), the rest the bare stone inside; both carry a grain. Small chips fly with them and fade; a soot mark
+  // stays on the floor; the fighter's weapons are thrown clear. The sample's burst of light and rings are left out (all
+  // light effects are off, see EFFECTS_OFF below).
+  // Needs brawl-art.js; without it nothing is drawn here (the tests take that path).
+  const RUB=[],SOOT=[];let rubOf=null;                // the pieces and marks, and the fight they belong to: a new fight sweeps them away
+  const LKL=Math.hypot(.5,.6,.62),LK=[-.5/LKL,-.6/LKL,.62/LKL],LKH=Math.hypot(LK[0],LK[1]),SHX=-LK[0]/LKH,SHY=-LK[1]/LKH;   // the lamp of brawl-art.js, and which way shadows fall
+  // the two shapes: a rough eight-sided rock for the chunks, a four-sided splinter for the chips
+  const OCT={v:[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]],f:[[0,2,4],[2,1,4],[1,3,4],[3,0,4],[2,0,5],[1,2,5],[3,1,5],[0,3,5]]};
+  const TET={v:[[1,1,1],[1,-1,-1],[-1,1,-1],[-1,-1,1]].map(v=>v.map(c=>c/1.732)),f:[[0,1,2],[0,3,1],[0,2,3],[1,3,2]]};
+  const INNER=[128,125,118],PV=[0,1,2,3,4,5].map(()=>[0,0,0]);
+  let GRAIN=null;                                      // a speckle laid over every face, so a chunk is stone and not plastic
+  function grain(g){
+    if(GRAIN!==null)return GRAIN;
+    try{
+      const N=64,cv=document.createElement('canvas');cv.width=cv.height=N;const c=cv.getContext('2d'),im=c.createImageData(N,N),d=im.data;
+      for(let i=0;i<N*N;i++){const q=Math.random(),o=i*4,dark=q<.5;d[o]=d[o+1]=d[o+2]=dark?0:255;d[o+3]=q<.07?70:q<.5?(.5-q)*56:q>.95?46:(q-.5)*26}
+      c.putImageData(im,0,0);
+      GRAIN=g.createPattern(cv,'repeat')||false;
+    }catch(err){GRAIN=false}
+    return GRAIN;
+  }
+  // the colour a fighter's paint shows in the arena: the average of its own picture away from the emblem
+  function paintOf(f,col){
+    try{
+      const pic=ART.pictureOf(f,col),N=24,cv=document.createElement('canvas');cv.width=cv.height=N;
+      const c=cv.getContext('2d');c.drawImage(pic,0,0,N,N);
+      const d=c.getImageData(0,0,N,N).data;let r=0,g=0,b=0,n=0;
+      for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+        const q=Math.hypot(x-(N-1)/2,y-(N-1)/2)/(N/2),i=(y*N+x)*4;
+        if(q<.62||q>.86||d[i+3]<250)continue;
+        r+=d[i];g+=d[i+1];b+=d[i+2];n++;
       }
-      if(poly.length>2)out.push(poly);
+      if(n>8)return [r/n*1.12,g/n*1.12,b/n*1.12];
+    }catch(err){}
+    const h=/^#?([0-9a-f]{6})$/i.exec(String(col||''));if(h){const v=parseInt(h[1],16);return [(v>>16&255)*.85,(v>>8&255)*.85,(v&255)*.85]}
+    return [150,150,150];
+  }
+  // the soot left where it burst: a small dark picture made dot by dot, one dot to an arena unit like the floor's bricks
+  function sootPic(r){
+    const N=Math.max(16,Math.round(r*2)),cv=document.createElement('canvas');cv.width=cv.height=N;
+    const c=cv.getContext('2d'),im=c.createImageData(N,N),d=im.data,lobes=[];
+    for(let i=0;i<7;i++){const a=Math.random()*TAU,q=Math.random()*.42;lobes.push([.5+Math.cos(a)*q,.5+Math.sin(a)*q,.2+Math.random()*.22])}
+    for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+      let v=0;for(const L of lobes){const q=Math.hypot(x/N-L[0],y/N-L[1])/L[2];if(q<1)v=Math.max(v,1-q)}
+      v=v*1.5+(Math.random()-.5)*.5;
+      const a=v>1?.5:v>.62?.36:v>.32?.2:v>.14?.09:0,i=(y*N+x)*4;
+      d[i]=8;d[i+1]=8;d[i+2]=10;d[i+3]=a*255;
     }
-    return out;
+    c.putImageData(im,0,0);
+    return cv;
+  }
+  // a piece of the ball: shape = OCT or TET, size = how far its corners are from its middle, paint and how much of it
+  // is painted (the share of its faces, all on one side)
+  function piece(shape,x,y,z,size,paint,part,dir,sp,up,bx,by,life){
+    const rnd=()=>{const a=Math.random()*2-1,b=Math.random()*2-1,c=Math.random()*2-1,l=Math.hypot(a,b,c)||1;return [a/l,b/l,c/l]},ax=rnd(),side=rnd();
+    const sq=[.75+Math.random()*.5,.75+Math.random()*.5,.6+Math.random()*.4];
+    const off=()=>(Math.random()-.5)*size*.5;            // no two corners alike, so it is a rock and not a cut gem
+    const v=shape.v.map(t=>{const j=size*(.7+Math.random()*.6);return [t[0]*j*sq[0]+off(),t[1]*j*sq[1]+off(),t[2]*j*sq[2]+off()*.6]});
+    const cols=shape.f.map(F=>{
+      const mx=(v[F[0]][0]+v[F[1]][0]+v[F[2]][0])/3,my=(v[F[0]][1]+v[F[1]][1]+v[F[2]][1])/3,mz=(v[F[0]][2]+v[F[1]][2]+v[F[2]][2])/3,ml=Math.hypot(mx,my,mz)||1;
+      const skin=(mx*side[0]+my*side[1]+mz*side[2])/ml>1-2*part,c=skin?paint:INNER,j=.9+Math.random()*.2;
+      return [c[0]*j,c[1]*j,c[2]*j];
+    });
+    return {k:0,x,y,z,size,vx:Math.cos(dir)*sp+bx,vy:Math.sin(dir)*sp+by,vz:up,ax:ax[0],ay:ax[1],az:ax[2],th:Math.random()*TAU,
+      w:(Math.random()<.5?-1:1)*(3+Math.random()*8),rest:false,cols,life,max:life,v,f:shape.f,big:shape===OCT};
   }
   function breakApart(f,col,win,x,y,m){
-    if(typeof ART==='undefined'||!ART||!ART.ok||!ART.pictureOf)return false;
+    if(typeof ART==='undefined'||!ART||!ART.ok||typeof document==='undefined')return false;
     try{
-      const pic=ART.pictureOf(f,col);if(!pic)return false;
-      if(rubOf!==m){RUB.length=0;rubOf=m}
-      const r=f.r,pts=[[(Math.random()-.5)*r*.3,(Math.random()-.5)*r*.3]],n=10+((Math.random()*3)|0);
-      for(let i=1;i<n;i++){const a=i/(n-1)*TAU+Math.random()*.5,d=r*(.45+Math.random()*.4);pts.push([Math.cos(a)*d,Math.sin(a)*d])}
+      if(rubOf!==m){RUB.length=0;SOOT.length=0;rubOf=m}
+      const r=f.r,k=r/24,paint=paintOf(f,col);
       // the blow comes from the winner: everything is carried a little that way
-      let bx=0,by=0;if(win){const d=Math.hypot(x-win.x,y-win.y)||1;bx=(x-win.x)/d;by=(y-win.y)/d}
-      for(const poly of cells(pts,r)){
-        let cx=0,cy=0;for(const p of poly){cx+=p[0];cy+=p[1]}cx/=poly.length;cy/=poly.length;
-        const d=Math.hypot(cx,cy)||1,sp=40+Math.random()*90+d/r*70;
-        RUB.push({k:0,x:x+cx,y:y+cy,a:0,vx:cx/d*sp+bx*55,vy:cy/d*sp+by*55,va:(Math.random()-.5)*13,ox:cx,oy:cy,r,pic,poly:poly.map(p=>[p[0]-cx,p[1]-cy])});
+      let bx=0,by=0;if(win){const d=Math.hypot(x-win.x,y-win.y)||1;bx=(x-win.x)/d*28;by=(y-win.y)/d*28}
+      for(let i=0;i<18;i++){
+        const a=i/18*TAU+Math.random()*.6,d=Math.random()*r*.5;
+        RUB.push(piece(OCT,x+Math.cos(a)*d,y+Math.sin(a)*d,r*(.5+Math.random()*.9),(5.5+Math.random()*5.5)*k,paint,.62,a+(Math.random()-.5)*.9,45+Math.random()*125,130+Math.random()*200,bx,by,0));
+      }
+      for(let i=0;i<30;i++){                                 // chips: fast, small, gone in a second
+        const a=Math.random()*TAU,d=Math.random()*r*.7;
+        RUB.push(piece(TET,x+Math.cos(a)*d,y+Math.sin(a)*d,r*(.4+Math.random()),(1.2+Math.random()*1.6)*k,paint,.6,a,80+Math.random()*220,90+Math.random()*330,bx,by,.75+Math.random()*.6));
       }
       // its weapons fly off the way they were pointing, spinning
       if(f.arms&&ART.strip&&ART.HELD)for(const A of f.arms){
         const T=ART.strip(ART.pick(f,A));if(!T||T.loose)continue;
         const an=f.ang*(A.rate||1)+A.a,c=Math.cos(an),s=Math.sin(an),sp=70+Math.random()*60;
-        RUB.push({k:1,x:x+c*r*.9,y:y+s*r*.9,a:an,vx:c*sp+bx*40,vy:s*sp+by*40,va:(Math.random()<.5?-1:1)*(4+Math.random()*5),T,len:A.l+r*.1});
+        RUB.push({k:1,x:x+c*r*.9,y:y+s*r*.9,z:0,a:an,vx:c*sp+bx*1.4,vy:s*sp+by*1.4,va:(Math.random()<.5?-1:1)*(4+Math.random()*5),T,len:A.l+r*.1});
       }
+      SOOT.push({x:Math.round(x),y:Math.round(y),r:Math.round(r*1.55),pic:sootPic(r*1.55)});
       return true;
     }catch(err){return false}
   }
   function moveRubble(dt){
-    const fr=Math.exp(-3.4*dt),lo=3,hi=(typeof AW==='number'?AW:260)-3;
-    for(const p of RUB){
-      p.x+=p.vx*dt;p.y+=p.vy*dt;p.a+=p.va*dt;p.vx*=fr;p.vy*=fr;p.va*=fr;
+    const lo=3,hi=(typeof AW==='number'?AW:260)-3,slide=Math.exp(-3.4*dt),stop=Math.exp(-9*dt);
+    for(let i=RUB.length-1;i>=0;i--){
+      const p=RUB[i];
+      if(p.k===1){p.a+=p.va*dt;p.vx*=slide;p.vy*=slide;p.va*=slide}
+      else{
+        if(p.max){p.life-=dt;if(p.life<=0){RUB.splice(i,1);continue}}
+        if(p.rest){p.vx*=stop;p.vy*=stop;p.w*=stop}
+        else{
+          p.vz-=600*dt;p.z+=p.vz*dt;
+          if(p.z<=0){p.z=0;if(p.vz>-48){p.rest=true;p.vz=0}else{p.vz*=-.42;p.vx*=.72;p.vy*=.72;p.w*=.7}}
+        }
+        p.th+=p.w*dt;
+      }
+      p.x+=p.vx*dt;p.y+=p.vy*dt;
       if(p.x<lo){p.x=lo;p.vx=Math.abs(p.vx)*.4}else if(p.x>hi){p.x=hi;p.vx=-Math.abs(p.vx)*.4}
       if(p.y<lo){p.y=lo;p.vy=Math.abs(p.vy)*.4}else if(p.y>hi){p.y=hi;p.vy=-Math.abs(p.vy)*.4}
     }
   }
+  // turns a chunk's corners to where they are now (into PV) and returns how much larger it looks for being off the floor
+  function turn(p){
+    const c=Math.cos(p.th),s=Math.sin(p.th),ax=p.ax,ay=p.ay,az=p.az;
+    for(let i=0;i<p.v.length;i++){
+      const v=p.v[i],d=(ax*v[0]+ay*v[1]+az*v[2])*(1-c),o=PV[i];
+      o[0]=v[0]*c+(ay*v[2]-az*v[1])*s+ax*d;o[1]=v[1]*c+(az*v[0]-ax*v[2])*s+ay*d;o[2]=v[2]*c+(ax*v[1]-ay*v[0])*s+az*d;
+    }
+    return 1+p.z/210;
+  }
+  function chunkShadow(g,p){
+    const sc=turn(p),h=p.z*.6+p.size*.32,ox=p.x+SHX*h,oy=p.y+SHY*h;
+    g.globalAlpha=.55/(1+p.z/70)*(p.max?Math.min(1,p.life/.3):1);
+    g.beginPath();
+    for(const F of p.f){
+      const A=PV[F[0]],B=PV[F[1]],C=PV[F[2]],fl=(B[0]-A[0])*(C[1]-A[1])-(B[1]-A[1])*(C[0]-A[0])<0;   // all wound the same way, so they fill as one shape
+      g.moveTo(ox+A[0]*sc,oy+A[1]*sc);
+      if(fl){g.lineTo(ox+C[0]*sc,oy+C[1]*sc);g.lineTo(ox+B[0]*sc,oy+B[1]*sc)}else{g.lineTo(ox+B[0]*sc,oy+B[1]*sc);g.lineTo(ox+C[0]*sc,oy+C[1]*sc)}
+      g.closePath();
+    }
+    g.fill();
+  }
+  // a chunk as a solid thing: each face that is turned to the sky, lit by the lamp. Drawn four times finer than the
+  // arena's units so the grain is fine; the grain is fixed to the chunk's place, not to the floor.
+  function chunk(g,p){
+    const Z=4,sc=turn(p)*Z,n=p.v.length,gr=p.big?grain(g):null;
+    let mx=0,my=0,mz=0;for(let i=0;i<n;i++){mx+=PV[i][0];my+=PV[i][1];mz+=PV[i][2]}mx/=n;my/=n;mz/=n;
+    g.save();g.translate(p.x,p.y);g.scale(1/Z,1/Z);g.lineWidth=1;
+    const al=p.max?Math.min(1,p.life/.3):1;
+    for(let i=0;i<p.f.length;i++){
+      const F=p.f[i],A=PV[F[0]],B=PV[F[1]],C=PV[F[2]];
+      let nx=(B[1]-A[1])*(C[2]-A[2])-(B[2]-A[2])*(C[1]-A[1]),ny=(B[2]-A[2])*(C[0]-A[0])-(B[0]-A[0])*(C[2]-A[2]),nz=(B[0]-A[0])*(C[1]-A[1])-(B[1]-A[1])*(C[0]-A[0]);
+      if(nx*((A[0]+B[0]+C[0])/3-mx)+ny*((A[1]+B[1]+C[1])/3-my)+nz*((A[2]+B[2]+C[2])/3-mz)<0){nx=-nx;ny=-ny;nz=-nz}
+      if(nz<=0)continue;                                     // this face is turned to the floor
+      const nl=Math.hypot(nx,ny,nz)||1,lit=Math.max(0,(nx*LK[0]+ny*LK[1]+nz*LK[2])/nl),sh=.34+1.06*lit,q=p.cols[i];
+      const col='rgb('+Math.min(255,q[0]*sh|0)+','+Math.min(255,q[1]*sh|0)+','+Math.min(255,q[2]*sh|0)+')';
+      g.globalAlpha=al;g.fillStyle=col;g.strokeStyle=col;
+      g.beginPath();g.moveTo(A[0]*sc,A[1]*sc);g.lineTo(B[0]*sc,B[1]*sc);g.lineTo(C[0]*sc,C[1]*sc);g.closePath();g.fill();g.stroke();
+      if(gr){g.fillStyle=gr;g.fill()}
+    }
+    g.restore();
+  }
+  const byHeight=(a,b)=>(a.z||0)-(b.z||0);
+  // on the floor: the soot, every shadow, the dropped weapons and the chunks that have landed
   function drawRubble(g){
-    if(!RUB.length)return;
-    g.save();g.globalCompositeOperation='source-over';g.globalAlpha=1;
-    const path=(p,dx,dy)=>{const c=Math.cos(p.a),s=Math.sin(p.a);g.beginPath();for(let i=0;i<p.poly.length;i++){const q=p.poly[i],X=p.x+dx+q[0]*c-q[1]*s,Y=p.y+dy+q[0]*s+q[1]*c;if(i)g.lineTo(X,Y);else g.moveTo(X,Y)}g.closePath()};
+    if(!RUB.length&&!SOOT.length)return;
+    g.save();g.globalCompositeOperation='source-over';g.globalAlpha=1;g.lineJoin='round';g.lineWidth=.3;
+    const sm=g.imageSmoothingEnabled;g.imageSmoothingEnabled=false;
+    for(const s of SOOT)g.drawImage(s.pic,s.x-s.r,s.y-s.r,s.r*2,s.r*2);
+    g.imageSmoothingEnabled=sm;
+    g.fillStyle='#000';
+    for(const p of RUB)if(p.k===0)chunkShadow(g,p);
     for(const p of RUB){
       if(p.k===1){                                           // a dropped weapon: its shadow, then itself
         const T=p.T,k=p.len/170,fw=T.fw*k,fh=T.fh*k,gx=17*k;
         g.save();g.globalAlpha=.45;g.translate(p.x+1,p.y+1.4);g.rotate(p.a);g.drawImage(T.sh,0,0,T.fw,T.fh,-gx,-fh/2,fw,fh);g.restore();
-        g.save();g.translate(p.x,p.y);g.rotate(p.a);g.drawImage(T.img,0,0,T.fw,T.fh,-gx,-fh/2,fw,fh);g.restore();
-        continue;
-      }
-      g.fillStyle='rgba(0,0,0,.5)';path(p,1.5,2);g.fill();                 // its shadow on the floor
-      g.fillStyle='#35373a';path(p,.7,.95);g.fill();                        // the broken stone under its painted face
-      g.save();g.translate(p.x,p.y);g.rotate(p.a);
-      g.beginPath();for(let i=0;i<p.poly.length;i++){const q=p.poly[i];if(i)g.lineTo(q[0],q[1]);else g.moveTo(q[0],q[1])}g.closePath();g.clip();
-      const w=p.r*1.03;g.drawImage(p.pic,-p.ox-w,-p.oy-w,2*w,2*w);
-      g.restore();
-      g.strokeStyle='rgba(0,0,0,.45)';g.lineWidth=.35;path(p,0,0);g.stroke();
+        g.save();g.globalAlpha=1;g.translate(p.x,p.y);g.rotate(p.a);g.drawImage(T.img,0,0,T.fw,T.fh,-gx,-fh/2,fw,fh);g.restore();
+      }else if(p.z<3)chunk(g,p);
     }
     g.restore();
   }
+  // in the air, over the fighters: the chunks still flying, the lowest first
+  function drawFlying(g){
+    if(!RUB.length)return;
+    g.save();g.globalCompositeOperation='source-over';g.lineJoin='round';g.lineWidth=.3;
+    RUB.sort(byHeight);
+    for(const p of RUB)if(p.k===0&&p.z>=3)chunk(g,p);
+    g.restore();
+  }
+
+  // ----- the wall lights up where a fighter bounces off it (Build 85) -----
+  // The user: "Let's add the wall bouncing effect, let's have it light up that part of the wall when it bounces off".
+  // This only keeps the list of recent bounces; brawl-looks.js draws them, because the wall's picture is there
+  // (wallLight). Each: where on the wall, which way the wall faces, the fighter's size and colour, how hard (0..1).
+  const WH=[];
+  function wallHit(e,own){
+    if(!own||own.gone)return;                              // a fighter that has faded from sight stays hidden
+    if(WH.length>=10)WH.shift();
+    WH.push({x:e.x,y:e.y,nx:e.nx,ny:e.ny,r:own.r,col:own.col,k:Math.min(1,.6+Math.hypot(own.vx||0,own.vy||0)/420),life:.5,max:.5});
+  }
+  function moveWall(dt){for(let i=WH.length-1;i>=0;i--){WH[i].life-=dt;if(WH[i].life<=0)WH.splice(i,1)}}
 
   // ----- per-frame bookkeeping -----
   function reset(soft){
-    if(!soft){P.length=0;W.length=0;DEC.length=0;RUB.length=0}
+    if(!soft){P.length=0;W.length=0;DEC.length=0;RUB.length=0;SOOT.length=0;WH.length=0}
     SQ[0].t=SQ[1].t=9;ACC[0]={};ACC[1]={};cheer=null;entered=false;sdOn=false;
     for(const k in SAID)delete SAID[k];
   }
   function update(dt){
     clock+=dt;
-    moveRubble(dt);
+    moveRubble(dt);moveWall(dt);
     slowDt+=(dt-slowDt)*.05;                               // a slow phone gets fewer particles rather than a slower game
     q=api.calm?.3:slowDt>.03?.45:slowDt>.022?.7:1;
     for(let i=P.length-1;i>=0;i--){
@@ -618,12 +738,12 @@ const FX=(()=>{
   function floor(g,m){
     for(const d of DEC){const t=d.life/d.max;blit(g,d.col,false,d.x,d.y,d.r,Math.min(1,t*1.6)*.5)}
     g.globalAlpha=1;
-    if(RUB.length&&m!==rubOf)RUB.length=0;
+    if((RUB.length||SOOT.length)&&m!==rubOf){RUB.length=0;SOOT.length=0}
     drawRubble(g);
     drawParts(g,0);
   }
   // over the fighters and shots
-  function top(g,m){drawWaves(g);drawParts(g,1)}
+  function top(g,m){drawWaves(g);drawParts(g,1);drawFlying(g)}
   function screenFlash(g,w){if(screen>0){g.globalAlpha=1;g.fillStyle='rgba('+screenCol+','+(screen*.55).toFixed(3)+')';g.fillRect(0,0,w,w)}}
 
   // behind a fighter's medallion and weapons: the light it stands in, and the arcs its blades leave
@@ -740,16 +860,26 @@ const FX=(()=>{
   // stone look, nothing in this file is drawn except the pieces a fallen fighter breaks into (which the user asked for
   // in Build 82): no sparks, rings, flashes, glows, auras, shells, confetti, scorch marks, squash or screen flash.
   // Everything above is kept as it was; set EFFECTS_OFF to false to bring it all back as it looked in Build 83.
+  // Since then the user has asked for effects one at a time, and each is switched on here by name: the knockout
+  // (Build 85: "I want it more like that", the Crypt sample's burst of chunks, with the arena's shake) and the wall
+  // lighting up where a fighter bounces off it (Build 85). Add the next one the same way; do not turn the rest back on.
   const EFFECTS_OFF=true;
   if(EFFECTS_OFF){
     const none=()=>{};
     for(const k of Object.keys(api))if(typeof api[k]==="function")api[k]=none;
     api.due=()=>0;api.sq=()=>null;                       // (RECIPES stays: the tests check every effect a class names still exists)
-    api.on=(e,m)=>{if(!m)return;if(m!==lastM){lastM=m;reset(false)}if(e.k==="ko"&&e.i>=0&&m.f[e.i]){const own=m.f[e.i];breakApart(own,own.col,m.f[1-own.i],e.x,e.y,m)}};
+    api.on=(e,m)=>{
+      if(!m)return;if(m!==lastM){lastM=m;reset(false)}
+      const own=e.i>=0?m.f[e.i]:null;if(!own)return;
+      if(e.k==="ko")breakApart(own,own.col,m.f[1-own.i],e.x,e.y,m);
+      else if(e.k==="wall")wallHit(e,own);
+    };
     api.reset=reset;
-    api.update=dt=>{clock+=dt;moveRubble(dt);P.length=0;W.length=0;DEC.length=0;screen=0};
-    api.floor=(g,m)=>{if(RUB.length&&m!==rubOf)RUB.length=0;drawRubble(g)};
+    api.update=dt=>{clock+=dt;moveRubble(dt);moveWall(dt);P.length=0;W.length=0;DEC.length=0;screen=0};
+    api.floor=(g,m)=>{if((RUB.length||SOOT.length)&&m!==rubOf){RUB.length=0;SOOT.length=0}drawRubble(g)};
+    api.top=g=>drawFlying(g);
   }
+  api.off=EFFECTS_OFF;api.wallHits=WH;                 // the page asks .off before shaking the arena; brawl-looks.js draws .wallHits
   Object.defineProperties(api,{count:{get:()=>P.length},quality:{get:()=>q},clock:{get:()=>clock},rate:{get:()=>rate,set:v=>{rate=v}}});
   return api;
 })();

@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 84';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 85';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -295,7 +295,7 @@ function onEvents(ev){
     FX.on(e,match);
     if(e.k==='hit'){
       say(e.x,e.y,'-'+Math.max(1,Math.round(e.dmg))+(e.crit?'!':''),e.crit?'#ffd447':'#ff5a4f',e.crit);
-      if(e.dmg>=18||e.crit)shake=Math.max(shake,Math.min(4,e.dmg*.09+(e.crit?1:0)));
+      if(!FX.off&&(e.dmg>=18||e.crit))shake=Math.max(shake,Math.min(4,e.dmg*.09+(e.crit?1:0)));
       hitSound(e);
     }else if(e.k==='heal'){say(e.x,e.y,'+'+Math.max(1,Math.round(e.dmg)),'#7ddc5a')}
     else if(e.k==='block'){say(e.x,e.y,'Blocked','#bcd4ff');sfx('block',.8)}
@@ -305,7 +305,7 @@ function onEvents(ev){
     else if(e.k==='bump'){sfx('soft',.4)}
     else if(e.k==='shot'){const sk=match&&e.i>=0?match.f[e.i].key:'',n=SHOT_SFX[sk]||(FIGHTERS[sk]&&FIGHTERS[sk].sfx&&FIGHTERS[sk].sfx.shot)||'whoosh';sfx(n,n==='loose'?.8:n==='gun'||n==='revolver'||n==='rail'?.75:.6,n==='loose'?1.2:1)}
     else if(e.k==='mine'){sfx('latch',.6)}
-    else if(e.k==='boom'){shake=Math.max(shake,4);sfx('boom',.9)}
+    else if(e.k==='boom'){if(!FX.off)shake=Math.max(shake,4);sfx('boom',.9)}
     else if(e.k==='zap'){
       // a main stroke and a thinner fork that peels off it
       const pts=bolt(e.x,e.y,e.x2,e.y2,6,18,.14),mid=pts[2+((Math.random()*2)|0)],a=Math.atan2(e.y2-e.y,e.x2-e.x)+(Math.random()<.5?.9:-.9),l=14+Math.random()*18;
@@ -315,7 +315,7 @@ function onEvents(ev){
     else if(e.k==='fade'){sfx('fall',.6)}
     else if(e.k==='appear'){sfx('rise',.7)}
     else if(e.k==='pull'){sfx('hum',.7)}
-    else if(e.k==='blast'){shake=Math.max(shake,3);sfx('thump',1,.8)}
+    else if(e.k==='blast'){if(!FX.off)shake=Math.max(shake,3);sfx('thump',1,.8)}
     else if(e.k==='freeze'){say(e.x,e.y,'Frozen','#9fe0ff',true);sfx('shatter',.9)}
     else if(e.k==='spawn'){sfx('pop',.6)}
     else if(e.k==='pop'){if(!(match&&e.i>=0&&match.f[e.i].key==='archer'))sfx('tick',.5)}
@@ -452,7 +452,7 @@ function frame(ts){
   for(let i=floats.length-1;i>=0;i--){const f=floats[i];f.life-=dt;f.y-=28*dt;if(f.life<=0)floats.splice(i,1)}
   FX.update(dt);
   for(let i=bolts.length-1;i>=0;i--){bolts[i].life-=dt;if(bolts[i].life<=0)bolts.splice(i,1)}
-  shake=0;                                              // no screen shake while effects are off (Build 84: see EFFECTS_OFF in brawl-fx.js); it was: shake*=.78;if(shake<.3)shake=0;
+  shake*=.78;if(shake<.3)shake=0;                       // while effects are off (FX.off) only a knockout shakes the arena: see onEvents
   if(mode!=='ready')draw();                             // the arena is hidden behind the matchup
   hud();
   if(window.Broadcast&&Broadcast.onFrame)Broadcast.onFrame(dt);

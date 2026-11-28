@@ -853,47 +853,45 @@ function stoneWall(t){
   parts.cuts=CUTS;parts.K=K;                            // where the blocks are, for wallLight
   return parts;
 }
-// The wall lights up where a fighter bounces off it (Build 85). The user: "Let's add the wall bouncing effect, let's
-// have it light up that part of the wall when it bounces off". The blocks the ball touched glow in the fighter's colour
-// and fade in under half a second: a block wholly under the ball lights fully, one it only clipped lights less, a
-// harder bounce lights more. It is the block's own picture, brightened and seen through the colour, so its grain and
-// chiselled edge still show and the joints between blocks stay dark; there is no soft halo around it. The effects
-// engine keeps the list of bounces (FX.wallHits: x, y, nx, ny, r, col, k, life, max).
+// The wall lights up where a fighter bounces off it. The user: "Let's add the wall bouncing effect, let's have it light
+// up that part of the wall when it bounces off". Build 85 lit whole blocks in the fighter's colour; the user: "The wall
+// shouldn't light up as your color it should just be white and be like a cool effect the is strongest at the exact
+// point it hits and is less intense as it goes to each side". So (Build 86): WHITE light, on the wall only, brightest
+// at the point of the bounce and falling away smoothly along the wall to each side; as it fades (half a second) it
+// runs outwards along the wall both ways. A harder bounce is brighter. It is the wall's own picture added to itself,
+// so the blocks' grain and chiselled edges show in the light, with a white-hot core at the very point. Do not tint it
+// with the fighter's colour. The effects engine keeps the list of bounces (FX.wallHits: x, y, nx, ny, r, k, life, max).
 let GLOWCV=null;
 function wallLight(c,hits,t){
   const K=WALL.K;
   if(!GLOWCV){GLOWCV=offscreen(64,64);if(!GLOWCV)return}
   const tc=GLOWCV.c,tv=GLOWCV.cv;
-  // lights the part of the wall inside the arena-unit box x0,y0,w,h with strength a
-  const lit=(x0,y0,w,h,a,col)=>{
-    for(const p of WALL){
-      const ax=Math.max(x0,p.x),ay=Math.max(y0,p.y),bx=Math.min(x0+w,p.x+p.w),by=Math.min(y0+h,p.y+p.h);
-      if(bx-ax<.05||by-ay<.05)continue;
-      const sx=Math.round((ax-p.x)*K),sy=Math.round((ay-p.y)*K),sw=Math.max(1,Math.round((bx-ax)*K)),sh=Math.max(1,Math.round((by-ay)*K));
-      if(tv.width<sw||tv.height<sh){tv.width=Math.max(tv.width,sw);tv.height=Math.max(tv.height,sh)}
-      tc.globalCompositeOperation='copy';tc.globalAlpha=1;tc.drawImage(p.cv,sx,sy,sw,sh,0,0,sw,sh);
-      tc.globalCompositeOperation='lighter';tc.drawImage(p.cv,sx,sy,sw,sh,0,0,sw,sh);tc.drawImage(p.cv,sx,sy,sw,sh,0,0,sw,sh);tc.globalAlpha=.4;tc.drawImage(p.cv,sx,sy,sw,sh,0,0,sw,sh);tc.globalAlpha=1;   // 3.4 times as bright
-      tc.globalCompositeOperation='multiply';tc.fillStyle=col;tc.fillRect(0,0,sw,sh);
-      c.globalAlpha=Math.min(1,a);c.drawImage(tv,0,0,sw,sh,ax,ay,bx-ax,by-ay);
-    }
-  };
-  c.save();c.globalCompositeOperation='source-over';
+  c.save();c.globalCompositeOperation='lighter';
   for(const h of hits){
-    const a=Math.pow(Math.max(0,h.life/h.max),1.4)*h.k;if(a<.02)continue;
-    const side=h.ny>0?0:h.ny<0?1:h.nx>0?2:3,flat=side<2,at=flat?h.x:h.y,lo=at-h.r,hi=at+h.r,cuts=WALL.cuts[side],far=side===1||side===3?AW:-t;
-    const col=lightOf(h.col),box=(u0,u1,k)=>{if(flat)lit(u0,far,u1-u0,t,a*k,col);else lit(far,u0,t,u1-u0,a*k,col)};
-    for(let i=1;i<cuts.length;i++){const ov=Math.min(hi,cuts[i])-Math.max(lo,cuts[i-1]);if(ov>0)box(cuts[i-1],cuts[i],Math.pow(Math.min(1,ov/Math.min(cuts[i]-cuts[i-1],hi-lo)),.7))}
-    if(lo<0)box(-t,0,Math.min(1,-lo/t));
-    if(hi>AW)box(AW,AW+t,Math.min(1,(hi-AW)/t));
+    const q=1-Math.max(0,h.life/h.max),a=Math.pow(1-q,1.6)*h.k;if(a<.02)continue;
+    const side=h.ny>0?0:h.ny<0?1:h.nx>0?2:3,flat=side<2,at=flat?h.x:h.y,far=side===1||side===3?AW:-t;
+    const reach=h.r*(2+2.2*(1-Math.pow(1-q,3)));                       // how far along the wall the light has run
+    const u0=Math.max(-t,at-reach),u1=Math.min(AW+t,at+reach);if(u1-u0<.5)continue;
+    const x0=flat?u0:far,y0=flat?far:u0,w=flat?u1-u0:t,hh=flat?t:u1-u0,pw=Math.max(1,Math.round(w*K)),ph=Math.max(1,Math.round(hh*K));
+    if(tv.width<pw||tv.height<ph){tv.width=Math.max(tv.width,pw);tv.height=Math.max(tv.height,ph)}
+    // this stretch of the wall (its corner blocks are part of the top and bottom strips), three times as bright
+    tc.globalCompositeOperation='source-over';tc.globalAlpha=1;tc.clearRect(0,0,tv.width,tv.height);
+    for(const p of WALL){
+      const ax=Math.max(x0,p.x),ay=Math.max(y0,p.y),bx=Math.min(x0+w,p.x+p.w),by=Math.min(y0+hh,p.y+p.h);
+      if(bx-ax<.05||by-ay<.05)continue;
+      tc.drawImage(p.cv,(ax-p.x)*K,(ay-p.y)*K,(bx-ax)*K,(by-ay)*K,(ax-x0)*K,(ay-y0)*K,(bx-ax)*K,(by-ay)*K);
+    }
+    tc.globalCompositeOperation='lighter';tc.drawImage(tv,0,0,pw,ph,0,0,pw,ph);tc.globalAlpha=.5;tc.drawImage(tv,0,0,pw,ph,0,0,pw,ph);tc.globalAlpha=1;
+    // ... kept only near the point of the bounce: full there, falling away to nothing at the light's reach
+    const m=(at-u0)*K,R=reach*K,fall=(g,k)=>{for(const [o,v] of [[0,0],[.12,.06],[.25,.22],[.37,.55],[.5,1],[.63,.55],[.75,.22],[.88,.06],[1,0]])g.addColorStop(o,'rgba(255,255,255,'+(v*k).toFixed(3)+')');return g};
+    tc.globalCompositeOperation='destination-in';tc.fillStyle=fall(flat?tc.createLinearGradient(m-R,0,m+R,0):tc.createLinearGradient(0,m-R,0,m+R),1);tc.fillRect(0,0,pw,ph);
+    c.globalAlpha=Math.min(1,a);c.drawImage(tv,0,0,pw,ph,x0,y0,w,hh);
+    // the white-hot core at the very point
+    const cr=h.r*(.9+.5*q);
+    c.globalAlpha=1;c.fillStyle=fall(flat?c.createLinearGradient(at-cr,0,at+cr,0):c.createLinearGradient(0,at-cr,0,at+cr),Math.min(1,a)*.9);
+    if(flat)c.fillRect(Math.max(-t,at-cr),far,Math.min(AW+t,at+cr)-Math.max(-t,at-cr),t);else c.fillRect(far,Math.max(-t,at-cr),t,Math.min(AW+t,at+cr)-Math.max(-t,at-cr));
   }
   c.restore();
-}
-// a fighter's colour as light: as bright as it goes, and a dark colour lifted so its light still shows
-function lightOf(col){
-  const h=/^#?([0-9a-f]{6})$/i.exec(String(col||''));if(!h)return '#ffe9c0';
-  const v=parseInt(h[1],16);let r=v>>16&255,g=v>>8&255,b=v&255;const m=Math.max(r,g,b,1),k=255/m;
-  r=r*k;g=g*k;b=b*k;
-  return 'rgb('+Math.round(r+(255-r)*.06)+','+Math.round(g+(255-g)*.06)+','+Math.round(b+(255-b)*.06)+')';
 }
 // draws the wall around the arena's 0..AW square; hot = sudden death, when its inner edge glows
 function drawWall(c,hot){

@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 85';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 86';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;

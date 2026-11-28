@@ -599,12 +599,13 @@ const FX=(()=>{
   // ----- the wall lights up where a fighter bounces off it (Build 85) -----
   // The user: "Let's add the wall bouncing effect, let's have it light up that part of the wall when it bounces off".
   // This only keeps the list of recent bounces; brawl-looks.js draws them, because the wall's picture is there
-  // (wallLight). Each: where on the wall, which way the wall faces, the fighter's size and colour, how hard (0..1).
+  // (wallLight). Each: where on the wall, which way the wall faces, the fighter's size, how hard (0..1). The light is
+  // white whoever bounced (Build 86, the user: "it should just be white").
   const WH=[];
   function wallHit(e,own){
     if(!own||own.gone)return;                              // a fighter that has faded from sight stays hidden
     if(WH.length>=10)WH.shift();
-    WH.push({x:e.x,y:e.y,nx:e.nx,ny:e.ny,r:own.r,col:own.col,k:Math.min(1,.6+Math.hypot(own.vx||0,own.vy||0)/420),life:.5,max:.5});
+    WH.push({x:e.x,y:e.y,nx:e.nx,ny:e.ny,r:own.r,k:Math.min(1,.6+Math.hypot(own.vx||0,own.vy||0)/420),life:.5,max:.5});
   }
   function moveWall(dt){for(let i=WH.length-1;i>=0;i--){WH[i].life-=dt;if(WH[i].life<=0)WH.splice(i,1)}}
 
@@ -862,7 +863,7 @@ const FX=(()=>{
   // Everything above is kept as it was; set EFFECTS_OFF to false to bring it all back as it looked in Build 83.
   // Since then the user has asked for effects one at a time, and each is switched on here by name: the knockout
   // (Build 85: "I want it more like that", the Crypt sample's burst of chunks, with the arena's shake) and the wall
-  // lighting up where a fighter bounces off it (Build 85). Add the next one the same way; do not turn the rest back on.
+  // lighting up white where a fighter bounces off it (Builds 85 and 86). Add the next one the same way; do not turn the rest back on.
   const EFFECTS_OFF=true;
   if(EFFECTS_OFF){
     const none=()=>{};

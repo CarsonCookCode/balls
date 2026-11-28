@@ -761,10 +761,11 @@ function drawFighter(f,isYou){
     // have it somewhere on the health bar at the top. Remove the crown from the top of the player in game." The number is
     // on the page's bars now (hud() in brawl-app.js); the video's bars always carried it. It is a trial ("let's try"):
     // the plaque is still in brawl-art.js (ART.plaque) and the old drawing is in the history at Build 78.
-    // The name: above the ball, or below it when there is no room above.
+    // The name: always above the ball. Near the top wall it stops at the wall and overlaps the ball; it does not jump
+    // underneath (the user: "The name above the unit in combat shouldn't flip down to the bottom when the unit reaches the top").
     if(f.label){
       const fs=Math.max(6.2,Math.min(8.6,r*.3)),txt=String(f.label).toUpperCase(),hw=txt.length*fs*.37+2;
-      const nx=Math.min(AW-hw,Math.max(hw,x)),above=y-r-fs*.95>fs*.7,ny=above?y-r-fs*.95:y+r+fs*.95;
+      const nx=Math.min(AW-hw,Math.max(hw,x)),ny=Math.max(fs*.75,y-r-fs*.95);
       g.font='700 '+fs.toFixed(1)+'px '+FONT;g.letterSpacing=(fs*.07).toFixed(2)+'px';g.textAlign='center';g.textBaseline='middle';
       g.lineJoin='round';g.lineWidth=fs*.34;g.strokeStyle='rgba(0,0,0,.78)';g.strokeText(txt,nx,ny);g.fillStyle=IVORY;g.fillText(txt,nx,ny);
       g.letterSpacing='0px';

@@ -289,6 +289,8 @@ void main(){
       return S.cv;
     }catch(e){return ball(f.key,col,F)}
   }
+  // the picture of a fighter's ball as it was last drawn in the arena (for the pieces it breaks into when it falls)
+  function pictureOf(f,col){const S=rolls.get(f);return S&&S.cv?S.cv:ball(f.key,col,224)}
   // two picture sizes: small for the cards, large for the arena and the matchup
   const size=px=>px<=140?128:224;
   // draws the ball; floor = it stands in the arena, so it throws a shadow (away from the lamp, longer than wide, firm
@@ -364,5 +366,5 @@ void main(){
     setTimeout(()=>{try{stone(224);roller()}catch(e){}},1400);
     setTimeout(()=>{plaque({save(){},restore(){},fillRect(){},drawImage(){}},0,0,1,1);for(const k of Object.keys(STRIPS))strip(k)},2200);
   }catch(e){}
-  return {ok:true,ball,rolling,size,drawBall,strip,drawHeld,plaque,HELD,EXTRA:'sword1',GUN:'rifle'};
+  return {ok:true,ball,rolling,pictureOf,size,drawBall,strip,drawHeld,plaque,HELD,EXTRA:'sword1',GUN:'rifle'};
 })();

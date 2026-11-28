@@ -276,6 +276,13 @@ const FX=(()=>{
     else if(k==='ko'){
       if(!own)return;
       const r=own.r,win=m.f[1-own.i];
+      if(breakApart(own,col,win,e.x,e.y,m)){                    // it breaks into pieces: dust and chips of stone, no light
+        dust(e.x,e.y,12,null,{jit:r,lo:14,hi:70});smoke(e.x,e.y,5,null,{jit:r});
+        shards(e.x,e.y,16,'#8d8b86',{lo:70,hi:260,life:.7,size:1.6,jit:r});shards(e.x,e.y,8,col,{lo:60,hi:220,life:.6,size:1.4,jit:r});
+        wave(e.x,e.y,r*.7,r*2.6,.4,'#b9b4a8',1.6);
+        if(win&&win.hp>0)cheer={i:win.i,t:1.5};
+        return;
+      }
       flash(e.x,e.y,r*3.6,'#ffffff',.2);flash(e.x,e.y,r*3.4,col,.55);
       wave(e.x,e.y,r*.5,r*3.4,.5,col,5,.45);wave(e.x,e.y,r*.4,r*5,.75,'#ffffff',2);wave(e.x,e.y,r*.3,r*7,1,GOLDC,1.4);
       shards(e.x,e.y,20,col,{lo:90,hi:330,life:.9,size:3.4,jit:r});shards(e.x,e.y,14,'#c9a45c',{lo:90,hi:300,life:.9,size:2.8,jit:r});
@@ -400,14 +407,96 @@ const FX=(()=>{
     line(x,y,x+bx*l,y+by*l,col,1,.2);
   }
 
+  // ----- a fallen fighter breaks apart (Build 82) -----
+  // The user: "When a unit dies have it explode into pieces maybe similarly to the way it did in our Crypt art style idea
+  // before." The ball is stone, so it breaks like stone: its own picture, as it looked at that moment, is cut into a
+  // dozen chunks along straight cracks; they are thrown outwards (and away from the blow), tumble, slow on the floor and
+  // lie there as rubble until the next fight. Each chunk has a shadow and a grey broken edge under it, so it reads as a
+  // piece of a ball and not a flat scrap. Its weapons are thrown clear and come to rest too. Dust, not sparks or light.
+  // Needs brawl-art.js (the ball's picture); without it the old burst of light is used (the tests take that path).
+  const RUB=[];let rubOf=null;                       // the pieces, and the fight they belong to: a new fight sweeps them away
+  // cuts a circle of radius r into cells round the given points: each cell is the circle clipped by the lines halfway
+  // to every other point
+  function cells(pts,r){
+    const out=[];
+    for(let i=0;i<pts.length;i++){
+      let poly=[];for(let k=0;k<28;k++){const a=k/28*TAU;poly.push([Math.cos(a)*r,Math.sin(a)*r])}
+      for(let j=0;j<pts.length&&poly.length>2;j++){
+        if(j===i)continue;
+        const nx=pts[j][0]-pts[i][0],ny=pts[j][1]-pts[i][1],c=(pts[j][0]*pts[j][0]+pts[j][1]*pts[j][1]-pts[i][0]*pts[i][0]-pts[i][1]*pts[i][1])/2,nw=[];
+        for(let k=0;k<poly.length;k++){
+          const A=poly[k],B=poly[(k+1)%poly.length],da=A[0]*nx+A[1]*ny-c,db=B[0]*nx+B[1]*ny-c;
+          if(da<=0)nw.push(A);
+          if((da<0&&db>0)||(da>0&&db<0)){const t=da/(da-db);nw.push([A[0]+(B[0]-A[0])*t,A[1]+(B[1]-A[1])*t])}
+        }
+        poly=nw;
+      }
+      if(poly.length>2)out.push(poly);
+    }
+    return out;
+  }
+  function breakApart(f,col,win,x,y,m){
+    if(typeof ART==='undefined'||!ART||!ART.ok||!ART.pictureOf)return false;
+    try{
+      const pic=ART.pictureOf(f,col);if(!pic)return false;
+      if(rubOf!==m){RUB.length=0;rubOf=m}
+      const r=f.r,pts=[[(Math.random()-.5)*r*.3,(Math.random()-.5)*r*.3]],n=10+((Math.random()*3)|0);
+      for(let i=1;i<n;i++){const a=i/(n-1)*TAU+Math.random()*.5,d=r*(.45+Math.random()*.4);pts.push([Math.cos(a)*d,Math.sin(a)*d])}
+      // the blow comes from the winner: everything is carried a little that way
+      let bx=0,by=0;if(win){const d=Math.hypot(x-win.x,y-win.y)||1;bx=(x-win.x)/d;by=(y-win.y)/d}
+      for(const poly of cells(pts,r)){
+        let cx=0,cy=0;for(const p of poly){cx+=p[0];cy+=p[1]}cx/=poly.length;cy/=poly.length;
+        const d=Math.hypot(cx,cy)||1,sp=40+Math.random()*90+d/r*70;
+        RUB.push({k:0,x:x+cx,y:y+cy,a:0,vx:cx/d*sp+bx*55,vy:cy/d*sp+by*55,va:(Math.random()-.5)*13,ox:cx,oy:cy,r,pic,poly:poly.map(p=>[p[0]-cx,p[1]-cy])});
+      }
+      // its weapons fly off the way they were pointing, spinning
+      if(f.arms&&ART.strip&&ART.HELD)for(const A of f.arms){
+        const T=ART.strip(A.extra?ART.EXTRA:ART.HELD[f.key]);if(!T)continue;
+        const an=f.ang*(A.rate||1)+A.a,c=Math.cos(an),s=Math.sin(an),sp=70+Math.random()*60;
+        RUB.push({k:1,x:x+c*r*.9,y:y+s*r*.9,a:an,vx:c*sp+bx*40,vy:s*sp+by*40,va:(Math.random()<.5?-1:1)*(4+Math.random()*5),T,len:A.l+r*.1});
+      }
+      return true;
+    }catch(err){return false}
+  }
+  function moveRubble(dt){
+    const fr=Math.exp(-3.4*dt),lo=3,hi=(typeof AW==='number'?AW:260)-3;
+    for(const p of RUB){
+      p.x+=p.vx*dt;p.y+=p.vy*dt;p.a+=p.va*dt;p.vx*=fr;p.vy*=fr;p.va*=fr;
+      if(p.x<lo){p.x=lo;p.vx=Math.abs(p.vx)*.4}else if(p.x>hi){p.x=hi;p.vx=-Math.abs(p.vx)*.4}
+      if(p.y<lo){p.y=lo;p.vy=Math.abs(p.vy)*.4}else if(p.y>hi){p.y=hi;p.vy=-Math.abs(p.vy)*.4}
+    }
+  }
+  function drawRubble(g){
+    if(!RUB.length)return;
+    g.save();g.globalCompositeOperation='source-over';g.globalAlpha=1;
+    const path=(p,dx,dy)=>{const c=Math.cos(p.a),s=Math.sin(p.a);g.beginPath();for(let i=0;i<p.poly.length;i++){const q=p.poly[i],X=p.x+dx+q[0]*c-q[1]*s,Y=p.y+dy+q[0]*s+q[1]*c;if(i)g.lineTo(X,Y);else g.moveTo(X,Y)}g.closePath()};
+    for(const p of RUB){
+      if(p.k===1){                                           // a dropped weapon: its shadow, then itself
+        const T=p.T,k=p.len/170,fw=T.fw*k,fh=T.fh*k,gx=17*k;
+        g.save();g.globalAlpha=.45;g.translate(p.x+1,p.y+1.4);g.rotate(p.a);g.drawImage(T.sh,0,0,T.fw,T.fh,-gx,-fh/2,fw,fh);g.restore();
+        g.save();g.translate(p.x,p.y);g.rotate(p.a);g.drawImage(T.img,0,0,T.fw,T.fh,-gx,-fh/2,fw,fh);g.restore();
+        continue;
+      }
+      g.fillStyle='rgba(0,0,0,.5)';path(p,1.5,2);g.fill();                 // its shadow on the floor
+      g.fillStyle='#35373a';path(p,.7,.95);g.fill();                        // the broken stone under its painted face
+      g.save();g.translate(p.x,p.y);g.rotate(p.a);
+      g.beginPath();for(let i=0;i<p.poly.length;i++){const q=p.poly[i];if(i)g.lineTo(q[0],q[1]);else g.moveTo(q[0],q[1])}g.closePath();g.clip();
+      const w=p.r*1.03;g.drawImage(p.pic,-p.ox-w,-p.oy-w,2*w,2*w);
+      g.restore();
+      g.strokeStyle='rgba(0,0,0,.45)';g.lineWidth=.35;path(p,0,0);g.stroke();
+    }
+    g.restore();
+  }
+
   // ----- per-frame bookkeeping -----
   function reset(soft){
-    if(!soft){P.length=0;W.length=0;DEC.length=0}
+    if(!soft){P.length=0;W.length=0;DEC.length=0;RUB.length=0}
     SQ[0].t=SQ[1].t=9;ACC[0]={};ACC[1]={};cheer=null;entered=false;sdOn=false;
     for(const k in SAID)delete SAID[k];
   }
   function update(dt){
     clock+=dt;
+    moveRubble(dt);
     slowDt+=(dt-slowDt)*.05;                               // a slow phone gets fewer particles rather than a slower game
     q=api.calm?.3:slowDt>.03?.45:slowDt>.022?.7:1;
     for(let i=P.length-1;i>=0;i--){
@@ -529,6 +618,8 @@ const FX=(()=>{
   function floor(g,m){
     for(const d of DEC){const t=d.life/d.max;blit(g,d.col,false,d.x,d.y,d.r,Math.min(1,t*1.6)*.5)}
     g.globalAlpha=1;
+    if(RUB.length&&m!==rubOf)RUB.length=0;
+    drawRubble(g);
     drawParts(g,0);
   }
   // over the fighters and shots

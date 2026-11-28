@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 81';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 82';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -440,10 +440,12 @@ function frame(ts){
     if(mode!=='ready')FX.ambient(match,dt);
     if(match.over&&!rehearsal){
       overFor+=dt;
-      if(mode==='make'&&overFor>1.2)practice();
-      else if(mode==='fight'&&overFor>1)fightDone();
-      else if(mode==='duel'&&!duel.done&&overFor>1.2)duelDone();
-      else if(mode==='replay'&&overFor>1.4)endReplay();
+      // how long a finished fight stays on screen: half a second longer since Build 82, so the loser is seen to fall apart
+      // (the user: "wait a half a second longer before going to the upgrade screen after someone dies at the end of a round")
+      if(mode==='make'&&overFor>1.7)practice();
+      else if(mode==='fight'&&overFor>1.5)fightDone();
+      else if(mode==='duel'&&!duel.done&&overFor>1.7)duelDone();
+      else if(mode==='replay'&&overFor>1.9)endReplay();
     }
   }
   if(!(match&&(mode==='make'||playing)))lerpA=1;

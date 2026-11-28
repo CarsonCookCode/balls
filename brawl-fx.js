@@ -451,7 +451,7 @@ const FX=(()=>{
       }
       // its weapons fly off the way they were pointing, spinning
       if(f.arms&&ART.strip&&ART.HELD)for(const A of f.arms){
-        const T=ART.strip(A.extra?ART.EXTRA:ART.HELD[f.key]);if(!T)continue;
+        const T=ART.strip(ART.pick(f,A));if(!T||T.loose)continue;
         const an=f.ang*(A.rate||1)+A.a,c=Math.cos(an),s=Math.sin(an),sp=70+Math.random()*60;
         RUB.push({k:1,x:x+c*r*.9,y:y+s*r*.9,a:an,vx:c*sp+bx*40,vy:s*sp+by*40,va:(Math.random()<.5?-1:1)*(4+Math.random()*5),T,len:A.l+r*.1});
       }

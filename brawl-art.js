@@ -18,17 +18,22 @@
 // weapon is drawn after the ball, cut off where it enters it, shaded where it joins, with its own shadow thrown on the
 // floor (never on the ball) because it is carried at mid-height, not lying on the bricks.
 //
-// The weapon pictures are in art/weapons/. Each is ONE picture: the weapon lying along x with the grip at the left, lit
-// from almost straight above, and the game turns it. (Build 69 had 8 frames a weapon, each lit for one held direction,
-// so the lamp stayed top left as it spun; in motion that made the weapon change at certain angles, and the user asked:
-// "Remove the effect that happens on weapons when it's moving in a certain direction". Do not bring per-direction
-// lighting back.) They were rendered from free 3D models, all CC0 (no credit required; credited anyway in
-// credits.html): KayKit Adventurers by Kay Lousberg (sword2, sword1, axe2), and from poly.pizza: Quaternius (bat, dagger,
+// The weapon pictures are in art/weapons/ (WebP). A held weapon is a strip of 8 frames, stacked: the weapon lying along x
+// with the grip at the left, its steel real metal, lit by the arena's lamp as it would be when held at 0, 45, 90 ...
+// degrees. The game turns the picture and fades between the two nearest frames, so the light stays top left and moves
+// smoothly as the weapon spins. (Build 70 dropped to one flat-lit frame because I misread a request about the swing
+// trail; the user then chose this lamp-lit look from a side-by-side sample and said "put all live", Build 83.)
+// A loose part (the Yo-yo's disc, the Jester's balls) is one frame, drawn at the arm's tip without turning.
+// Which models: the user's rule is to use existing assets and build from scratch only where nothing fits ("They should
+// probably not be made from scratch in most cases"); shown both, they chose: "Scratch is better for all but the crab".
+// So the Clockmaker's hand, the yo-yo and the juggling balls were modelled for this game, and the Crab's pincer is
+// "Crab hand" by Poly by Google (CC-BY 3.0: the credit in credits.html is required). The rest were rendered from free 3D
+// models, all CC0 (no credit required; credited anyway in
+// credits.html): KayKit Adventurers by Kay Lousberg (sword2, sword1, axe2, dagger), and from poly.pizza: Quaternius (bat,
 // knife, scythe, cutlass, tentacle, spear, crystal, hammer, rifle) and CreativeTrio (wrench). The game does not run 3D.
+// They are made by the scratch page w3d-bake2.html (see the art-direction notes); to change one, bake again.
 // A weapon is drawn at the rules' true reach (the arm's length): the pictures were made for that, not for a longer look.
 // If a picture changes, raise WV: it is part of the file name, so no phone goes on showing the old one.
-// Fighters whose arm has no picture here (the Clockmaker's hands, the Crab's pincers, the Yo-yo, the Jester's juggled
-// balls) keep their arm as drawn in code, until they get art of their own.
 //
 // Where there is no real canvas (the tests), ART.ok is false and brawl-looks.js draws the fighter the old way.
 const ART=(function(){
@@ -39,7 +44,7 @@ const ART=(function(){
     const c=mk(2,2).getContext('2d'),im=c.createImageData(2,2);im.data[3]=255;c.putImageData(im,0,0);
     if(c.getImageData(0,0,1,1).data[3]!==255||typeof Path2D==='undefined'||typeof Image==='undefined')return off;
   }catch(e){return off}
-  const TAU=6.2832,SS=2,PAD=.03,WV='v2';
+  const TAU=6.2832,SS=2,PAD=.03,WV='v3';
   const cl=(v,a,b)=>v<a?a:v>b?b:v,ss=(a,b,x)=>{const q=cl((x-a)/(b-a),0,1);return q*q*(3-2*q)},mix=(a,b,t)=>a+(b-a)*t;
   const hash=(x,y,s)=>{let h=(Math.imul(x|0,374761393)+Math.imul(y|0,668265263)+Math.imul(s|0,982451653))|0;h=Math.imul(h^(h>>>13),1274126177);return((h^(h>>>16))>>>0)/4294967296};
   const vn=(x,y,s)=>{const xi=Math.floor(x),yi=Math.floor(y),fx=x-xi,fy=y-yi,sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy);
@@ -317,30 +322,35 @@ void main(){
   // ---- weapons ----
   // name -> [width, height] of its picture. Every picture was made at 170 pixels of reach, with a tenth of that
   // behind the grip.
-  const STRIPS={sword2:[194,102],sword1:[194,84],axe2:[194,176],bat:[194,52],dagger:[194,74],knife:[194,68],scythe:[194,254],cutlass:[194,92],tentacle:[194,124],spear:[194,32],wrench:[194,74],crystal:[194,186],hammer:[194,156],rifle:[194,226]};
-  const RP=170,BACK=.1;
+  const STRIPS={sword2:[194,102],sword1:[194,84],axe2:[194,176],bat:[194,52],dagger:[194,68],knife:[194,68],scythe:[194,254],cutlass:[194,92],tentacle:[194,124],spear:[194,32],wrench:[194,74],crystal:[194,186],hammer:[194,156],rifle:[194,226],clock:[194,40],pincer:[194,116],yoyo:[96,96],ballr:[96,96],ballb:[96,96]};
+  const RP=170,BACK=.1,FRAMES=8;
+  // loose parts: drawn at the arm's tip, r arena units in radius; string = a string runs to it from the ball
+  const LOOSE={yoyo:{r:6.6,string:true},ballr:{r:5.2},ballb:{r:5.2}};
   // which picture each fighter's arm is; EXTRA is the blade an upgrade adds; GUN is the Gunner's barrel
-  const HELD={blade:'sword2',mace:'bat',leech:'dagger',twin:'knife',fury:'axe2',necro:'scythe',pirate:'cutlass',octopus:'tentacle',spartan:'spear',engineer:'wrench',crystal:'crystal',smith:'hammer'};
+  const HELD={blade:'sword2',mace:'bat',leech:'dagger',twin:'knife',fury:'axe2',necro:'scythe',pirate:'cutlass',octopus:'tentacle',spartan:'spear',engineer:'wrench',crystal:'crystal',smith:'hammer',clock:'clock',crab:'pincer'};
+  // the picture for one of a fighter's arms
+  const pick=(f,A)=>A.extra?'sword1':f.key==='yoyo'?'yoyo':f.key==='jester'?(A.a?'ballb':'ballr'):HELD[f.key];
   const strips={};
   // the picture strip for a weapon, once it has arrived; until then (and for a name with no picture) null, and the
   // arm is drawn in code as before
   function strip(name){
     if(!name||!STRIPS[name])return null;
     let T=strips[name];if(T)return T.ready?T:null;
-    T=strips[name]={ready:false,fw:STRIPS[name][0],fh:STRIPS[name][1]};
+    T=strips[name]={ready:false,fw:STRIPS[name][0],fh:STRIPS[name][1],loose:LOOSE[name]||null};
     try{
       const im=new Image();
       im.onload=()=>{try{
         const sh=mk(im.width,im.height),c=sh.getContext('2d');c.drawImage(im,0,0);c.globalCompositeOperation='source-in';c.fillStyle='#000';c.fillRect(0,0,sh.width,sh.height);
         T.img=im;T.sh=sh;T.ready=true}catch(e){}};
-      im.src='art/weapons/'+name+'-'+WV+'.png';
+      im.src='art/weapons/'+name+'-'+WV+'.webp';
     }catch(e){}
     return null;
   }
   // a weapon set into the side of the ball at (x,y): an = the way it points, len = the arm's reach beyond the ball
   function drawHeld(g,x,y,r,T,an,len,alpha){
     const c=Math.cos(an),s=Math.sin(an),k=(len+r*.1)/RP,fw=T.fw*k,fh=T.fh*k,gx=BACK*RP*k,hx=x+c*r*.9,hy=y+s*r*.9,lift=r*.5;
-    const row=0;                                                          // one picture, whichever way it points
+    // the two frames lit for the directions either side of this one, and how far between them it is
+    const fp=((an/TAU*FRAMES)%FRAMES+FRAMES)%FRAMES,row=Math.floor(fp)%FRAMES,row2=(row+1)%FRAMES,ft=fp-Math.floor(fp);
     g.save();g.imageSmoothingEnabled=true;try{g.imageSmoothingQuality='high'}catch(e){}
     // its shadow, on the floor and never on the ball
     g.save();g.beginPath();g.rect(x-400,y-400,800,800);g.arc(x,y,r*1.01,0,TAU,true);g.clip('evenodd');
@@ -348,6 +358,20 @@ void main(){
     // the weapon, cut off where it enters the ball
     g.beginPath();g.rect(x-400,y-400,800,800);g.arc(x,y,r*.955,0,TAU,true);g.clip('evenodd');
     g.globalAlpha=alpha;g.translate(hx,hy);g.rotate(an);g.drawImage(T.img,0,row*T.fh,T.fw,T.fh,-gx,-fh/2,fw,fh);
+    if(ft>.03){g.globalAlpha=alpha*ft;g.drawImage(T.img,0,row2*T.fh,T.fw,T.fh,-gx,-fh/2,fw,fh)}
+    g.restore();
+  }
+  // a loose part at an arm's tip (tx,ty): its string from the ball's rim if it has one, its shadow, then itself
+  function drawLoose(g,x,y,r,T,an,tx,ty,alpha){
+    const L=T.loose,w=L.r*1.2,lift=r*.5;
+    g.save();g.globalAlpha=alpha;g.imageSmoothingEnabled=true;try{g.imageSmoothingQuality='high'}catch(e){}
+    if(L.string){
+      const sx=x+Math.cos(an)*r*.96,sy=y+Math.sin(an)*r*.96;
+      g.lineCap='round';g.strokeStyle='rgba(0,0,0,.4)';g.lineWidth=.7;g.beginPath();g.moveTo(sx-KDX*lift,sy-KDY*lift);g.lineTo(tx-KDX*lift,ty-KDY*lift);g.stroke();
+      g.strokeStyle='#e6dfcc';g.lineWidth=.75;g.beginPath();g.moveTo(sx,sy);g.lineTo(tx,ty);g.stroke();
+    }
+    g.globalAlpha=alpha*.4;g.drawImage(T.sh,tx-w-KDX*lift,ty-w-KDY*lift,2*w,2*w);
+    g.globalAlpha=alpha;g.drawImage(T.img,tx-w,ty-w,2*w,2*w);
     g.restore();
   }
   // the health plaque: a small slab of the same stone as the buttons. Returns false until its picture has arrived.
@@ -366,5 +390,5 @@ void main(){
     setTimeout(()=>{try{stone(224);roller()}catch(e){}},1400);
     setTimeout(()=>{plaque({save(){},restore(){},fillRect(){},drawImage(){}},0,0,1,1);for(const k of Object.keys(STRIPS))strip(k)},2200);
   }catch(e){}
-  return {ok:true,ball,rolling,pictureOf,size,drawBall,strip,drawHeld,plaque,HELD,EXTRA:'sword1',GUN:'rifle'};
+  return {ok:true,ball,rolling,pictureOf,size,drawBall,strip,drawHeld,drawLoose,pick,plaque,HELD,EXTRA:'sword1',GUN:'rifle'};
 })();

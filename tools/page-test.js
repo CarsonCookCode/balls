@@ -39,14 +39,16 @@ assert(g.ctx.__type(g.ctx.__mk('mace', -1, 1)) === 'Ogre', 'plain house fighter 
 console.log('types ok');
 
 // 2. the ladder fills itself with house climbs and gives a target
-assert(/Setting up today/.test(g.els.panel.innerHTML) || g.p().board.bots.length > 0, 'ladder announces it is being set up');
+// (Until Build 72 the name screen said 'Setting up today's ladder' and then the target, between its two buttons. The user
+// asked for that text to go: 'remove all that text between the buttons'. The target is still on the ladder and the game-over screen.)
+assert(!/id="goal"|Beat a rival|Setting up today/.test(g.els.panel.innerHTML) && /btnStart/.test(g.els.panel.innerHTML) && /btnNew/.test(g.els.panel.innerHTML), 'the name screen has nothing between its two buttons');
 g.tick(40);
 let p = g.p();
 assert(p.board.bots.length === 14 && store['brawl.board2'], 'fourteen house fighters climbed and were saved');
 const rows = g.ctx.__s(), tgt = g.ctx.__t();
 assert(rows.every((r, i) => !i || rows[i - 1].cleared >= r.cleared), 'standings sorted by rungs');
 assert(tgt === rows[1].cleared + 1, 'target is one more than second place');
-assert(new RegExp('Clear <b>' + tgt + '</b> rungs to get in').test(g.els.panel.innerHTML), 'start screen shows the target');
+assert(!/rungs to get in/.test(g.els.panel.innerHTML), 'the name screen does not show the target');
 console.log('ladder ok: house fighters cleared', rows.map(r => r.cleared).join(','), '| target to get in:', tgt);
 g.els.btnBoard._h.click();
 assert(g.p().mode === 'board' && count(g.els.panel.innerHTML, '<li') === 14 && !/btnDuel|btnRec|btnClose/.test(g.els.panel.innerHTML) && g.els.panel.innerHTML.includes('id="duelNote"') && clean(g.els.panel.innerHTML), 'ladder view lists every fighter, with no duel or back buttons of its own');

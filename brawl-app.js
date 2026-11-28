@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 72';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 73';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -587,21 +587,24 @@ function fightDone(){
 // a fighter can be: the way round is the hue; from the middle out it runs from white to the full colour (at 55% of the
 // radius) and on to a deep shade at the rim. The fighter beside it is redrawn as the finger moves; the practice fight
 // above restarts in the new colour when the finger lifts. It replaced thirty fixed swatches (Build 72).
-const WHEEL=420,WHEEL_MID=.55,WHEEL_DARK=.72;
+// Build 73: the wheel is a ring and the fighter sits in the middle of it, so the colour under the finger and the fighter
+// wearing it are one object (the user: "the way the color wheel and unit are presented could be better visually, no
+// extra words"). Across the ring, from its inner edge outwards: white, the full colour, a deep shade.
+const WHEEL=588,WHEEL_MID=.5,WHEEL_DARK=.72,WHEEL_IN=.54;
 function hsvHex(h,s,v){
   h=((h%360)+360)%360/60;const i=Math.floor(h),f=h-i,p=v*(1-s),q=v*(1-s*f),t=v*(1-s*(1-f)),c=[[v,t,p],[q,v,p],[p,v,t],[p,q,v],[t,p,v],[v,p,q]][i%6];
   return '#'+c.map(x=>Math.round(Math.min(1,Math.max(0,x))*255).toString(16).padStart(2,'0')).join('');
 }
 // the colour at a point on the wheel: nx, ny from -1 to 1, measured from its middle
 function wheelHex(nx,ny){
-  const rr=Math.min(1,Math.hypot(nx,ny)),h=Math.atan2(ny,nx)*180/Math.PI;
-  return rr<WHEEL_MID?hsvHex(h,rr/WHEEL_MID,1):hsvHex(h,1,1-(rr-WHEEL_MID)/(1-WHEEL_MID)*WHEEL_DARK);
+  const rr=Math.min(1,Math.max(0,(Math.hypot(nx,ny)-WHEEL_IN)/(1-WHEEL_IN))),h=Math.atan2(ny,nx)*180/Math.PI;   // rr: 0 at the ring's inner edge, 1 at its rim
+  return rr<WHEEL_MID?hsvHex(h,.12+.88*rr/WHEEL_MID,1):hsvHex(h,1,1-(rr-WHEEL_MID)/(1-WHEEL_MID)*WHEEL_DARK);
 }
 // and the other way: where on the wheel a colour sits (the nearest place, for a colour the wheel does not hold exactly)
 function wheelSpot(hex){
   const r=parseInt(hex.slice(1,3),16)/255,g=parseInt(hex.slice(3,5),16)/255,b=parseInt(hex.slice(5,7),16)/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;
   const h=d<1e-4?0:(mx===r?((g-b)/d)%6:mx===g?(b-r)/d+2:(r-g)/d+4)*60,s=mx?d/mx:0;
-  const rr=mx>=.97||s<.5?s*WHEEL_MID:WHEEL_MID+Math.min(1,(1-mx)/WHEEL_DARK)*(1-WHEEL_MID),a=h*Math.PI/180;
+  const t=mx>=.97||s<.5?Math.max(0,(s-.12)/.88)*WHEEL_MID:WHEEL_MID+Math.min(1,(1-mx)/WHEEL_DARK)*(1-WHEEL_MID),rr=WHEEL_IN+t*(1-WHEEL_IN),a=h*Math.PI/180;
   return [Math.cos(a)*rr,Math.sin(a)*rr];
 }
 let wheelArt=null,wheelBusy=false,wheelDown=false;
@@ -613,18 +616,22 @@ function wheelDraw(){
       wheelArt=document.createElement('canvas');wheelArt.width=wheelArt.height=S;
       const wc=wheelArt.getContext('2d'),im=wc.createImageData(S,S),d=im.data;
       for(let y=0;y<S;y++)for(let x=0;x<S;x++){
-        const nx=(x+.5-S/2)/R0,ny=(y+.5-S/2)/R0,rr=Math.hypot(nx,ny);if(rr>1.02)continue;
+        const nx=(x+.5-S/2)/R0,ny=(y+.5-S/2)/R0,rr=Math.hypot(nx,ny);if(rr>1.02||rr<WHEEL_IN-.02)continue;
         const hex=wheelHex(nx,ny),i=(y*S+x)*4;
-        d[i]=parseInt(hex.slice(1,3),16);d[i+1]=parseInt(hex.slice(3,5),16);d[i+2]=parseInt(hex.slice(5,7),16);d[i+3]=255*Math.min(1,Math.max(0,(1.01-rr)*R0/1.5));
+        d[i]=parseInt(hex.slice(1,3),16);d[i+1]=parseInt(hex.slice(3,5),16);d[i+2]=parseInt(hex.slice(5,7),16);d[i+3]=255*Math.min(1,Math.max(0,(1.01-rr)*R0/1.5),Math.max(0,(rr-WHEEL_IN+.01)*R0/1.5));
       }
       wc.putImageData(im,0,0);
     }
     c.clearRect(0,0,S,S);c.drawImage(wheelArt,0,0);
-    c.strokeStyle='rgba(9,11,13,.9)';c.lineWidth=5;c.beginPath();c.arc(S/2,S/2,R0+1,0,6.2832);c.stroke();
+    // the ring is set into the page: a dark edge outside and in, and the hollow the fighter stands in
+    const hole=c.createRadialGradient(S/2,S/2,R0*WHEEL_IN*.55,S/2,S/2,R0*WHEEL_IN);hole.addColorStop(0,'rgba(20,23,26,.0)');hole.addColorStop(.8,'rgba(20,23,26,.16)');hole.addColorStop(1,'rgba(9,11,13,.5)');
+    c.fillStyle=hole;c.beginPath();c.arc(S/2,S/2,R0*WHEEL_IN,0,6.2832);c.fill();
+    c.strokeStyle='rgba(9,11,13,.92)';c.lineWidth=6;c.beginPath();c.arc(S/2,S/2,R0+1,0,6.2832);c.stroke();
+    c.lineWidth=5;c.beginPath();c.arc(S/2,S/2,R0*WHEEL_IN-1,0,6.2832);c.stroke();
     const col=myBuild().color,p=wheelSpot(col),mx=S/2+p[0]*R0,my=S/2+p[1]*R0;      // the mark on the colour in use
-    c.fillStyle=col;c.beginPath();c.arc(mx,my,17,0,6.2832);c.fill();
-    c.strokeStyle='#090b0d';c.lineWidth=7;c.beginPath();c.arc(mx,my,19,0,6.2832);c.stroke();
-    c.strokeStyle='#fff';c.lineWidth=3.5;c.beginPath();c.arc(mx,my,19,0,6.2832);c.stroke();
+    c.fillStyle=col;c.beginPath();c.arc(mx,my,20,0,6.2832);c.fill();
+    c.strokeStyle='#090b0d';c.lineWidth=8;c.beginPath();c.arc(mx,my,23,0,6.2832);c.stroke();
+    c.strokeStyle='#fff';c.lineWidth=4;c.beginPath();c.arc(mx,my,23,0,6.2832);c.stroke();
   }catch(e){}
 }
 // your fighter, beside the wheel, in the colour under your finger
@@ -634,8 +641,9 @@ function wheelFace(){
 }
 function wheelPick(e){
   const el=$('wheel');if(!el||!el.getBoundingClientRect)return;
-  const b=el.getBoundingClientRect(),k=WHEEL/(WHEEL/2-12)/2;
-  me.hex=wheelHex(((e.clientX-b.left)/b.width*2-1)*k,((e.clientY-b.top)/b.height*2-1)*k);me.colorSet=true;
+  const b=el.getBoundingClientRect(),k=WHEEL/(WHEEL/2-12)/2,nx=((e.clientX-b.left)/b.width*2-1)*k,ny=((e.clientY-b.top)/b.height*2-1)*k;
+  if(Math.hypot(nx,ny)<WHEEL_IN*.8)return;
+  me.hex=wheelHex(nx,ny);me.colorSet=true;
   if(wheelBusy)return;
   wheelBusy=true;requestAnimationFrame(()=>{wheelBusy=false;wheelDraw();wheelFace()});
 }
@@ -690,6 +698,9 @@ function upLine(b,id,adding,mine){
   return 'Faster fighters hit harder. '+who+' now: +'+pct+'% damage'+(pct>=top?', the most it gives.':' (most: +'+top+'%).');
 }
 // an upgrade card: a stripe and an icon in its kind's colour, and the kind named beside the title
+// the same card for the first upgrade, on the second tap of making a fighter (the user: "Make the initial upgrade look
+// like the other upgrades")
+const startCard=(b,id,i)=>{const K=kindOf(id);return `<button type="button" class="card up" id="str-${i}" data-act="str" data-i="${i}" style="--k:${K.col}"><i class="ic">${kindIcon(K)}</i><span><b>${upName(b,id)}<em class="kd">${K.label}</em></b><small>${upLine(b,id,true,true)}</small></span></button>`};
 const upCard=(b,id,n)=>{const K=kindOf(id);return `<button type="button" class="card up" id="up-${id}" data-act="up" data-key="${id}" style="--k:${K.col}"><i class="ic">${kindIcon(K)}</i><span><b>${upName(b,id)}<em class="kd">${K.label}</em>${n?`<em>have ${n}</em>`:''}</b><small>${upLine(b,id,true,true)}</small></span></button>`};
 function makeBody(){
   if(step===0&&browse){
@@ -706,17 +717,15 @@ function makeBody(){
   }
   const what=`<p class="ps what"><b>${FIGHTERS[me.key].name}.</b> ${FIGHTERS[me.key].desc}</p>`;
   if(step===1)return head('Step 2 of 3','Pick its first upgrade')+what+
-    starts(me.key).map((id,i)=>card('str-'+i,'str',`data-i="${i}"`,upName({key:me.key},id),upText({key:me.key},id))).join('')+
+    starts(me.key).map((id,i)=>startCard(makeBuild(me.key,-1,1),id,i)).join('')+
     `<button type="button" id="btnBack" class="quiet" data-act="back">Back</button>`;
   if(step===2)return head('Step 3 of 3','Pick a size')+what+
     SIZES.map((s,i)=>card('size-'+i,'size',`data-i="${i}"`,s.label,s.text)).join('')+
     `<button type="button" id="btnBack" class="quiet" data-act="back">Back</button>`;
   return `<h2 class="ph">Name your ${typeOf(myBuild())}</h2>`+
     `<input id="inName" type="text" maxlength="12" autocomplete="off" autocapitalize="words" spellcheck="false" aria-label="Fighter name" placeholder="${FIGHTERS[me.key].name}" value="${esc(me.name)}">`+
-    `<div class="hue"><canvas id="wheelFace" width="264" height="264" aria-hidden="true"></canvas><canvas id="wheel" width="${WHEEL}" height="${WHEEL}" role="img" aria-label="Colour wheel: touch it to choose your fighter's colour"></canvas></div>`+
+    `<div class="hue"><canvas id="wheel" width="${WHEEL}" height="${WHEEL}" role="img" aria-label="Colour wheel: touch it to choose your fighter's colour"></canvas><canvas id="wheelFace" width="300" height="300" aria-hidden="true"></canvas></div>`+
     `<button type="button" id="btnStart" class="go" data-act="start">Begin the climb</button>`+
-    `<p class="ps">Beat a rival, choose an upgrade, climb a rung. One loss ends the run.</p>`+
-    `<p class="ps" id="goal">${goalLine()}</p>`+
     `<button type="button" id="btnNew" class="alt" data-act="new">Make a different fighter</button>`;
 }
 const CROWN='<svg class="crown" viewBox="0 0 20 16" width="19" height="15" role="img" aria-label="1"><path d="M3 14.5h14l1.8-10-5 3.8L10 1.5 6.2 8.3l-5-3.8z" fill="#c9a45c" stroke="#3c280f" stroke-width="1.3" stroke-linejoin="round"/></svg>';

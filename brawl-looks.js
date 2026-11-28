@@ -701,7 +701,7 @@ function drawFighter(f,isYou){
 
   // the medallion: gold ring, dark seat, enamel, crest
   const hit=f.flash>0,col=hit?shade(base,.4):base;      // a hit flashes the enamel pale; the crest must still read
-  const ballPic=STONE?ART.ball(f.key,base,ART.size(r*2*PX)):null;
+  const ballPic=STONE?(PORTRAIT?ART.ball(f.key,base,ART.size(r*2*PX)):ART.rolling(f,base,ART.size(r*2*PX),x,y,r)):null;   // in the arena it rolls; a portrait stands still
   if(ballPic)ART.drawBall(g,ballPic,x,y,r,alpha,hit,!PORTRAIT);
   else{
   if(RING){g.fillStyle=lin(g,x-r,y-r,x+r,y+r,[0,GOLD_HI,.45,GOLD,1,GOLD_LO]);g.strokeStyle=EDGE;g.lineWidth=Math.max(.45,r*.035);disc(x,y,r);g.fill();g.stroke();}

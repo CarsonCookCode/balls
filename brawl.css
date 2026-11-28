@@ -410,7 +410,8 @@ body[data-mode="fight"],body[data-mode="replay"]{gap:5px}
 /* Build 72. The colour is chosen on a wheel, with the fighter beside it changing as the finger moves (the user: "a
    circle color wheel that you can put your finger on and choose your precise color, and on the left of it you see your
    unit that changes color in real time"). touch-action:none so a drag on the wheel never scrolls the page. */
-.hue{display:flex;align-items:center;justify-content:center;gap:18px;padding:2px 0}
-.hue canvas{display:block;flex:none}
-#wheelFace{width:84px;height:84px}
-#wheel{width:120px;height:120px;border-radius:50%;touch-action:none;cursor:crosshair;-webkit-tap-highlight-color:transparent}
+.hue{position:relative;width:176px;height:176px;margin:4px auto 2px}
+.hue canvas{display:block;position:absolute}
+#wheel{inset:0;width:176px;height:176px;border-radius:50%;touch-action:none;cursor:crosshair;-webkit-tap-highlight-color:transparent;filter:drop-shadow(0 3px 3px rgba(0,0,0,.45))}
+#wheelFace{left:50%;top:50%;width:83px;height:83px;transform:translate(-50%,-50%);pointer-events:none}
+/* Build 73: the wheel is a ring with the fighter in the middle of it (see the note at WHEEL in brawl-app.js). */

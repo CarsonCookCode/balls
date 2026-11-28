@@ -47,10 +47,10 @@ Object.assign(UPGRADES,{
     hooks:{hurt(f,s,dmg,m){f.u.rpT=m.t+2},deal(f,v,dmg,m,n){if(m.t<(f.u.rpT||0)){f.u.rpT=0;m.events.push({k:'proc',id:'riposte',i:f.i});return dmg*(1+.5*n)}return dmg}}},
   momentum: {name:'Momentum',     text:'Fast fighters hit up to 50% harder; slow ones gain nothing',max:2,
     hooks:{deal(f,v,dmg,m,n){const k=Math.min(.5,Math.max(0,1.1*(f.speed/170-1)));if(k>.05)m.events.push({k:'proc',id:'momentum',i:f.i});return dmg*(1+k*n)}}},
-  bully:    {name:'Bully',        text:'50% more damage to a rival smaller than you',max:2,
-    hooks:{deal(f,v,dmg,m,n){if(!(v.r<f.r-.5))return dmg;m.events.push({k:'proc',id:'bully',i:f.i});return dmg*(1+.5*n)}}},
-  underdog: {name:'Underdog',     text:'+60% damage to a rival bigger than you',max:2,
-    hooks:{deal(f,v,dmg,m,n){if(!(v.r>f.r+.5))return dmg;m.events.push({k:'proc',id:'underdog',i:f.i});return dmg*(1+.6*n)}}},
+  // Bully (+50% damage to a smaller rival) and Underdog (+60% to a bigger one) were here until Build 80. With no size to
+  // choose and no upgrade that grows a fighter, nearly every pair is the same size and they did nothing; the user:
+  // "remove any size related upgrades that are now invalid from our recent size changes. Like underdog and bully".
+  // Do not add an upgrade that depends on which fighter is bigger.
   ricochet: {name:'Ricochet',     text:'Your next hit within 0.6 seconds of a wall bounce deals 45% more',max:2,
     hooks:{bounce(f,m){f.u.rcT=m.t+.6},deal(f,v,dmg,m,n){if(m.t<(f.u.rcT||0)){f.u.rcT=0;m.events.push({k:'proc',id:'ricochet',i:f.i});return dmg*(1+.45*n)}return dmg}}},
   // ----- answers to a rival that stacked one thing
@@ -134,12 +134,12 @@ Object.assign(UPGRADES,{
     hooks:{shot(f,q,m,n){q.d*=1+.4*n;q.vx*=1.2;q.vy*=1.2;q.heavy=1}}},
 });
 Object.assign(PREFIX,{glass:'Glass',heavyhit:'Heavy',bloodpact:'Bloodbound',wild:'Reckless',execute:'Grim',blitz:'Blitzing',
-  slowburn:'Smouldering',combo:'Relentless',patient:'Patient',riposte:'Vengeful',momentum:'Rushing',bully:'Bullying',underdog:'Scrappy',
+  slowburn:'Smouldering',combo:'Relentless',patient:'Patient',riposte:'Vengeful',momentum:'Rushing',
   ricochet:'Bouncing',giantkill:'Slayer',sunder:'Sundering',decay:'Withering',dodge:'Nimble',plating:'Thick-skinned',
   brace:'Braced',rebound:'Springy',clutch:'Stubborn',barrier:'Warded',static:'Static',icyskin:'Icy',mending:'Mending',siphon:'Draining',
   adrenaline:'Frantic',partingshot:'Spiteful',lunge:'Lunging',keepaway:'Wary',shoulder:'Barging',nova:'Blasting',concuss:'Stunning',pocket:'Pocket',
   colossus:'Stalwart',whirlwind:'Spinning',hornet:'Buzzing',packlead:'Swarming',rounds:'Loaded'});
-UP_IDS.push('glass','heavyhit','bloodpact','wild','execute','blitz','slowburn','combo','patient','riposte','momentum','bully','underdog',
+UP_IDS.push('glass','heavyhit','bloodpact','wild','execute','blitz','slowburn','combo','patient','riposte','momentum',
   
   'ricochet','giantkill','sunder','decay','dodge','plating','brace','rebound','clutch','barrier','static','icyskin','mending','siphon',
   'adrenaline','partingshot','lunge','keepaway','shoulder','nova','concuss','pocket','colossus','whirlwind','hornet','packlead','rounds');

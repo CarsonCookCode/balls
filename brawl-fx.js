@@ -304,8 +304,6 @@ const FX=(()=>{
       case 'combo':{const n=e.n||1;stars(hx,hy,Math.min(4,n),GOLDC,{lo:20,hi:90});if(n>=3)word(f.i,'combo',o.x,o.y,'Combo ×'+n,GOLDC,n>=5,.9);break}
       case 'patient':word(f.i,'patient',o.x,o.y,'Patience','#f3ead6',true);flash(hx,hy,34,'#ffffff',.2);wave(hx,hy,5,44,.34,'#f3ead6',3,.3);stars(hx,hy,7,'#ffffff',{lo:40,hi:140});kick(2.5);break;
       case 'riposte':word(f.i,'riposte',o.x,o.y,'Riposte','#ff7a8a',true);slash(hx,hy,to+3.14,o.r*1.7,'#ff5a6e',.24);sparks(hx,hy,10,'#ff7a8a',{lo:90,hi:260});kick(2);break;
-      case 'bully':wave(o.x,o.y,o.r+16,o.r,.24,'#ff9a4a',2.4);sparks(hx,hy,5,'#ff9a4a',{lo:60,hi:180});break;
-      case 'underdog':stars(hx,hy,5,'#7fe7ff',{lo:30,hi:110,grav:-60});wave(hx,hy,3,20,.24,'#7fe7ff',1.8);break;
       case 'ricochet':word(f.i,'ricochet',o.x,o.y,'Ricochet','#7fe7ff');sparks(hx,hy,12,'#7fe7ff',{lo:90,hi:280});wave(hx,hy,4,34,.3,'#7fe7ff',2.4,.25);break;
       case 'giantkill':shards(hx,hy,5,o.col,{lo:70,hi:200,size:3.6});wave(o.x,o.y,o.r*.5,o.r+12,.3,'#c08cff',2.6);flash(hx,hy,16,'#c08cff',.16);break;
       case 'sunder':shards(hx,hy,3,'#ffb36b',{lo:50,hi:150,size:2});sparks(hx,hy,4,'#ffb36b',{lo:50,hi:150,life:.22});break;

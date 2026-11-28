@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 80';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 81';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -34,9 +34,9 @@ const KINDS={
 };
 const UP_KIND={sig:'sig'};
 for(const [kind,ids] of Object.entries({
-  def:'tougher armor shield revive thorns dodge plating brace rebound clutch barrier static partingshot keepaway',
+  def:'tougher armor shield revive thorns dodge plating brace rebound clutch barrier static partingshot keepaway bulk colossus',
   heal:'vampire regen mending siphon',move:'faster adrenaline lunge',ctl:'frost concuss nova shoulder icyskin',
-  size:'bulk shrink pocket colossus',ally:'hornet packlead'}))for(const id of ids.split(' '))UP_KIND[id]=kind;
+  size:'shrink pocket',ally:'hornet packlead'}))for(const id of ids.split(' '))UP_KIND[id]=kind;
 const kindOf=id=>KINDS[UP_KIND[id]||'atk'];                 // anything not listed is an attack upgrade
 const kindIcon=K=>`<svg viewBox="0 0 16 16" aria-hidden="true">${K.icon}</svg>`;
 // a fighter's upgrades as small coloured tags; each can be tapped to read what it does (side 0 is you, 1 the rival)
@@ -522,7 +522,6 @@ function faces(){
     try{picture(el,match,+el.dataset.face)}catch(e){}
   }
 }
-const sizeWord=r=>r<21?'Small':r<28?'Medium':r<36?'Big':'Huge';
 function readyBody(){
   const a=run.build,b=run.rival,compact=new Set(allUps(a)).size>4||new Set(allUps(b)).size>4;
   const row=(label,x,y,num)=>`<b class="${num&&x>y?'hi':''}">${num?Math.round(x):x}${num===2?'%':''}</b><i>${label}</i><b class="${num&&y>x?'hi':''}">${num?Math.round(y):y}${num===2?'%':''}</b>`;
@@ -531,7 +530,7 @@ function readyBody(){
     `<div class="duo"><div class="side"><canvas data-face="0" width="${FACE}" height="${FACE}"></canvas><small>You</small><b>${typeOf(a)}</b></div><span class="vs">vs</span>`+
       `<div class="side"><canvas data-face="1" width="${FACE}" height="${FACE}"></canvas><small>${b.owner?esc(b.owner):'House'}</small><b>${typeOf(b)}</b></div></div>`+
     `<div class="mu">`+
-      row('Health',effHp(a),effHp(b),1)+row('Damage',effDmg(a)*100,effDmg(b)*100,2)+row('Speed',effSpd(a)*100,effSpd(b)*100,2)+row('Size',sizeWord(a.r),sizeWord(b.r),0)+
+      row('Health',effHp(a),effHp(b),1)+row('Damage',effDmg(a)*100,effDmg(b)*100,2)+row('Speed',effSpd(a)*100,effSpd(b)*100,2)+
     `</div>`+   // no heading over the upgrade tags: the user asked for "Upgrades · tap one to read it" to go (Build 75)
     `<div class="mu2"><div class="chips">${chips(a,0,compact)}</div><div class="chips">${chips(b,1,compact)}</div></div>`+tipLine(a,b)+
     (run.shield>0?`<button type="button" id="btnArm" class="arm" data-act="arm" aria-pressed="${run.armed}">${run.armed?'Shield raised: lose this fight and keep your lives':'Raise your shield for this fight'}</button>`:'')+
@@ -864,7 +863,7 @@ function sheetBody(){
   const b=run.build,F=FIGHTERS[b.key],stat=(v,label)=>`<span><b>${v}</b><i>${label}</i></span>`;
   const on=tip&&tip.side===0&&allUps(b).includes(tip.id)?tip.id:'';
   return `<div class="shtop"><canvas data-me width="176" height="176" aria-hidden="true"></canvas><div><h2>${typeOf(b)}</h2><p>${F.desc}</p></div></div>`+
-    `<div class="stats">`+stat(Math.round(effHp(b)),'Health')+stat(Math.round(effDmg(b)*100)+'%','Damage')+stat(Math.round(effSpd(b)*100)+'%','Speed')+stat(sizeWord(b.r),'Size')+`</div>`+
+    `<div class="stats">`+stat(Math.round(effHp(b)),'Health')+stat(Math.round(effDmg(b)*100)+'%','Damage')+stat(Math.round(effSpd(b)*100)+'%','Speed')+`</div>`+
     (allUps(b).length?'':`<p class="shl">No upgrades yet</p>`)+   // no heading over the tags: the user asked for "Your upgrades · tap to read" to go (Build 76)
     (allUps(b).length?`<div class="chips">${chips(b,0,false)}</div>`:'')+
     (on?`<p class="shtip" id="tipLine"><b>${upName(b,on)}</b> ${upLine(b,on,false,true)}</p>`:'');

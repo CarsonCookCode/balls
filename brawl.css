@@ -124,7 +124,7 @@ body[data-mode="pick"] #stage,body[data-mode="pick"] header.top{display:none}
 #sheet button.chip.on{background:rgba(255,255,255,.2)}
 .shtip{margin:0;text-align:center;font:500 16.5px/1.2 var(--text);color:var(--ivory);text-wrap:balance}
 .shtip b{font:700 14px/1 var(--display);letter-spacing:.05em;text-transform:uppercase;color:var(--gold-hi);margin-right:4px}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;padding:4px 0}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center;padding:4px 0}
 .stats span{display:flex;flex-direction:column;gap:2px;padding:6px 2px;background:rgba(60,40,15,.08);border-radius:3px}
 .stats b{font:900 18px/1 var(--display);font-variant-numeric:tabular-nums lining-nums}
 .stats i{font:700 9px/1 var(--display);font-style:normal;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2)}

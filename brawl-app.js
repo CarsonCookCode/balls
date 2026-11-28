@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 75';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 76';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -839,7 +839,7 @@ function sheetBody(){
   const on=tip&&tip.side===0&&allUps(b).includes(tip.id)?tip.id:'';
   return `<div class="shtop"><canvas data-me width="176" height="176" aria-hidden="true"></canvas><div><h2>${typeOf(b)}</h2><p>${F.desc}</p></div></div>`+
     `<div class="stats">`+stat(Math.round(effHp(b)),'Health')+stat(Math.round(effDmg(b)*100)+'%','Damage')+stat(Math.round(effSpd(b)*100)+'%','Speed')+stat(sizeWord(b.r),'Size')+`</div>`+
-    `<p class="shl">${allUps(b).length?'Your upgrades · tap to read':'No upgrades yet'}</p>`+
+    (allUps(b).length?'':`<p class="shl">No upgrades yet</p>`)+   // no heading over the tags: the user asked for "Your upgrades · tap to read" to go (Build 76)
     (allUps(b).length?`<div class="chips">${chips(b,0,false)}</div>`:'')+
     (on?`<p class="shtip" id="tipLine"><b>${upName(b,on)}</b> ${upLine(b,on,false,true)}</p>`:'');
 }

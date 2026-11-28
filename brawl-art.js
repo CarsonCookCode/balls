@@ -86,7 +86,10 @@ const ART=(function(){
       const i=y*TS+x,X=x+.5,Y=y+.5,b0=bump(X,Y),pitN=pn(X,Y,c21,seed+3),pit=ss(.9,.95,pitN),chipN=pn(X,Y,c8,seed+4)*.75+pn(X,Y,c3,seed+5)*.25;
       D.BX[i]=bump(X+st,Y)-b0;D.BY[i]=bump(X,Y+st)-b0;D.PIT[i]=pit;
       D.PNX[i]=pit>0?(pn(X+ps,Y,c21,seed+3)-pitN)*3:0;D.PNY[i]=pit>0?(pn(X,Y+ps,c21,seed+3)-pitN)*3:0;
-      D.CHIP[i]=ss(.86,.885,chipN);D.CEDGE[i]=ss(.83,.86,chipN)*(1-D.CHIP[i]);
+      // No chips. The stone used to show through the paint in small grey patches (ss(.86,.885,chipN), with a dark edge
+      // at ss(.83,.86,chipN)); on the live balls they read as dirt, and the user asked: "There's like grey crumbs on the units
+      // now idk why". The paint is whole: grain and pits only. Do not bring the grey patches back.
+      D.CHIP[i]=0;D.CEDGE[i]=0;
       D.M[i]=(1+.2*(pn(X,Y,c9,seed+6)-.5)+.13*(pn(X,Y,c24,seed+7)-.5))*(hash(x>>1,y>>1,seed+8)>.988?1.3:1)*(1-.5*pit);
       D.W[i]=ss(.62,.85,pn(X,Y,c32,seed+9))*.45;D.GR[i]=.9+.2*(pn(X,Y,c26,seed+10)-.5);
     }

@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 78';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 79';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -373,6 +373,8 @@ function hud(){
     const f=match.f[i],el=$(i?'hpB':'hpA');
     el.style.width=Math.max(0,Math.min(100,f.hp/f.max*100)).toFixed(1)+'%';
     el.style.backgroundColor=f.col;
+    const n=$(i?'numB':'numA');                       // the health number rides on the bar (it used to sit on the ball)
+    if(n){const v=String(Math.max(0,Math.ceil(f.hp)));if(n.textContent!==v)n.textContent=v}
   }
 }
 function setNames(){

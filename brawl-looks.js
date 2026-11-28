@@ -756,30 +756,18 @@ function drawFighter(f,isYou){
   g.restore();resetInk(alpha);
 
   if(!f.gone&&!PORTRAIT){
-    // health on a small crimson banner at the foot
-    const pw=Math.max(r*1.02,15),ph=Math.max(r*.42,6.4),py=y+r*.78,lw=Math.max(.35,r*.028),hp=String(Math.max(0,Math.ceil(f.hp)));
-    if(!(STONE&&ART.plaque(g,x,py,pw*.96,ph))){
-    g.fillStyle=CRIMSON_LO;g.strokeStyle=EDGE;g.lineWidth=lw;g.lineJoin='miter';
-    for(let s=-1;s<2;s+=2){g.beginPath();g.moveTo(x+s*pw*.42,py-ph*.3);g.lineTo(x+s*pw*.74,py-ph*.3);g.lineTo(x+s*pw*.62,py+ph*.1);g.lineTo(x+s*pw*.74,py+ph*.5);g.lineTo(x+s*pw*.42,py+ph*.5);g.closePath();g.fill();g.stroke()}
-    g.fillStyle=CRIMSON;rrect(g,x-pw/2,py-ph/2,pw,ph,ph*.14);g.fill();g.stroke();
-    }
-    g.fillStyle=IVORY;g.textAlign='center';g.textBaseline='middle';
-    g.font='700 '+(Math.max(5.4,r*.34)*(hp.length>3?.8:1)).toFixed(1)+'px '+FONT;g.fillText(hp,x,py+ph*.07);
-    // name above (below when there is no room), with a small gold crown for you
-    let top=y-r-1.5,crownY=0;
+    // Nothing sits on the ball but its emblem. Until Build 78 its health was on a small plaque at its foot, and the
+    // player's own fighter wore a small gold crown. The user: "Let's try moving the health number from the ball and just
+    // have it somewhere on the health bar at the top. Remove the crown from the top of the player in game." The number is
+    // on the page's bars now (hud() in brawl-app.js); the video's bars always carried it. It is a trial ("let's try"):
+    // the plaque is still in brawl-art.js (ART.plaque) and the old drawing is in the history at Build 78.
+    // The name: above the ball, or below it when there is no room above.
     if(f.label){
       const fs=Math.max(6.2,Math.min(8.6,r*.3)),txt=String(f.label).toUpperCase(),hw=txt.length*fs*.37+2;
-      const nx=Math.min(AW-hw,Math.max(hw,x)),above=y-r-fs*.95>fs*.7+(isYou?6:0),ny=above?y-r-fs*.95:py+ph/2+fs*.95;
-      g.font='700 '+fs.toFixed(1)+'px '+FONT;g.letterSpacing=(fs*.07).toFixed(2)+'px';
+      const nx=Math.min(AW-hw,Math.max(hw,x)),above=y-r-fs*.95>fs*.7,ny=above?y-r-fs*.95:y+r+fs*.95;
+      g.font='700 '+fs.toFixed(1)+'px '+FONT;g.letterSpacing=(fs*.07).toFixed(2)+'px';g.textAlign='center';g.textBaseline='middle';
       g.lineJoin='round';g.lineWidth=fs*.34;g.strokeStyle='rgba(0,0,0,.78)';g.strokeText(txt,nx,ny);g.fillStyle=IVORY;g.fillText(txt,nx,ny);
       g.letterSpacing='0px';
-      if(above)top=ny-fs*.62;else crownY=ny+fs*.62+3.6;
-    }
-    if(isYou){
-      const cy=crownY||top-3.2,w=4.6;
-      g.fillStyle=lin(g,x,cy-3,x,cy+2.4,[0,GOLD_HI,1,GOLD]);g.strokeStyle=EDGE;g.lineWidth=.5;g.lineJoin='round';
-      g.beginPath();g.moveTo(x-w,cy+2.2);g.lineTo(x-w,cy-1.8);g.lineTo(x-w*.46,cy+.2);g.lineTo(x,cy-3);g.lineTo(x+w*.46,cy+.2);g.lineTo(x+w,cy-1.8);g.lineTo(x+w,cy+2.2);g.closePath();g.fill();g.stroke();
-      g.fillStyle='#b3313f';disc(x,cy+.7,.75);g.fill();
     }
   }
   g.restore();

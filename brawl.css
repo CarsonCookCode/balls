@@ -418,3 +418,12 @@ body[data-mode="fight"],body[data-mode="replay"]{gap:5px}
 
 /* Build 77: a ladder row shows the fighter itself (its ball and emblem), not a dot of its colour. */
 .lb canvas.un{display:block;width:28px;height:28px}
+
+/* Build 79: each fighter's health number is on its bar at the top (the user: "moving the health number from the ball and
+   just have it somewhere on the health bar at the top"). The bar is a little taller to hold it; the number sits at the
+   bar's outer end, by the diamond, where the bar stays filled longest. Hard-edged outline, no blur, so it stays sharp. */
+.hp{height:18px}
+.hp b{position:absolute;top:50%;transform:translateY(-50%);font:900 12px/1 var(--display);font-variant-numeric:tabular-nums lining-nums;letter-spacing:.03em;color:#fff;
+  text-shadow:-1px 0 #090b0d,1px 0 #090b0d,0 -1px #090b0d,0 1px #090b0d,-1px -1px #090b0d,1px 1px #090b0d,-1px 1px #090b0d,1px -1px #090b0d;pointer-events:none}
+.who.a .hp b{left:11px}
+.who.b .hp b{right:11px}

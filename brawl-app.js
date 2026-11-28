@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 77';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 78';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -704,13 +704,13 @@ const startCard=(b,id,i)=>{const K=kindOf(id);return `<button type="button" clas
 const upCard=(b,id,n)=>{const K=kindOf(id);return `<button type="button" class="card up" id="up-${id}" data-act="up" data-key="${id}" style="--k:${K.col}"><i class="ic">${kindIcon(K)}</i><span><b>${upName(b,id)}<em class="kd">${K.label}</em>${n?`<em>have ${n}</em>`:''}</b><small>${upLine(b,id,true,true)}</small></span></button>`};
 function makeBody(){
   if(step===0&&browse){
-    return head(ROSTER.length+' fighters','Choose your champion')+
+    return `<h2 class="ph">Choose your champion</h2>`+   // no count above the title: the user asked for "83 fighters" to go (Build 78)
       `<div class="roster">`+ROSTER.map(k=>`<button type="button" class="pick" id="pk-${k}" data-act="weapon" data-key="${k}"><canvas width="${THUMB}" height="${THUMB}" data-thumb="${k}"></canvas><span>${FIGHTERS[k].name}</span></button>`).join('')+`</div>`+
       `<button type="button" id="btnFew" class="opt" data-act="few"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Three at a time</button>`;
   }
   if(step===0){
     const offer=[0,1,2].map(i=>deck[(deckAt+i)%deck.length]);
-    return head(ROSTER.length+' fighters','Choose your champion')+
+    return `<h2 class="ph">Choose your champion</h2>`+   // no count above the title: the user asked for "83 fighters" to go (Build 78)
       offer.map(k=>`<button type="button" class="card face" id="wp-${k}" data-act="weapon" data-key="${k}"><canvas width="${THUMB}" height="${THUMB}" data-thumb="${k}" aria-hidden="true"></canvas><span><b>${FIGHTERS[k].name}</b><small>${FIGHTERS[k].desc}</small></span></button>`).join('')+
       `<div class="pair"><button type="button" id="btnOthers" class="opt" data-act="others"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg>Three others</button>`+
       `<button type="button" id="btnAll" class="opt" data-act="all"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/></svg>All ${ROSTER.length}</button></div>`;

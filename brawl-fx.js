@@ -1,5 +1,5 @@
 // Duel King effects: everything short-lived and showy that the arena draws on top of the simulation.
-// Glowing sparks, embers, dust, shards, stars, shockwaves, scorch marks, blade trails, squash on impact, and the auras
+// Glowing sparks, embers, dust, shards, stars, shockwaves, scorch marks, squash on impact, and the auras
 // that show a fighter's conditions and upgrades. Nothing here feeds back into the simulation: it listens to the match's
 // events and reads the fighters' state, and it uses Math.random freely because a different sparkle changes no result.
 //
@@ -553,27 +553,9 @@ const FX=(()=>{
     if(f.poisonT>0)blit(g,VENOM,true,x,y,r*1.8,.22+.1*pulse);
     if(f.ambush>0)blit(g,'#8a5cff',true,x,y,r*1.9,.22+.1*pulse);
     if(f.revives>0)blit(g,GOLDC,true,x,y-r*1.05,r*.9,.3+.12*pulse);
-    // blade arcs: the sweep of each weapon over the last tenth of a second
-    if(f.arms&&f.arms.length&&!(f.stunT>0)&&!api.calm){
-      const v=rgbOf(f.col),c='rgb('+v.map(z=>Math.round(z+(255-z)*.55))+')';
-      const base=f.spin*f.spdMul*(f.slowT>0?.6:1)*f.dir;
-      g.fillStyle=c;
-      for(const A of f.arms){
-        const w=base*(A.rate||1),sweep=Math.max(-1.5,Math.min(1.5,w*.11));
-        if(Math.abs(sweep)<.12)continue;
-        // a crescent: as wide as the outer half of the blade where the blade is now, narrowing to nothing at its tail
-        const an=f.ang*(A.rate||1)+A.a,R1=r+A.l+(A.head||0)*.6,R0=r+A.l*.4,N=10,inner=u=>R1-(R1-R0)*Math.pow(1-u,1.7);
-        for(let k=0;k<N;k++){
-          const u0=k/N,u1=(k+1)/N,a0=an-sweep*u0,a1=an-sweep*u1,i0=inner(u0),i1=inner(u1);
-          g.globalAlpha=alpha*.5*Math.pow(1-u0,1.6);
-          g.beginPath();g.moveTo(x+Math.cos(a0)*R1,y+Math.sin(a0)*R1);g.lineTo(x+Math.cos(a1)*R1,y+Math.sin(a1)*R1);
-          g.lineTo(x+Math.cos(a1)*i1,y+Math.sin(a1)*i1);g.lineTo(x+Math.cos(a0)*i0,y+Math.sin(a0)*i0);g.closePath();g.fill();
-        }
-        g.strokeStyle='#ffffff';g.lineCap='round';
-        g.globalAlpha=alpha*.55;g.lineWidth=.9;g.beginPath();g.arc(x,y,R1,an,an-sweep*.45,sweep>0);g.stroke();
-        g.globalAlpha=alpha*.25;g.lineWidth=.7;g.beginPath();g.arc(x,y,R1,an-sweep*.45,an-sweep*.8,sweep>0);g.stroke();
-      }
-    }
+    // There is no trail behind a moving weapon. Until Build 70 each arm drew a pale crescent over where it had just been
+    // ("blade arcs"); with the weapons now real-looking objects the user asked: "Remove the effect that happens on weapons
+    // when it's moving in a certain direction", and, asked which effect: "I meant the swing trail." Do not bring it back.
     g.globalCompositeOperation='source-over';g.globalAlpha=alpha;
   }
   // over a fighter's medallion: shells, stacks and marks

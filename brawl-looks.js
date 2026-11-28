@@ -679,20 +679,31 @@ function drawFighter(f,isYou){
   g.save();
   if(SQ){g.translate(x,y);g.rotate(SQ.th);g.scale(1-SQ.k,1+SQ.k*.7);g.rotate(-SQ.th);g.translate(-x,-y)}
   if(LIVE){FX.back(g,f,MATCH,alpha);resetInk(alpha)}
-  // weapons, under the medallion so they seem to come out from behind the ring
+  // Since Build 69 the fighter is a ball of painted stone with a real-looking weapon set into its side, both made by
+  // brawl-art.js (the notes there say why, in the user's words). STONE is false where there is no real canvas (the
+  // tests), and everything below then draws the old medallion and the weapons drawn in code. An arm whose picture is
+  // ready is kept in "held" and drawn AFTER the ball, cut off where it enters it; any other arm is drawn here, under it.
+  const STONE=!!(typeof ART!=='undefined'&&ART&&ART.ok),held=[];
   if(!PORTRAIT)for(const A of f.arms){
     const an=f.ang*A.rate+A.a,c=Math.cos(an),s=Math.sin(an),x2=x+c*(r+A.l),y2=y+s*(r+A.l);
+    const pic=STONE?ART.strip(A.extra?ART.EXTRA:ART.HELD[f.key]):null;
+    if(pic){held.push([pic,an,A.l,x2,y2]);continue}
     if(A.extra||!L.arm){turned(f,an);steelBlade(r,A.l,A.extra?1.9:2.3);g.restore()}
     else L.arm(f,A,x+c*r,y+s*r,x2,y2,an);
     resetInk(alpha);
     if(f.poison){g.fillStyle='#8be05a';g.strokeStyle=EDGE;g.lineWidth=.45;disc(x2,y2,1.5);g.fill();g.stroke()}
   }
-  if(!PORTRAIT&&f.key==='blaster')barrel(f,f.aim,4,10.5,false);
+  const gunPic=STONE&&!PORTRAIT&&f.key==='blaster'?ART.strip(ART.GUN):null;
+  if(gunPic)held.push([gunPic,f.aim,15,0,0]);
+  else if(!PORTRAIT&&f.key==='blaster')barrel(f,f.aim,4,10.5,false);
   if(!PORTRAIT&&f.side)barrel(f,f.key==='blaster'?f.aim+.5:f.aim,2.3,8,true);
   if(L.back&&!PORTRAIT){L.back(f);resetInk(alpha)}
 
   // the medallion: gold ring, dark seat, enamel, crest
   const hit=f.flash>0,col=hit?shade(base,.4):base;      // a hit flashes the enamel pale; the crest must still read
+  const ballPic=STONE?ART.ball(f.key,base,ART.size(r*2*PX)):null;
+  if(ballPic)ART.drawBall(g,ballPic,x,y,r,alpha,hit,!PORTRAIT);
+  else{
   if(RING){g.fillStyle=lin(g,x-r,y-r,x+r,y+r,[0,GOLD_HI,.45,GOLD,1,GOLD_LO]);g.strokeStyle=EDGE;g.lineWidth=Math.max(.45,r*.035);disc(x,y,r);g.fill();g.stroke();}
   else{g.fillStyle=EDGE;disc(x,y,r);g.fill()}                 // no ring: a thin dark rim and the enamel right to the edge
   if(RING&&r>=11){
@@ -708,7 +719,12 @@ function drawFighter(f,isYou){
   g.shadowColor='rgba(0,0,0,.45)';g.shadowOffsetX=0;g.shadowOffsetY=Math.max(.6,r*.05*PX);g.shadowBlur=0;
   (L.crest||plainCrest)(IVORY,col);
   g.restore();
+  }
   resetInk(alpha);
+  for(const H of held){
+    ART.drawHeld(g,x,y,r,H[0],H[1],H[2],alpha);resetInk(alpha);
+    if(f.poison&&H[3]){g.fillStyle='#8be05a';g.strokeStyle=EDGE;g.lineWidth=.45;disc(H[3],H[4],1.5);g.fill();g.stroke()}
+  }
   if(hit){g.strokeStyle='rgba(255,255,255,.85)';g.lineWidth=Math.max(.8,r*.06);disc(x,y,r+.8);g.stroke();if(LIVE){FX.glow(g,x,y,r*1.6,'#fff2c4',Math.min(.42,f.flash*3.5));resetInk(alpha)}}
 
   // conditions
@@ -742,9 +758,11 @@ function drawFighter(f,isYou){
   if(!f.gone&&!PORTRAIT){
     // health on a small crimson banner at the foot
     const pw=Math.max(r*1.02,15),ph=Math.max(r*.42,6.4),py=y+r*.78,lw=Math.max(.35,r*.028),hp=String(Math.max(0,Math.ceil(f.hp)));
+    if(!(STONE&&ART.plaque(g,x,py,pw*.96,ph))){
     g.fillStyle=CRIMSON_LO;g.strokeStyle=EDGE;g.lineWidth=lw;g.lineJoin='miter';
     for(let s=-1;s<2;s+=2){g.beginPath();g.moveTo(x+s*pw*.42,py-ph*.3);g.lineTo(x+s*pw*.74,py-ph*.3);g.lineTo(x+s*pw*.62,py+ph*.1);g.lineTo(x+s*pw*.74,py+ph*.5);g.lineTo(x+s*pw*.42,py+ph*.5);g.closePath();g.fill();g.stroke()}
     g.fillStyle=CRIMSON;rrect(g,x-pw/2,py-ph/2,pw,ph,ph*.14);g.fill();g.stroke();
+    }
     g.fillStyle=IVORY;g.textAlign='center';g.textBaseline='middle';
     g.font='700 '+(Math.max(5.4,r*.34)*(hp.length>3?.8:1)).toFixed(1)+'px '+FONT;g.fillText(hp,x,py+ph*.07);
     // name above (below when there is no room), with a small gold crown for you

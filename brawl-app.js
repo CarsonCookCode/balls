@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 83';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 84';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -452,7 +452,7 @@ function frame(ts){
   for(let i=floats.length-1;i>=0;i--){const f=floats[i];f.life-=dt;f.y-=28*dt;if(f.life<=0)floats.splice(i,1)}
   FX.update(dt);
   for(let i=bolts.length-1;i>=0;i--){bolts[i].life-=dt;if(bolts[i].life<=0)bolts.splice(i,1)}
-  shake*=.78;if(shake<.3)shake=0;
+  shake=0;                                              // no screen shake while effects are off (Build 84: see EFFECTS_OFF in brawl-fx.js); it was: shake*=.78;if(shake<.3)shake=0;
   if(mode!=='ready')draw();                             // the arena is hidden behind the matchup
   hud();
   if(window.Broadcast&&Broadcast.onFrame)Broadcast.onFrame(dt);

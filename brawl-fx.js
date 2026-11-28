@@ -735,6 +735,21 @@ const FX=(()=>{
   Object.assign(api,{on,update,ambient,reset,floor,top,back,front,sq,screenFlash,glow,due,
     sparks,embers,stars,flakes,wisps,dust,smoke,shards,bubbles,plus,drops,leaves,confetti,flash,slash,line,seek,wave,scorch,squash,
     explode,frost,fire,splash,poof,shatter,holy,dark,zapEnd,RECIPES});
+  // EFFECTS ARE OFF (Build 84). The user, shown a sample of toned-down effects while the fighters and weapons were being
+  // remade: "just pause that for now and remove all effects from the live site". Until they are redesigned to suit the
+  // stone look, nothing in this file is drawn except the pieces a fallen fighter breaks into (which the user asked for
+  // in Build 82): no sparks, rings, flashes, glows, auras, shells, confetti, scorch marks, squash or screen flash.
+  // Everything above is kept as it was; set EFFECTS_OFF to false to bring it all back as it looked in Build 83.
+  const EFFECTS_OFF=true;
+  if(EFFECTS_OFF){
+    const none=()=>{};
+    for(const k of Object.keys(api))if(typeof api[k]==="function")api[k]=none;
+    api.due=()=>0;api.sq=()=>null;                       // (RECIPES stays: the tests check every effect a class names still exists)
+    api.on=(e,m)=>{if(!m)return;if(m!==lastM){lastM=m;reset(false)}if(e.k==="ko"&&e.i>=0&&m.f[e.i]){const own=m.f[e.i];breakApart(own,own.col,m.f[1-own.i],e.x,e.y,m)}};
+    api.reset=reset;
+    api.update=dt=>{clock+=dt;moveRubble(dt);P.length=0;W.length=0;DEC.length=0;screen=0};
+    api.floor=(g,m)=>{if(RUB.length&&m!==rubOf)RUB.length=0;drawRubble(g)};
+  }
   Object.defineProperties(api,{count:{get:()=>P.length},quality:{get:()=>q},clock:{get:()=>clock},rate:{get:()=>rate,set:v=>{rate=v}}});
   return api;
 })();

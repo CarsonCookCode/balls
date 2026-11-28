@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 76';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 77';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -7,7 +7,7 @@ const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').mat
 const PALETTE=ROSTER.slice(0,30).map(k=>FIGHTERS[k].color);
 const okColor=c=>/^#[0-9a-fA-F]{6}$/.test(c||"");
 const BOTS=14;           // house fighters on each day's ladder until real players fill it
-// mode: 'make' (three taps, then a name), 'fight', 'pick' (choose an upgrade), 'over', 'board' (today's ladder), 'duel'
+// mode: 'make' (two taps: a fighter and its first upgrade; then a name), 'fight', 'pick' (choose an upgrade), 'over', 'board' (today's ladder), 'duel'
 let browse=false;          // the fighter picker is showing every fighter instead of three
 let mode='make',step=0,me={key:'blade',str:-1,size:-1,name:'',color:0,colorSet:false,hex:''},deck=[],deckAt=0;
 let myBest={date:'',f:{}};   // this player's best climb today with each class: {class: the fighter as it finished}
@@ -710,17 +710,14 @@ function makeBody(){
   }
   if(step===0){
     const offer=[0,1,2].map(i=>deck[(deckAt+i)%deck.length]);
-    return head('Step 1 of 3 · '+ROSTER.length+' fighters','Choose your champion')+
+    return head(ROSTER.length+' fighters','Choose your champion')+
       offer.map(k=>`<button type="button" class="card face" id="wp-${k}" data-act="weapon" data-key="${k}"><canvas width="${THUMB}" height="${THUMB}" data-thumb="${k}" aria-hidden="true"></canvas><span><b>${FIGHTERS[k].name}</b><small>${FIGHTERS[k].desc}</small></span></button>`).join('')+
       `<div class="pair"><button type="button" id="btnOthers" class="opt" data-act="others"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg>Three others</button>`+
       `<button type="button" id="btnAll" class="opt" data-act="all"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/></svg>All ${ROSTER.length}</button></div>`;
   }
   const what=`<p class="ps what"><b>${FIGHTERS[me.key].name}.</b> ${FIGHTERS[me.key].desc}</p>`;
-  if(step===1)return head('Step 2 of 3','Pick its first upgrade')+what+
+  if(step===1)return `<h2 class="ph">Pick its first upgrade</h2>`+what+
     starts(me.key).map((id,i)=>startCard(makeBuild(me.key,-1,1),id,i)).join('')+
-    `<button type="button" id="btnBack" class="quiet" data-act="back">Back</button>`;
-  if(step===2)return head('Step 3 of 3','Pick a size')+what+
-    SIZES.map((s,i)=>card('size-'+i,'size',`data-i="${i}"`,s.label,s.text)).join('')+
     `<button type="button" id="btnBack" class="quiet" data-act="back">Back</button>`;
   return `<h2 class="ph">Name your ${typeOf(myBuild())}</h2>`+
     `<input id="inName" type="text" maxlength="12" autocomplete="off" autocapitalize="words" spellcheck="false" aria-label="Fighter name" placeholder="${FIGHTERS[me.key].name}" value="${esc(me.name)}">`+
@@ -735,7 +732,7 @@ function boardBody(){
   for(const r of rows){if(seen.has(r.who))continue;seen.add(r.who);pair.push(r);if(pair.length===2)break}
   const row=(r,i)=>{
     const b=rebuild(r.e);
-    return `<li class="${r.you?'me':''}${pair.includes(r)?' in':''}"><span class="rk">${i?i+1:CROWN}</span><i style="background:${b.color}"></i>`+
+    return `<li class="${r.you?'me':''}${pair.includes(r)?' in':''}"><span class="rk">${i?i+1:CROWN}</span><canvas class="un" width="${UNIT}" height="${UNIT}" data-unit="${b.key}" data-col="${okColor(b.color)?b.color:FIGHTERS[b.key].color}" aria-hidden="true"></canvas>`+
       `<span class="nm"><b>${typeOf(b)}</b><small>${r.you?esc(b.name)+' · you':r.player?esc(b.name):'house fighter'}</small></span><span class="rg">${r.cleared}</span></li>`;
   };
   // The duel is not played here: it is fought once, when the day ends, and shown in the video. The way out of the
@@ -769,7 +766,7 @@ function render(){
   const SH=$('sheet');SH.hidden=mode!=='pick';
   if(mode==='pick'){SH.innerHTML=sheetBody();portraits()}else if(SH.innerHTML)SH.innerHTML='';
   if(mode==='make'){P.innerHTML=makeBody();if(step===0)thumbsFill();if(step===3){wheelDraw();wheelFace()}}
-  else if(mode==='board')P.innerHTML=boardBody();
+  else if(mode==='board'){P.innerHTML=boardBody();unitsFill()}
   else if(mode==='duel')P.innerHTML=duelBody();
   else if(mode==='ready'){P.innerHTML=readyBody();faces()}
   else if(mode==='fight'){
@@ -820,6 +817,33 @@ function thumbsFill(){
   };
   go();
 }
+// The ladder's small pictures: each fighter's ball and emblem in its own colour (the user: "Make the icon that's just
+// color in the ladder right now the actual unit there like just the circle and icon part"). Made a few a frame and kept,
+// since the ladder is redrawn whenever a new climb arrives.
+const UNIT=84,units={};
+let unitBusy=false;
+function unitsFill(){
+  if(unitBusy)return;
+  unitBusy=true;
+  const go=()=>{
+    const list=$('panel').querySelectorAll?$('panel').querySelectorAll('canvas[data-unit]'):[];
+    let made=0,left=0;
+    for(const el of list){
+      if(el.dataset.done)continue;
+      const k=el.dataset.unit,c=el.dataset.col,id=k+c;
+      if(!units[id]){
+        if(made>=3){left++;continue}
+        const cv2=document.createElement('canvas');cv2.width=cv2.height=UNIT;
+        try{const m=createMatch(makeBuild(k,-1,1,'',c),makeBuild(k,-1,1),7),f=m.f[0];f.x=AW/2;f.y=AW/2;f.ang=-.6;picture(cv2,m,0)}catch(e){}
+        units[id]=cv2;made++;
+      }
+      try{el.getContext('2d').drawImage(units[id],0,0)}catch(e){}
+      el.dataset.done='1';
+    }
+    if(left&&mode==='board')requestAnimationFrame(go);else unitBusy=false;
+  };
+  go();
+}
 // Your own fighter, drawn from the real thing (colour, size, extra weapons and all), on every canvas marked data-me.
 function portraits(){
   const P=$('sheet');
@@ -854,8 +878,7 @@ const onTap=e=>{
   else if(act==='others'){deckAt=(deckAt+3)%deck.length;render()}
   else if(act==='all'){browse=true;render()}
   else if(act==='few'){browse=false;render()}
-  else if(act==='str'){me.str=+b.dataset.i;step=2;save();render();practice()}
-  else if(act==='size'){me.size=+b.dataset.i;step=3;save();render();practice()}
+  else if(act==='str'){me.str=+b.dataset.i;me.size=1;step=3;save();render();practice()}   // no size step: Medium, and on to the name
   else if(act==='back'){step=Math.max(0,step-1);render()}
   else if(act==='col'){me.color=+b.dataset.i;me.colorSet=true;save();render();practice()}
   else if(act==='new'){mode='make';step=0;me.str=-1;me.size=-1;deck=shuffled(ROSTER);deckAt=0;save();render();practice()}
@@ -925,7 +948,7 @@ try{
   const sp=parseInt(localStorage.getItem('brawl.speed'),10);if([1,2,4].includes(sp)){speed=sp;$('btnSpeed').textContent='Speed '+speed+'×'}
   const s=JSON.parse(localStorage.getItem('brawl.fighter'));
   if(s&&FIGHTERS[s.key]&&[0,1,2].includes(s.str)&&[0,1,2].includes(s.size)&&s.color>=-1&&s.color<PALETTE.length){
-    me={key:s.key,str:s.str,size:s.size,name:cleanName(s.name),color:s.color|0,colorSet:!!s.colorSet,hex:okColor(s.hex)?s.hex:''};
+    me={key:s.key,str:s.str,size:1,name:cleanName(s.name),color:s.color|0,colorSet:!!s.colorSet,hex:okColor(s.hex)?s.hex:''};
     step=3;                                   // a returning player goes straight to their fighter
   }
   const okEntry=x=>x&&FIGHTERS[x.key]&&[0,1,2].includes(x.str)&&[0,1,2].includes(x.size)&&Array.isArray(x.ups)&&x.ups.length<80&&Number.isInteger(x.cleared)&&x.cleared>=0;

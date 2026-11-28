@@ -158,7 +158,7 @@ input::placeholder{color:rgba(90,70,48,.6);font-style:italic;font-weight:500}
 
 /* today's ladder */
 .lb{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
-.lb li{display:grid;grid-template-columns:20px 20px 1fr auto;gap:10px;align-items:center;padding:6px 8px;border-bottom:1px solid rgba(60,40,15,.28)}
+.lb li{display:grid;grid-template-columns:20px 28px 1fr auto;gap:10px;align-items:center;padding:6px 8px;border-bottom:1px solid rgba(60,40,15,.28)}
 .lb li:last-child{border-bottom:0}
 .lb li.in{background:rgba(143,39,50,.13);box-shadow:inset 3px 0 0 var(--crimson)}
 .lb li.me{outline:1.5px solid var(--gold-lo);outline-offset:-2px}
@@ -415,3 +415,6 @@ body[data-mode="fight"],body[data-mode="replay"]{gap:5px}
 #wheel{inset:0;width:176px;height:176px;border-radius:50%;touch-action:none;cursor:crosshair;-webkit-tap-highlight-color:transparent;filter:drop-shadow(0 3px 3px rgba(0,0,0,.45))}
 #wheelFace{left:50%;top:50%;width:83px;height:83px;transform:translate(-50%,-50%);pointer-events:none}
 /* Build 73: the wheel is a ring with the fighter in the middle of it (see the note at WHEEL in brawl-app.js). */
+
+/* Build 77: a ladder row shows the fighter itself (its ball and emblem), not a dot of its colour. */
+.lb canvas.un{display:block;width:28px;height:28px}

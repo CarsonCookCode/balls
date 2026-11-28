@@ -8,9 +8,8 @@
 // buttons), a surface with grain, pits and a few chips, the emblem painted on in ivory, NO outline ("Remove the border
 // on them they should look actually there"), tied to the floor by the shadow it throws and the dark where it meets the
 // bricks. Do not add gloss, glow, rim light, soft gradients or an outline to a fighter.
-// Since Build 73 the ball rolls: its stone surface slides by as the fighter moves while the emblem and the light stay
-// where they are ("Make the balls roll in the direction and at the speed which they are moving, with the icon staying
-// fixed in place"). See "the ball, in layers" below.
+// In the arena the ball rolls (Build 74): its stone slides by as the fighter moves while the lamp and the emblem stay
+// where they are. It is the same ball, coloured the same way: see "rolling" below, and do not change one without the other.
 //
 // Weapons. Treated icon shapes were rejected ("I want them to look like actual weapons"), photo-scanned models lost to
 // chunky game models ("Game ready models are better"), and the user set how they are carried: no hand ("they shouldn't
@@ -67,73 +66,59 @@ const ART=(function(){
   const KL=Math.hypot(.5,.6,.62),K=[-.5/KL,-.6/KL,.62/KL],KH=Math.hypot(K[0],K[1]),KDX=K[0]/KH,KDY=K[1]/KH;
   const HL=Math.hypot(K[0],K[1],K[2]+1),HV=[K[0]/HL,K[1]/HL,(K[2]+1)/HL];
 
-  // ---- the ball, in layers, so that it can roll (Build 73). The user: "Make the balls roll in the direction and at the
-  //      speed which they are moving, with the icon staying fixed in place." A ball is put together from:
-  //        the skin   a square of painted stone that repeats: its colour, grain, pits and chips. It slides under the
-  //                   ball by exactly the distance the ball travels, which is what the top of a rolling ball does.
-  //        the light  the lamp's light and shade on a sphere, and the darkening towards its edge. It never moves.
-  //        the mark   the emblem, white, with its dark line. It never moves either.
-  //      The grain's own light and shade are part of the skin; sliding (not turning) the skin keeps them facing the
-  //      lamp. The relief is worked out once and shared; a colour only tints it, so a new colour costs almost nothing. ----
-  const T=256,RB=224/2/(1+PAD);                       // the skin's size, and a ball's radius in a 224-pixel picture
-  const pn=(x,y,n,s)=>{                                // noise that repeats across the skin: n cells from edge to edge
-    const u=x/T*n,v=y/T*n,xi=Math.floor(u),yi=Math.floor(v),fx=u-xi,fy=v-yi,sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy),w=i=>((i%n)+n)%n;
+  // ---- the stone itself: everything about a ball that does not depend on its colour or emblem, worked out once for
+  //      each picture size and shared by every fighter (the costly part: grain, pits, chips, and the light on them) ----
+  // The stone's relief: its grain, pits, chips and mottling, laid out once on a square that repeats (TS pixels a side,
+  // a little wider than a ball). A ball standing still takes the part of it under its middle; a rolling ball slides
+  // over it (see "rolling" below). Everything here is in the units of a 224-pixel ball drawn twice too big.
+  const TS=512,GU=(448/2/(1+PAD))/100;                // GU = pixels of the relief to a hundredth of a ball's radius
+  const cells=s=>Math.max(1,Math.round(TS/GU/s));    // how many cells of noise cross the square, for a grain of size s
+  const pn=(x,y,n,s)=>{                                // noise that repeats across the square
+    const u=x/TS*n,v=y/TS*n,xi=Math.floor(u),yi=Math.floor(v),fx=u-xi,fy=v-yi,sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy),w=i=>((i%n)+n)%n;
     return (hash(w(xi),w(yi),s)*(1-sx)+hash(w(xi+1),w(yi),s)*sx)*(1-sy)+(hash(w(xi),w(yi+1),s)*(1-sx)+hash(w(xi+1),w(yi+1),s)*sx)*sy};
-  let relief=null;
-  function reliefMap(){
-    if(relief)return relief;
-    const G=new Float32Array(T*T),C=new Float32Array(T*T),hgt=(x,y)=>.55*pn(x,y,138,1)+.9*pn(x,y,47,2)+1.2*pn(x,y,17,3);
-    for(let y=0;y<T;y++)for(let x=0;x<T;x++){
-      const i=y*T+x,pit=ss(.9,.95,pn(x,y,112,4)),chipN=pn(x,y,30,5)*.75+pn(x,y,78,6)*.25,chip=ss(.86,.885,chipN),edge=ss(.83,.86,chipN)*(1-chip);
-      const emb=1+1.05*(hgt(x+1,y+1)-hgt(x-1,y-1));       // a slope that faces the lamp (top left) is lighter
-      G[i]=(1+.2*(pn(x,y,26,7)-.5)+.13*(pn(x,y,98,8)-.5))*(hash(x,y,9)>.988?1.3:1)*(1-.5*pit)*(1-.3*edge)*emb;C[i]=chip;
+  let FD=null;
+  function fields(){
+    if(FD)return FD;
+    const n=TS*TS,seed=7,D={};for(const k of ['BX','BY','PIT','M','CHIP','CEDGE','PNX','PNY','W','GR'])D[k]=new Float32Array(n);
+    const c17=cells(1.7),c5=cells(5),c14=cells(14),c21=cells(2.1),c8=cells(8),c3=cells(3),c9=cells(9),c24=cells(2.4),c32=cells(3.2),c26=cells(2.6);
+    const bump=(x,y)=>.55*pn(x,y,c17,seed)+.9*pn(x,y,c5,seed+1)+1.2*pn(x,y,c14,seed+2),st=.8*GU,ps=.6*GU;
+    for(let y=0;y<TS;y++)for(let x=0;x<TS;x++){
+      const i=y*TS+x,X=x+.5,Y=y+.5,b0=bump(X,Y),pitN=pn(X,Y,c21,seed+3),pit=ss(.9,.95,pitN),chipN=pn(X,Y,c8,seed+4)*.75+pn(X,Y,c3,seed+5)*.25;
+      D.BX[i]=bump(X+st,Y)-b0;D.BY[i]=bump(X,Y+st)-b0;D.PIT[i]=pit;
+      D.PNX[i]=pit>0?(pn(X+ps,Y,c21,seed+3)-pitN)*3:0;D.PNY[i]=pit>0?(pn(X,Y+ps,c21,seed+3)-pitN)*3:0;
+      D.CHIP[i]=ss(.86,.885,chipN);D.CEDGE[i]=ss(.83,.86,chipN)*(1-D.CHIP[i]);
+      D.M[i]=(1+.2*(pn(X,Y,c9,seed+6)-.5)+.13*(pn(X,Y,c24,seed+7)-.5))*(hash(x>>1,y>>1,seed+8)>.988?1.3:1)*(1-.5*pit);
+      D.W[i]=ss(.62,.85,pn(X,Y,c32,seed+9))*.45;D.GR[i]=.9+.2*(pn(X,Y,c26,seed+10)-.5);
     }
-    return relief={G,C};
+    return FD=D;
   }
-  const skins=new Map();
-  function skin(col){
-    let cv=skins.get(col);if(cv)return cv;
-    const M=reliefMap(),base=hex(col),H=hsv(base),P=L3(rgb(H[0],H[1]*.9,H[2]*.96)),ST=.17;
-    const im=(cv=mk(T,T)).getContext('2d').createImageData(T,T),d=im.data;
-    for(let i=0;i<T*T;i++){
-      const g=M.G[i],c=M.C[i],j=i*4;
-      d[j]=255*Math.pow(cl(mix(P[0],ST,c)*g,0,1),1/2.2);d[j+1]=255*Math.pow(cl(mix(P[1],ST,c)*g,0,1),1/2.2);d[j+2]=255*Math.pow(cl(mix(P[2],ST*.97,c)*g,0,1),1/2.2);d[j+3]=255;
-    }
-    cv.getContext('2d').putImageData(im,0,0);
-    if(skins.size>60)skins.delete(skins.keys().next().value);
-    skins.set(col,cv);return cv;
-  }
-  // the light on a ball of a given picture size: where it is (mask), how dark each part is (shade, laid on by
-  // multiplying), where it is lighter than its paint (high), and the numbers the emblem needs
-  const lights={};
-  function light(F){
-    if(lights[F])return lights[F];
-    const S=F*SS,n=S*S,R=S/2/(1+PAD),cx=S/2,cy=S/2,lift=R*.045,N=SS*SS;
-    const L={S,R,A:new Float32Array(n),EX:new Float32Array(n),EY:new Float32Array(n),LR:new Float32Array(n),LG:new Float32Array(n),LB:new Float32Array(n)};
+  // reads the relief at a point (in its pixels), smoothly, wrapping at its edges
+  const fs=(A,x,y)=>{x-=.5;y-=.5;const xi=Math.floor(x),yi=Math.floor(y),fx=x-xi,fy=y-yi,w=v=>((v%TS)+TS)%TS,x0=w(xi),x1=w(xi+1),y0=w(yi)*TS,y1=w(yi+1)*TS;
+    return (A[y0+x0]*(1-fx)+A[y0+x1]*fx)*(1-fy)+(A[y1+x0]*(1-fx)+A[y1+x1]*fx)*fy};
+  const stones={};
+  function stone(F){
+    if(stones[F])return stones[F];
+    const S=F*SS,n=S*S,R=S/2/(1+PAD),cx=S/2,cy=S/2,lift=R*.045,D=fields(),k=448/S;
+    const T={S,R,A:new Float32Array(n),EX:new Float32Array(n),EY:new Float32Array(n),LIT:new Float32Array(n),M:new Float32Array(n),CHIP:new Float32Array(n),CEDGE:new Float32Array(n),
+      LR:new Float32Array(n),LG:new Float32Array(n),LB:new Float32Array(n),SP:new Float32Array(n),W:new Float32Array(n),GR:new Float32Array(n),CM:new Float32Array(n)};
     for(let y=0;y<S;y++)for(let x=0;x<S;x++){
       const dx=x+.5-cx,dy=y+.5-cy,rho=Math.hypot(dx,dy),e=R-rho;if(e<=-1)continue;
       const i=y*S+x,q=Math.min(1,rho/R),nz=Math.sqrt(Math.max(0,1-q*q)),nx=dx/R*(q<1?1:R/rho),ny=dy/R*(q<1?1:R/rho);
       const th=Math.asin(q),sc=q>1e-4?th/q*.9:.9;                           // the emblem follows the curve of the ball
-      L.A[i]=ss(-.6,.6,e);L.EX[i]=cx+dx*sc-.5;L.EY[i]=cy+(dy+lift)*sc-.5;
+      T.A[i]=ss(-.6,.6,e);T.EX[i]=cx+dx*sc-.5;T.EY[i]=cy+(dy+lift)*sc-.5;
+      const tx=dx*k,ty=dy*k,pit=fs(D.PIT,tx,ty);                              // where this point lies on the relief, for a ball at rest
+      T.CHIP[i]=fs(D.CHIP,tx,ty);T.CEDGE[i]=fs(D.CEDGE,tx,ty);
+      const ax=nx-fs(D.BX,tx,ty)*.85-fs(D.PNX,tx,ty),ay=ny-fs(D.BY,tx,ty)*.85-fs(D.PNY,tx,ty);
+      const al=Math.hypot(ax,ay,nz),px=ax/al,py=ay/al,pz=nz/al,nl=Math.max(0,px*K[0]+py*K[1]+pz*K[2]);
+      T.LIT[i]=ss(0,.5,nl);
+      T.M[i]=fs(D.M,tx,ty);
       // one hard lamp, a dim cool room, the floor's own light on the edge nearest it; darker towards the edge
-      const nl=Math.max(0,nx*K[0]+ny*K[1]+nz*K[2]),dif=nl*1.12,ao=mix(.42,1,ss(0,.4,nz)),up=.5+.5*nz,fl=Math.pow(1-nz,2)*.1;
-      const sp=Math.pow(Math.max(0,nx*HV[0]+ny*HV[1]+nz*HV[2]),22)*.05*ao;
-      L.LR[i]=(.2*up+.05+dif*1.06)*ao+fl*.9+sp;L.LG[i]=(.22*up+.055+dif)*ao+fl+sp;L.LB[i]=(.27*up+.05+dif*.9)*ao+fl*.85+sp;
+      const dif=nl*1.12,ao=mix(.42,1,ss(0,.4,nz)),up=.5+.5*pz,fl=Math.pow(1-nz,2)*.1;
+      T.LR[i]=(.2*up+.05+dif*1.06)*ao+fl*.9;T.LG[i]=(.22*up+.055+dif)*ao+fl;T.LB[i]=(.27*up+.05+dif*.9)*ao+fl*.85;
+      T.SP[i]=Math.pow(Math.max(0,px*HV[0]+py*HV[1]+pz*HV[2]),22)*.05*ao;
+      T.W[i]=fs(D.W,tx,ty);T.GR[i]=fs(D.GR,tx,ty);T.CM[i]=1-pit*.35;
     }
-    const mask=mk(F,F),shade=mk(F,F),high=mk(F,F),mc=mask.getContext('2d'),sc2=shade.getContext('2d'),hc=high.getContext('2d');
-    const mi=mc.createImageData(F,F),si=sc2.createImageData(F,F),hi=hc.createImageData(F,F),g=v=>Math.pow(v,1/2.2);
-    for(let y=0;y<F;y++)for(let x=0;x<F;x++){
-      let a=0,r=0,gg=0,b=0,h=0;
-      for(let k=0;k<N;k++){const i=(y*SS+(k/SS|0))*S+x*SS+(k%SS),al=L.A[i];if(al<=0)continue;const fr=g(L.LR[i]),fg=g(L.LG[i]),fb=g(L.LB[i]);
-        a+=al;r+=Math.min(1,fr)*al;gg+=Math.min(1,fg)*al;b+=Math.min(1,fb)*al;h+=Math.max(0,fg-1)*al}
-      if(a<=0)continue;const j=(y*F+x)*4;
-      mi.data[j]=mi.data[j+1]=mi.data[j+2]=255;mi.data[j+3]=a/N*255;
-      si.data[j]=255*r/a;si.data[j+1]=255*gg/a;si.data[j+2]=255*b/a;si.data[j+3]=255;
-      hi.data[j]=255;hi.data[j+1]=250;hi.data[j+2]=236;hi.data[j+3]=255*cl(h/a*1.25,0,.4);
-    }
-    mc.putImageData(mi,0,0);sc2.putImageData(si,0,0);hc.putImageData(hi,0,0);
-    L.mask=mask;L.shade=shade;L.high=high;
-    return lights[F]=L;
+    return stones[F]=T;
   }
   // the emblem, flat, as a distance field: + inside its ink, - outside, in pixels
   const paths={};
@@ -148,64 +133,158 @@ const ART=(function(){
     for(let i=0;i<n;i++)sd[i]=di[i]>0?Math.sqrt(di[i])-.5:-(Math.sqrt(dq[i])-.5);
     return sd;
   }
-  // The emblem as a picture to lay over the ball. It is white on every fighter, and solid: the user, of an earlier
-  // grainy ivory that took the ball's shading and was dark on pale fighters: "Make the icons less washed out and all
-  // should be white not black". Near-white paint that keeps half its brightness where the ball is in shade, with a dark
-  // line round it; on a pale ball (the Snowball, the Ghost) the line is heavier and there is a soft dark surround.
-  const marks=new Map();
-  function mark(key,F,pale){
-    const id=key+'|'+F+'|'+(pale?1:0);let cv=marks.get(id);if(cv)return cv;
-    const L=light(F),S=L.S,R=L.R,sd=emblem(key,S,R),IV=L3([.985,.975,.94]),ow=R*(pale?.03:.022),hw=R*.09,N=SS*SS;
-    const bil=(x,y)=>{x=cl(x,0,S-1.001);y=cl(y,0,S-1.001);const xi=x|0,yi=y|0,fx=x-xi,fy=y-yi,o=yi*S+xi;return (sd[o]*(1-fx)+sd[o+1]*fx)*(1-fy)+(sd[o+S]*(1-fx)+sd[o+S+1]*fx)*fy};
-    const im=(cv=mk(F,F)).getContext('2d').createImageData(F,F),dd=im.data;
-    for(let y=0;y<F;y++)for(let x=0;x<F;x++){
-      let r=0,g=0,b=0,a=0;
-      for(let k=0;k<N;k++){
-        const i=(y*SS+(k/SS|0))*S+x*SS+(k%SS);if(L.A[i]<=0)continue;
-        const d=bil(L.EX[i],L.EY[i]),m=ss(-.6,.6,d);
-        const dark=1-(1-(ss(-ow-.6,-ow+.6,d)-m)*(pale?.92:.85))*(pale?1-.34*ss(-hw,0,d)*(1-m):1);     // how much the line and surround darken the ball
-        const al=m+(1-m)*dark;if(al<=0)continue;
-        r+=IV[0]*mix(L.LR[i],1.02,.5)*m;g+=IV[1]*mix(L.LG[i],1.02,.5)*m;b+=IV[2]*mix(L.LB[i],1.02,.5)*m;a+=al;
-      }
-      if(a<=0)continue;const j=(y*F+x)*4;
-      dd[j]=255*cl(Math.pow(r/a,1/2.2),0,1);dd[j+1]=255*cl(Math.pow(g/a,1/2.2),0,1);dd[j+2]=255*cl(Math.pow(b/a,1/2.2),0,1);dd[j+3]=a/N*255;
-    }
-    cv.getContext('2d').putImageData(im,0,0);
-    if(marks.size>260)marks.delete(marks.keys().next().value);
-    marks.set(id,cv);return cv;
-  }
-  // puts a ball together on a canvas of F pixels: tx, ty = how far its skin has slid, in skin pixels
-  function paint(cv,key,col,F,tx,ty){
-    const c=cv.getContext('2d'),L=light(F),k=F/224,b=hex(col),pale=.3*lin(b[0])+.59*lin(b[1])+.11*lin(b[2])>.5;
-    tx=((tx%T)+T)%T;ty=((ty%T)+T)%T;
-    c.setTransform(1,0,0,1,0,0);c.globalAlpha=1;c.globalCompositeOperation='source-over';c.clearRect(0,0,F,F);
-    c.save();c.scale(k,k);c.translate(tx,ty);c.fillStyle=c.createPattern(skin(col),'repeat');c.fillRect(-tx,-ty,224,224);c.restore();
-    c.globalCompositeOperation='multiply';c.drawImage(L.shade,0,0);
-    c.globalCompositeOperation='source-over';c.drawImage(L.high,0,0);c.drawImage(mark(key,F,pale),0,0);
-    c.globalCompositeOperation='destination-in';c.drawImage(L.mask,0,0);
-    c.globalCompositeOperation='source-over';
-  }
-  // a fighter's ball standing still: for the cards and the matchup. F = the picture's size in pixels.
+  // a fighter's ball: its colour of paint on the shared stone, and its emblem. F = the picture's size in pixels.
   const balls=new Map();
   function ball(key,col,F){
     const id=key+'|'+col+'|'+F;let cv=balls.get(id);if(cv)return cv;
-    try{cv=mk(F,F);const s=key.charCodeAt(0)*31+key.length*57+key.charCodeAt(key.length-1)*7;paint(cv,key,col,F,s%T,(s*3)%T)}catch(e){return null}
+    try{
+      const T=stone(F),S=T.S,R=T.R,sd=emblem(key,S,R),base=hex(col),H=hsv(base),grey=H[1]<.1;
+      // the pigment, and how it looks in shade (a touch cooler)
+      const P=L3(rgb(H[0],H[1]*.9,H[2]*.96)),PS=L3(rgb(grey?H[0]:toward(H[0],265,14),Math.min(1,H[1]*1.05),H[2]*.96));
+      // The emblem is white on every fighter, and solid. Build 69 had it in grainy, worn ivory that took the ball's
+      // shading, and in dark ink on pale fighters; the user: "Make the icons less washed out and all should be white
+      // not black". So: near-white paint, hardly any grain or wear, kept bright on the ball's shaded side too. On a
+      // pale ball (the Snowball, the Ghost) a white emblem is told apart by its dark line and a soft dark surround.
+      const lumB=.3*lin(base[0])+.59*lin(base[1])+.11*lin(base[2]),pale=lumB>.5,IV=L3([.985,.975,.94]);
+      const ST=.17,ow=R*(pale?.03:.022),wr=R*.03,c0=-R*.06,c1=-R*.01,hw=R*.09;
+      const tone=v=>v<=.75?v:.75+.25*(1-Math.exp(-(v-.75)/.25)),bil=(x,y)=>{x=cl(x,0,S-1.001);y=cl(y,0,S-1.001);const xi=x|0,yi=y|0,fx=x-xi,fy=y-yi,o=yi*S+xi;return (sd[o]*(1-fx)+sd[o+1]*fx)*(1-fy)+(sd[o+S]*(1-fx)+sd[o+S+1]*fx)*fy};
+      const im=(cv=mk(F,F)).getContext('2d').createImageData(F,F),dd=im.data;
+      for(let y=0;y<F;y++)for(let x=0;x<F;x++){
+        let r=0,g=0,b=0,a=0;
+        for(let k=0;k<SS*SS;k++){
+          const i=(y*SS+(k/SS|0))*S+x*SS+(k%SS),al=T.A[i];if(al<=0)continue;
+          const d=bil(T.EX[i],T.EY[i]),m=ss(-.6,.6,d),clear=1-ss(c0,c1,d),chip=T.CHIP[i]*clear,lit=T.LIT[i];
+          let M=T.M[i]*(1-.3*T.CEDGE[i]*clear);
+          let pr=mix(mix(PS[0],P[0],lit),ST,chip),pg=mix(mix(PS[1],P[1],lit),ST,chip),pb=mix(mix(PS[2],P[2],lit),ST*.97,chip);
+          // painted on: a dark line round the emblem (and on a pale ball a soft dark surround), then the white paint,
+          // which keeps half its brightness where the ball is in shade
+          const line=(1-(ss(-ow-.6,-ow+.6,d)-m)*(pale?.92:.85))*(pale?1-.34*ss(-hw,0,d)*(1-m):1);
+          const cov=m*(1-ss(wr,0,d)*T.W[i]*.2)*(1-(1-T.CM[i])*.35),gr=1+(T.GR[i]-1)*.3;
+          const er=IV[0]*gr*mix(T.LR[i],1.02,.5),eg=IV[1]*gr*mix(T.LG[i],1.02,.5),eb=IV[2]*gr*mix(T.LB[i],1.02,.5);
+          r+=tone(mix(pr*line*M*T.LR[i]+T.SP[i],er,cov))*al;g+=tone(mix(pg*line*M*T.LG[i]+T.SP[i],eg,cov))*al;b+=tone(mix(pb*line*M*T.LB[i]+T.SP[i]*.9,eb,cov))*al;a+=al;
+        }
+        if(a<=0)continue;const j=(y*F+x)*4;
+        dd[j]=255*cl(Math.pow(r/a,1/2.2),0,1);dd[j+1]=255*cl(Math.pow(g/a,1/2.2),0,1);dd[j+2]=255*cl(Math.pow(b/a,1/2.2),0,1);dd[j+3]=a/(SS*SS)*255;
+      }
+      cv.getContext('2d').putImageData(im,0,0);
+    }catch(e){return null}
     if(balls.size>220)balls.delete(balls.keys().next().value);
     balls.set(id,cv);return cv;
   }
-  // a fighter's ball in the arena, rolling: its skin slides by as far as the fighter has moved since it was last drawn
-  // (x, y and r in arena units). A jump of more than a ball's width is a teleport, not a roll, and slides nothing.
+  // ---- rolling (Build 74) ----
+  // The user: "Make the balls roll in the direction and at the speed which they are moving, with the icon staying fixed
+  // in place", and then, when Build 73 did it by rebuilding the ball from flat layers and so changed its shading and
+  // grain: "Why did you change the balls look completely, it should be IDENTICAL but just rolling". So this is the SAME
+  // ball as ball() above, worked out the same way, pixel for pixel; the only difference is where on the stone's relief
+  // each point of the ball reads its grain, pits and chips: the relief slides under the ball by the distance the
+  // fighter has travelled. The lamp, the ball's shape and the emblem (with the paint's own grain) do not move.
+  // Doing that sum for every pixel every frame is too slow in script, so the graphics chip does it (WebGL 2). At rest
+  // it gives the same picture as ball(). Where WebGL 2 is missing, the ball is drawn as ball() draws it and does not
+  // roll. If you change how ball() or stone() colour a pixel, change the shader below to match, and the other way round.
+  let GLR=null,glTried=false;
+  function roller(){
+    if(glTried)return GLR;glTried=true;
+    try{
+      const F=224,S=F*SS,R=S/2/(1+PAD),cv=mk(F,F),gl=cv.getContext('webgl2',{antialias:false,depth:false,stencil:false});
+      if(!gl)return null;
+      const f6=v=>v.toFixed(6),sh=(type,src)=>{const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s};
+      const prog=gl.createProgram();
+      gl.attachShader(prog,sh(gl.VERTEX_SHADER,'#version 300 es\nin vec2 p;void main(){gl_Position=vec4(p,0.,1.);}'));
+      gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,`#version 300 es
+precision highp float;precision highp sampler2D;
+uniform sampler2D fa,fb,em;uniform vec2 off;uniform vec3 P,PS,IV;out vec4 o;
+const float S=${S}.,R=${f6(R)},TS=${TS}.,ST=.17;
+const vec3 K=vec3(${f6(K[0])},${f6(K[1])},${f6(K[2])}),HV=vec3(${f6(HV[0])},${f6(HV[1])},${f6(HV[2])});
+float ss(float a,float b,float x){float q=clamp((x-a)/(b-a),0.,1.);return q*q*(3.-2.*q);}
+vec3 tone(vec3 v){return mix(v,.75+.25*(1.-exp(-(v-.75)/.25)),step(.75,v));}
+// the light on a point of the ball whose stone has relief A,B: as stone() works it out
+vec3 lamp(vec3 n,vec4 A,vec4 B,out float lit,out float sp){
+  vec3 p=normalize(vec3(n.x-A.r*.85-B.b,n.y-A.g*.85-B.a,n.z));float nl=max(0.,dot(p,K));
+  lit=ss(0.,.5,nl);float dif=nl*1.12,ao=mix(.42,1.,ss(0.,.4,n.z)),up=.5+.5*p.z,fl=pow(1.-n.z,2.)*.1;
+  sp=pow(max(0.,dot(p,HV)),22.)*.05*ao;
+  return vec3((.2*up+.05+dif*1.06)*ao+fl*.9,(.22*up+.055+dif)*ao+fl,(.27*up+.05+dif*.9)*ao+fl*.85);
+}
+void main(){
+  vec2 px=vec2(gl_FragCoord.x-.5,${F}.-.5-gl_FragCoord.y);vec3 acc=vec3(0.);float a=0.;
+  for(int k=0;k<4;k++){
+    vec2 h=px*2.+vec2(float(k&1),float(k>>1)),d=h+.5-S*.5;float rho=length(d),e=R-rho;if(e<=-1.)continue;
+    float al=ss(-.6,.6,e);if(al<=0.)continue;
+    float q=min(1.,rho/R);vec3 n=vec3(d/R*(q<1.?1.:R/rho),sqrt(max(0.,1.-q*q)));
+    vec4 A=texture(fa,(d-off)/TS),B=texture(fb,(d-off)/TS),A0=texture(fa,d/TS),B0=texture(fb,d/TS),E=texelFetch(em,ivec2(h),0);
+    float lit,sp,l0,s0;vec3 L=lamp(n,A,B,lit,sp),L0=lamp(n,A0,B0,l0,s0);
+    float clear=E.r,line=E.g,cov=E.b,gr=.9+E.a*.2,chip=B.r*clear,M=A.a*(1.-.3*B.g*clear);
+    vec3 pig=mix(mix(PS,P,lit),vec3(ST,ST,ST*.97),chip);
+    acc+=tone(mix(pig*line*M*L+vec3(sp,sp,sp*.9),IV*gr*mix(L0,vec3(1.02),.5),cov))*al;a+=al;
+  }
+  if(a<=0.){o=vec4(0.);return;}
+  o=vec4(pow(clamp(acc/a,0.,1.),vec3(1./2.2))*(a*.25),a*.25);
+}`));
+      gl.linkProgram(prog);if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(prog));
+      gl.useProgram(prog);
+      const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+      const loc=gl.getAttribLocation(prog,'p');gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+      // the relief, as two pictures the chip reads smoothly and that repeat at their edges
+      const D=fields(),n=TS*TS,a=new Float32Array(n*4),b=new Float32Array(n*4);
+      for(let i=0;i<n;i++){a[i*4]=D.BX[i];a[i*4+1]=D.BY[i];a[i*4+2]=D.PIT[i];a[i*4+3]=D.M[i];b[i*4]=D.CHIP[i];b[i*4+1]=D.CEDGE[i];b[i*4+2]=D.PNX[i];b[i*4+3]=D.PNY[i]}
+      const ftex=(unit,data)=>{const t=gl.createTexture();gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,t);
+        gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA16F,TS,TS,0,gl.RGBA,gl.FLOAT,data);
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);return t};
+      ftex(0,a);ftex(1,b);
+      gl.uniform1i(gl.getUniformLocation(prog,'fa'),0);gl.uniform1i(gl.getUniformLocation(prog,'fb'),1);gl.uniform1i(gl.getUniformLocation(prog,'em'),2);
+      const U={off:gl.getUniformLocation(prog,'off'),P:gl.getUniformLocation(prog,'P'),PS:gl.getUniformLocation(prog,'PS'),IV:gl.getUniformLocation(prog,'IV')};
+      if(gl.getError()!==gl.NO_ERROR)return null;
+      let lost=false;cv.addEventListener('webglcontextlost',e=>{lost=true;GLR=null;if(e.preventDefault)e.preventDefault()});
+      // what the emblem does to each point of a fighter's ball: how clear of it the point is (chips keep off it), how
+      // dark its line makes the stone, how much paint covers it, the paint's grain. The same sums as ball().
+      const ems=new Map();
+      const emTex=(key,pale)=>{
+        const id=key+'|'+(pale?1:0);let t=ems.get(id);if(t)return t;
+        const T=stone(F),sd=emblem(key,S,R),ow=R*(pale?.03:.022),wr=R*.03,c0=-R*.06,c1=-R*.01,hw=R*.09,px=new Uint8Array(S*S*4);
+        const bil=(x,y)=>{x=cl(x,0,S-1.001);y=cl(y,0,S-1.001);const xi=x|0,yi=y|0,fx=x-xi,fy=y-yi,o=yi*S+xi;return (sd[o]*(1-fx)+sd[o+1]*fx)*(1-fy)+(sd[o+S]*(1-fx)+sd[o+S+1]*fx)*fy};
+        for(let i=0;i<S*S;i++){
+          if(T.A[i]<=0)continue;
+          const d=bil(T.EX[i],T.EY[i]),m=ss(-.6,.6,d),clear=1-ss(c0,c1,d);
+          const line=(1-(ss(-ow-.6,-ow+.6,d)-m)*(pale?.92:.85))*(pale?1-.34*ss(-hw,0,d)*(1-m):1);
+          const cov=m*(1-ss(wr,0,d)*T.W[i]*.2)*(1-(1-T.CM[i])*.35),gr=1+(T.GR[i]-1)*.3;
+          px[i*4]=255*clear+.5;px[i*4+1]=255*cl(line,0,1)+.5;px[i*4+2]=255*cl(cov,0,1)+.5;px[i*4+3]=255*cl((gr-.9)*5,0,1)+.5;
+        }
+        t=gl.createTexture();gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,t);
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+        gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,S,S,0,gl.RGBA,gl.UNSIGNED_BYTE,px);
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+        if(ems.size>10){const old=ems.keys().next().value;gl.deleteTexture(ems.get(old));ems.delete(old)}
+        ems.set(id,t);return t;
+      };
+      // draws a fighter's ball with its stone slid by (ox, oy) relief pixels; the picture is left on cv
+      const draw=(key,col,ox,oy)=>{
+        if(lost)return false;
+        const base=hex(col),H=hsv(base),grey=H[1]<.1;
+        const P=L3(rgb(H[0],H[1]*.9,H[2]*.96)),PS=L3(rgb(grey?H[0]:toward(H[0],265,14),Math.min(1,H[1]*1.05),H[2]*.96)),IV=L3([.985,.975,.94]);
+        const pale=.3*lin(base[0])+.59*lin(base[1])+.11*lin(base[2])>.5,t=emTex(key,pale);
+        gl.viewport(0,0,F,F);gl.disable(gl.BLEND);gl.useProgram(prog);
+        gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,t);
+        gl.uniform2f(U.off,ox,oy);gl.uniform3f(U.P,P[0],P[1],P[2]);gl.uniform3f(U.PS,PS[0],PS[1],PS[2]);gl.uniform3f(U.IV,IV[0],IV[1],IV[2]);
+        gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+        return true;
+      };
+      return GLR={cv,draw,F,R};
+    }catch(e){return GLR=null}
+  }
+  // A fighter's ball in the arena: x, y and r in arena units. Its stone slides by as far as the fighter has moved since
+  // it was last drawn (kept for each fighter); a jump of more than a ball's width is a teleport, not a roll.
   const rolls=new WeakMap();
   function rolling(f,col,F,x,y,r){
+    const G=roller();if(!G)return ball(f.key,col,F);
     try{
-      let S=rolls.get(f);
-      if(!S){const s=f.key.charCodeAt(0)*31+f.key.length*57;S={x,y,u:(s%97)/9,v:(s%61)/7,cv:mk(F,F),F};rolls.set(f,S)}
-      if(S.F!==F){S.cv=mk(F,F);S.F=F}
+      let S=rolls.get(f);if(!S){S={x,y,ox:0,oy:0,cv:mk(G.F,G.F)};rolls.set(f,S)}
       const dx=x-S.x,dy=y-S.y;S.x=x;S.y=y;
-      if(dx*dx+dy*dy<r*r*4){S.u+=dx/r;S.v+=dy/r}
-      paint(S.cv,f.key,col,F,S.u*RB,S.v*RB);
+      if(dx*dx+dy*dy<r*r*4){S.ox=(S.ox+dx/r*G.R)%TS;S.oy=(S.oy+dy/r*G.R)%TS}
+      if(!G.draw(f.key,col,S.ox,S.oy))return ball(f.key,col,F);
+      const c=S.cv.getContext('2d');c.clearRect(0,0,G.F,G.F);c.drawImage(G.cv,0,0);
       return S.cv;
-    }catch(e){return null}
+    }catch(e){return ball(f.key,col,F)}
   }
   // two picture sizes: small for the cards, large for the arena and the matchup
   const size=px=>px<=140?128:224;
@@ -278,8 +357,8 @@ const ART=(function(){
   }
   // get the costly things ready while the player is still on the first screen: the stone at both sizes, then the pictures
   try{
-    setTimeout(()=>{try{reliefMap();light(128)}catch(e){}},500);
-    setTimeout(()=>{try{light(224)}catch(e){}},1400);
+    setTimeout(()=>{try{fields();stone(128)}catch(e){}},500);
+    setTimeout(()=>{try{stone(224);roller()}catch(e){}},1400);
     setTimeout(()=>{plaque({save(){},restore(){},fillRect(){},drawImage(){}},0,0,1,1);for(const k of Object.keys(STRIPS))strip(k)},2200);
   }catch(e){}
   return {ok:true,ball,rolling,size,drawBall,strip,drawHeld,plaque,HELD,EXTRA:'sword1',GUN:'rifle'};

@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 74';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 75';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -530,7 +530,7 @@ function readyBody(){
       `<div class="side"><canvas data-face="1" width="${FACE}" height="${FACE}"></canvas><small>${b.owner?esc(b.owner):'House'}</small><b>${typeOf(b)}</b></div></div>`+
     `<div class="mu">`+
       row('Health',effHp(a),effHp(b),1)+row('Damage',effDmg(a)*100,effDmg(b)*100,2)+row('Speed',effSpd(a)*100,effSpd(b)*100,2)+row('Size',sizeWord(a.r),sizeWord(b.r),0)+
-    `</div>`+(allUps(a).length||allUps(b).length?`<p class="stepn sub">Upgrades · tap one to read it</p>`:'')+
+    `</div>`+   // no heading over the upgrade tags: the user asked for "Upgrades · tap one to read it" to go (Build 75)
     `<div class="mu2"><div class="chips">${chips(a,0,compact)}</div><div class="chips">${chips(b,1,compact)}</div></div>`+tipLine(a,b)+
     (run.shield>0?`<button type="button" id="btnArm" class="arm" data-act="arm" aria-pressed="${run.armed}">${run.armed?'Shield raised: lose this fight and keep your lives':'Raise your shield for this fight'}</button>`:'')+
     `<button type="button" id="btnFight" class="go" data-act="fight">Fight</button>`;

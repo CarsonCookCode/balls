@@ -1,5 +1,5 @@
 // ---------- Page ----------
-const BUILD='Build 71';   // bump on every deploy so the phone shows which version is loaded
+const BUILD='Build 72';   // bump on every deploy so the phone shows which version is loaded
 const $=id=>document.getElementById(id);
 const cv=$('cv'),ctx=cv.getContext('2d');
 const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -9,7 +9,7 @@ const okColor=c=>/^#[0-9a-fA-F]{6}$/.test(c||"");
 const BOTS=14;           // house fighters on each day's ladder until real players fill it
 // mode: 'make' (three taps, then a name), 'fight', 'pick' (choose an upgrade), 'over', 'board' (today's ladder), 'duel'
 let browse=false;          // the fighter picker is showing every fighter instead of three
-let mode='make',step=0,me={key:'blade',str:-1,size:-1,name:'',color:0,colorSet:false},deck=[],deckAt=0;
+let mode='make',step=0,me={key:'blade',str:-1,size:-1,name:'',color:0,colorSet:false,hex:''},deck=[],deckAt=0;
 let myBest={date:'',f:{}};   // this player's best climb today with each class: {class: the fighter as it finished}
 let run=null,match=null,you=-1,loud=false,choice=[],best=0,speed=1,muted=false,last=0,acc=0,overFor=0,shake=0;
 let board={date:'',bots:[]},today={date:'',cleared:0},duel=null,backTo='make';
@@ -19,7 +19,7 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 const cleanName=s=>Names.tidy(s);                      // what may be typed; what is shown also passes Names.safe (brawl-names.js)
 const shownName=()=>Names.safe(me.name,FIGHTERS[me.key].name);
 const ready=()=>me.str>=0&&me.size>=0;
-const myBuild=()=>makeBuild(me.key,me.str,me.size,shownName(),PALETTE[me.color]||FIGHTERS[me.key].color);
+const myBuild=()=>makeBuild(me.key,me.str,me.size,shownName(),okColor(me.hex)?me.hex:PALETTE[me.color]||FIGHTERS[me.key].color);   // me.hex = a colour from the wheel
 function shuffled(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]]}return a}
 // Every upgrade is one of a few kinds, each with a colour and an icon, so a card can be read at a glance.
 const KINDS={
@@ -43,8 +43,8 @@ const kindIcon=K=>`<svg viewBox="0 0 16 16" aria-hidden="true">${K.icon}</svg>`;
 let tip=null;
 // With many upgrades the tags shrink to icon discs (compact), so the matchup still fits one screen; the name is a tap away.
 function chips(b,side,compact){
-  if(!b.ups.length)return '<span class="chip none">no upgrades</span>';
-  const n={};for(const id of b.ups)n[id]=(n[id]||0)+1;
+  if(!allUps(b).length)return '<span class="chip none">no upgrades</span>';
+  const n={};for(const id of allUps(b))n[id]=(n[id]||0)+1;
   return Object.keys(n).map(id=>{
     const K=kindOf(id),on=tip&&tip.side===side&&tip.id===id?' on':'',at=`id="chip-${side}-${id}" data-act="tip" data-side="${side}" data-key="${id}" style="--k:${K.col}"`;
     return compact?`<button type="button" class="chip dot${on}" ${at} aria-label="${upName(b,id)}">${kindIcon(K)}${n[id]>1?`<sup>${n[id]}</sup>`:''}</button>`
@@ -55,13 +55,13 @@ function chips(b,side,compact){
 // One line under the tags: what the rival's class does, or, after a tap on a tag, what that upgrade does.
 function tipLine(a,b){
   const o=tip&&(tip.side?b:a);
-  if(!o||!o.ups.includes(tip.id))return `<p class="ps what"><b>${FIGHTERS[b.key].name}.</b> ${FIGHTERS[b.key].desc}</p>`;
-  const K=kindOf(tip.id),n=o.ups.filter(x=>x===tip.id).length;
+  if(!o||!allUps(o).includes(tip.id))return `<p class="ps what"><b>${FIGHTERS[b.key].name}.</b> ${FIGHTERS[b.key].desc}</p>`;
+  const K=kindOf(tip.id),n=allUps(o).filter(x=>x===tip.id).length;
   return `<p class="ps tipline" id="tipLine" style="--k:${K.col}"><b>${upName(o,tip.id)}${n>1?' ×'+n:''}</b><em>${K.label}</em>${upLine(o,tip.id,false,!tip.side)}${n>1&&tip.id!=='momentum'?' (each)':''}</p>`;
 }
 function summary(b){
-  if(!b.ups.length)return 'no upgrades yet';
-  const n={};for(const id of b.ups)n[id]=(n[id]||0)+1;
+  if(!allUps(b).length)return 'no upgrades yet';
+  const n={};for(const id of allUps(b))n[id]=(n[id]||0)+1;
   return Object.keys(n).map(id=>upName(b,id)+(n[id]>1?' ×'+n[id]:'')).join(', ');
 }
 
@@ -522,7 +522,7 @@ function faces(){
 }
 const sizeWord=r=>r<21?'Small':r<28?'Medium':r<36?'Big':'Huge';
 function readyBody(){
-  const a=run.build,b=run.rival,compact=new Set(a.ups).size>4||new Set(b.ups).size>4;
+  const a=run.build,b=run.rival,compact=new Set(allUps(a)).size>4||new Set(allUps(b)).size>4;
   const row=(label,x,y,num)=>`<b class="${num&&x>y?'hi':''}">${num?Math.round(x):x}${num===2?'%':''}</b><i>${label}</i><b class="${num&&y>x?'hi':''}">${num?Math.round(y):y}${num===2?'%':''}</b>`;
   return `<p class="stepn">Rung ${run.rung} · the matchup ${hearts()}</p>`+
     (run.note?`<p class="ps note">${run.note}</p>`:'')+
@@ -530,7 +530,7 @@ function readyBody(){
       `<div class="side"><canvas data-face="1" width="${FACE}" height="${FACE}"></canvas><small>${b.owner?esc(b.owner):'House'}</small><b>${typeOf(b)}</b></div></div>`+
     `<div class="mu">`+
       row('Health',effHp(a),effHp(b),1)+row('Damage',effDmg(a)*100,effDmg(b)*100,2)+row('Speed',effSpd(a)*100,effSpd(b)*100,2)+row('Size',sizeWord(a.r),sizeWord(b.r),0)+
-    `</div>`+(a.ups.length||b.ups.length?`<p class="stepn sub">Upgrades · tap one to read it</p>`:'')+
+    `</div>`+(allUps(a).length||allUps(b).length?`<p class="stepn sub">Upgrades · tap one to read it</p>`:'')+
     `<div class="mu2"><div class="chips">${chips(a,0,compact)}</div><div class="chips">${chips(b,1,compact)}</div></div>`+tipLine(a,b)+
     (run.shield>0?`<button type="button" id="btnArm" class="arm" data-act="arm" aria-pressed="${run.armed}">${run.armed?'Shield raised: lose this fight and keep your lives':'Raise your shield for this fight'}</button>`:'')+
     `<button type="button" id="btnFight" class="go" data-act="fight">Fight</button>`;
@@ -581,6 +581,64 @@ function fightDone(){
 // ----- today's duel: the top two on the ladder, best of three -----
 // In the video the two sides must be told apart at a glance. When their colours are close, the second fighter wears a
 // warm colour against a cool one, or a cool colour against a warm one, for the duel only.
+// ---------- the colour wheel ----------
+// The user: "for the color picker let's have a circle color wheel that you can put your finger on and choose your
+// precise color, and on the left of it you see your unit that changes color in real time". One disc holds every colour
+// a fighter can be: the way round is the hue; from the middle out it runs from white to the full colour (at 55% of the
+// radius) and on to a deep shade at the rim. The fighter beside it is redrawn as the finger moves; the practice fight
+// above restarts in the new colour when the finger lifts. It replaced thirty fixed swatches (Build 72).
+const WHEEL=420,WHEEL_MID=.55,WHEEL_DARK=.72;
+function hsvHex(h,s,v){
+  h=((h%360)+360)%360/60;const i=Math.floor(h),f=h-i,p=v*(1-s),q=v*(1-s*f),t=v*(1-s*(1-f)),c=[[v,t,p],[q,v,p],[p,v,t],[p,q,v],[t,p,v],[v,p,q]][i%6];
+  return '#'+c.map(x=>Math.round(Math.min(1,Math.max(0,x))*255).toString(16).padStart(2,'0')).join('');
+}
+// the colour at a point on the wheel: nx, ny from -1 to 1, measured from its middle
+function wheelHex(nx,ny){
+  const rr=Math.min(1,Math.hypot(nx,ny)),h=Math.atan2(ny,nx)*180/Math.PI;
+  return rr<WHEEL_MID?hsvHex(h,rr/WHEEL_MID,1):hsvHex(h,1,1-(rr-WHEEL_MID)/(1-WHEEL_MID)*WHEEL_DARK);
+}
+// and the other way: where on the wheel a colour sits (the nearest place, for a colour the wheel does not hold exactly)
+function wheelSpot(hex){
+  const r=parseInt(hex.slice(1,3),16)/255,g=parseInt(hex.slice(3,5),16)/255,b=parseInt(hex.slice(5,7),16)/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;
+  const h=d<1e-4?0:(mx===r?((g-b)/d)%6:mx===g?(b-r)/d+2:(r-g)/d+4)*60,s=mx?d/mx:0;
+  const rr=mx>=.97||s<.5?s*WHEEL_MID:WHEEL_MID+Math.min(1,(1-mx)/WHEEL_DARK)*(1-WHEEL_MID),a=h*Math.PI/180;
+  return [Math.cos(a)*rr,Math.sin(a)*rr];
+}
+let wheelArt=null,wheelBusy=false,wheelDown=false;
+function wheelDraw(){
+  const el=$('wheel');if(!el||!el.getContext)return;
+  try{
+    const c=el.getContext('2d'),S=WHEEL,R0=S/2-12;
+    if(!wheelArt){
+      wheelArt=document.createElement('canvas');wheelArt.width=wheelArt.height=S;
+      const wc=wheelArt.getContext('2d'),im=wc.createImageData(S,S),d=im.data;
+      for(let y=0;y<S;y++)for(let x=0;x<S;x++){
+        const nx=(x+.5-S/2)/R0,ny=(y+.5-S/2)/R0,rr=Math.hypot(nx,ny);if(rr>1.02)continue;
+        const hex=wheelHex(nx,ny),i=(y*S+x)*4;
+        d[i]=parseInt(hex.slice(1,3),16);d[i+1]=parseInt(hex.slice(3,5),16);d[i+2]=parseInt(hex.slice(5,7),16);d[i+3]=255*Math.min(1,Math.max(0,(1.01-rr)*R0/1.5));
+      }
+      wc.putImageData(im,0,0);
+    }
+    c.clearRect(0,0,S,S);c.drawImage(wheelArt,0,0);
+    c.strokeStyle='rgba(9,11,13,.9)';c.lineWidth=5;c.beginPath();c.arc(S/2,S/2,R0+1,0,6.2832);c.stroke();
+    const col=myBuild().color,p=wheelSpot(col),mx=S/2+p[0]*R0,my=S/2+p[1]*R0;      // the mark on the colour in use
+    c.fillStyle=col;c.beginPath();c.arc(mx,my,17,0,6.2832);c.fill();
+    c.strokeStyle='#090b0d';c.lineWidth=7;c.beginPath();c.arc(mx,my,19,0,6.2832);c.stroke();
+    c.strokeStyle='#fff';c.lineWidth=3.5;c.beginPath();c.arc(mx,my,19,0,6.2832);c.stroke();
+  }catch(e){}
+}
+// your fighter, beside the wheel, in the colour under your finger
+function wheelFace(){
+  const el=$('wheelFace');if(!el||!el.getContext)return;
+  try{const m=createMatch(myBuild(),makeBuild(me.key,-1,1),7),f=m.f[0];f.x=AW/2;f.y=AW/2;f.ang=-.6;picture(el,m,0)}catch(e){}
+}
+function wheelPick(e){
+  const el=$('wheel');if(!el||!el.getBoundingClientRect)return;
+  const b=el.getBoundingClientRect(),k=WHEEL/(WHEEL/2-12)/2;
+  me.hex=wheelHex(((e.clientX-b.left)/b.width*2-1)*k,((e.clientY-b.top)/b.height*2-1)*k);me.colorSet=true;
+  if(wheelBusy)return;
+  wheelBusy=true;requestAnimationFrame(()=>{wheelBusy=false;wheelDraw();wheelFace()});
+}
 function hueOf(hex){
   const r=parseInt(hex.slice(1,3),16)/255,g=parseInt(hex.slice(3,5),16)/255,b=parseInt(hex.slice(5,7),16)/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;
   if(d<.12)return -1;                                   // grey, white or black: no hue to speak of
@@ -647,15 +705,15 @@ function makeBody(){
       `<button type="button" id="btnAll" class="opt" data-act="all"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/></svg>All ${ROSTER.length}</button></div>`;
   }
   const what=`<p class="ps what"><b>${FIGHTERS[me.key].name}.</b> ${FIGHTERS[me.key].desc}</p>`;
-  if(step===1)return head('Step 2 of 3','Pick a strength')+what+
-    STRENGTHS.map((s,i)=>card('str-'+i,'str',`data-i="${i}"`,s.label,s.text)).join('')+
+  if(step===1)return head('Step 2 of 3','Pick its first upgrade')+what+
+    starts(me.key).map((id,i)=>card('str-'+i,'str',`data-i="${i}"`,upName({key:me.key},id),upText({key:me.key},id))).join('')+
     `<button type="button" id="btnBack" class="quiet" data-act="back">Back</button>`;
   if(step===2)return head('Step 3 of 3','Pick a size')+what+
     SIZES.map((s,i)=>card('size-'+i,'size',`data-i="${i}"`,s.label,s.text)).join('')+
     `<button type="button" id="btnBack" class="quiet" data-act="back">Back</button>`;
   return `<h2 class="ph">Name your ${typeOf(myBuild())}</h2>`+
     `<input id="inName" type="text" maxlength="12" autocomplete="off" autocapitalize="words" spellcheck="false" aria-label="Fighter name" placeholder="${FIGHTERS[me.key].name}" value="${esc(me.name)}">`+
-    `<div class="sw">`+PALETTE.map((c,i)=>`<button type="button" id="col-${i}" data-act="col" data-i="${i}" class="${i===me.color?'on':''}" aria-pressed="${i===me.color}" aria-label="Colour ${i+1}"><i style="background:${c}"></i></button>`).join('')+`</div>`+
+    `<div class="hue"><canvas id="wheelFace" width="264" height="264" aria-hidden="true"></canvas><canvas id="wheel" width="${WHEEL}" height="${WHEEL}" role="img" aria-label="Colour wheel: touch it to choose your fighter's colour"></canvas></div>`+
     `<button type="button" id="btnStart" class="go" data-act="start">Begin the climb</button>`+
     `<p class="ps">Beat a rival, choose an upgrade, climb a rung. One loss ends the run.</p>`+
     `<p class="ps" id="goal">${goalLine()}</p>`+
@@ -701,7 +759,7 @@ function render(){
   $('btnBoard').textContent=mode==='board'?'Back':'Ladder';          // the same plate opens the ladder and leaves it
   const SH=$('sheet');SH.hidden=mode!=='pick';
   if(mode==='pick'){SH.innerHTML=sheetBody();portraits()}else if(SH.innerHTML)SH.innerHTML='';
-  if(mode==='make'){P.innerHTML=makeBody();if(step===0)thumbsFill()}
+  if(mode==='make'){P.innerHTML=makeBody();if(step===0)thumbsFill();if(step===3){wheelDraw();wheelFace()}}
   else if(mode==='board')P.innerHTML=boardBody();
   else if(mode==='duel')P.innerHTML=duelBody();
   else if(mode==='ready'){P.innerHTML=readyBody();faces()}
@@ -769,11 +827,11 @@ function portraits(){
 // four numbers, and the upgrades it has (tap one to read it). Nothing else.
 function sheetBody(){
   const b=run.build,F=FIGHTERS[b.key],stat=(v,label)=>`<span><b>${v}</b><i>${label}</i></span>`;
-  const on=tip&&tip.side===0&&b.ups.includes(tip.id)?tip.id:'';
+  const on=tip&&tip.side===0&&allUps(b).includes(tip.id)?tip.id:'';
   return `<div class="shtop"><canvas data-me width="176" height="176" aria-hidden="true"></canvas><div><h2>${typeOf(b)}</h2><p>${F.desc}</p></div></div>`+
     `<div class="stats">`+stat(Math.round(effHp(b)),'Health')+stat(Math.round(effDmg(b)*100)+'%','Damage')+stat(Math.round(effSpd(b)*100)+'%','Speed')+stat(sizeWord(b.r),'Size')+`</div>`+
-    `<p class="shl">${b.ups.length?'Your upgrades · tap to read':'No upgrades yet'}</p>`+
-    (b.ups.length?`<div class="chips">${chips(b,0,false)}</div>`:'')+
+    `<p class="shl">${allUps(b).length?'Your upgrades · tap to read':'No upgrades yet'}</p>`+
+    (allUps(b).length?`<div class="chips">${chips(b,0,false)}</div>`:'')+
     (on?`<p class="shtip" id="tipLine"><b>${upName(b,on)}</b> ${upLine(b,on,false,true)}</p>`:'');
 }
 function save(){try{localStorage.setItem('brawl.fighter',JSON.stringify(me))}catch(e){}}
@@ -809,6 +867,10 @@ const onTap=e=>{
   else if(act==='closeboard'){mode=backTo;render();if(mode==='make')practice()}
 };
 $('panel').addEventListener('click',onTap);
+// the colour wheel follows the finger; the choice is kept, and the practice fight restarted in it, when the finger lifts
+$('panel').addEventListener('pointerdown',e=>{if(!e.target||e.target.id!=='wheel')return;wheelDown=true;try{e.target.setPointerCapture(e.pointerId)}catch(x){}if(e.preventDefault)e.preventDefault();audioOn();wheelPick(e)});
+$('panel').addEventListener('pointermove',e=>{if(wheelDown&&e.target&&e.target.id==='wheel')wheelPick(e)});
+for(const ev of ['pointerup','pointercancel'])$('panel').addEventListener(ev,()=>{if(!wheelDown)return;wheelDown=false;save();sfx('click',1,1,true);if(mode==='make')practice()});
 $('sheet').addEventListener('click',onTap);
 $('panel').addEventListener('input',e=>{
   // typing must not rebuild the panel, or the keyboard would close on every letter
@@ -854,7 +916,7 @@ try{
   const sp=parseInt(localStorage.getItem('brawl.speed'),10);if([1,2,4].includes(sp)){speed=sp;$('btnSpeed').textContent='Speed '+speed+'×'}
   const s=JSON.parse(localStorage.getItem('brawl.fighter'));
   if(s&&FIGHTERS[s.key]&&[0,1,2].includes(s.str)&&[0,1,2].includes(s.size)&&s.color>=-1&&s.color<PALETTE.length){
-    me={key:s.key,str:s.str,size:s.size,name:cleanName(s.name),color:s.color|0,colorSet:!!s.colorSet};
+    me={key:s.key,str:s.str,size:s.size,name:cleanName(s.name),color:s.color|0,colorSet:!!s.colorSet,hex:okColor(s.hex)?s.hex:''};
     step=3;                                   // a returning player goes straight to their fighter
   }
   const okEntry=x=>x&&FIGHTERS[x.key]&&[0,1,2].includes(x.str)&&[0,1,2].includes(x.size)&&Array.isArray(x.ups)&&x.ups.length<80&&Number.isInteger(x.cleared)&&x.cleared>=0;

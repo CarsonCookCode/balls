@@ -44,32 +44,47 @@ const FIGHTERS={
   mace:   {name:'Ogre',       color:'#ffb23e',hp:100,speed:150,spin:3.2,dmg:29.61,  cd:.6, arms:[{a:0,l:34,head:9}],desc:'Slow and heavy. One hit really hurts.',sig:['Wrecking ball','A bigger, heavier mace head']},
   spikes: {name:'Urchin',     color:'#7ddc5a',hp:100,speed:215,spin:0,  dmg:16.14,  cd:.3, arms:[],desc:'No weapon. Its whole body hurts to touch.',sig:['Longer spines','Its touch hurts 30% more']},
   blaster:{name:'Gunner',     color:'#38c6ff',hp:100,speed:160,spin:0,  dmg:11.31, cd:1,  arms:[],desc:'Fires a shot at its rival, again and again.',sig:['Rapid fire','Shoots 30% faster']},
-  leech:  {name:'Vampire',    color:'#c77dff',hp:100,speed:180,spin:6.5,dmg:25.45,  cd:.3, arms:[{a:0,l:20}],heal:.7,desc:'Short fangs. Heals with every bite.',sig:['Deep bite','Heals more with every bite']},
+  leech:  {name:'Vampire',    color:'#c77dff',hp:100,speed:180,spin:6.5,dmg:29.23,  cd:.3, arms:[{a:0,l:20}],heal:.7,desc:'Short fangs. Heals with every bite.',sig:['Deep bite','Heals more with every bite']},
   miner:  {name:'Sapper',     color:'#ffd447',hp:100,speed:175,spin:0,  dmg:20.3,cd:2,  arms:[],desc:'Leaves mines behind for rivals to hit.',sig:['Minefield','More mines, bigger blasts']},
   twin:   {name:'Ninja',      color:'#ff6ac1',hp:100,speed:170,spin:6.0,dmg:15.45,cd:.22,arms:[{a:0,l:24},{a:Math.PI,l:24}],desc:'Two short blades, twice the spin.',sig:['Another blade','One more blade in the whirl']},
   fury:   {name:'Berserker',  color:'#2fd6b5',hp:100,speed:170,spin:4.5,dmg:19.79,  cd:.35,arms:[{a:0,l:30}],rage:17,desc:'Hits harder the closer it is to losing.',sig:['Blood rage','Its rage builds 40% higher']},
   comet:  {name:'Comet',      color:'#ff9d2e',hp:100,speed:215,spin:0,  dmg:6.39,   cd:.3, arms:[],desc:'Leaves a burning trail that hurts to cross.',sig:['Long tail','The trail burns for longer']},
   bramble:{name:'Bramble',    color:'#4fbf5b',hp:100,speed:185,spin:0,  dmg:10.86,  cd:.7, arms:[],desc:'Every wall it touches grows thorns.',sig:['Overgrowth','More thorns, and longer ones']},
-  bees:   {name:'Beekeeper',  color:'#f2c230',hp:100,speed:160,spin:0,  dmg:8.48,   cd:1.0,arms:[],desc:'Releases bees that chase the rival.',sig:['Angry swarm','Faster bees that each sting once more']},
+  bees:   {name:'Beekeeper',  color:'#f2c230',hp:100,speed:160,spin:0,  dmg:7.14,   cd:1.0,arms:[],desc:'Releases bees that chase the rival.',sig:['Angry swarm','Faster bees that each sting once more']},
   ghost:  {name:'Ghost',      color:'#cfd6ff',hp:100,speed:165,spin:0,  dmg:30.71,  cd:.5, arms:[],desc:'Fades out of reach, then strikes as it returns.',sig:['Haunting','Fades out more often']},
-  snow:   {name:'Snowball',   color:'#dff3ff',hp:100,speed:190,spin:0,  dmg:9.84,   cd:.5, arms:[],desc:'Grows with every bounce: bigger, slower, harder hitting.',sig:['Avalanche','Grows faster']},
+  snow:   {name:'Snowball',   color:'#dff3ff',hp:100,speed:190,spin:0,  dmg:10.77,   cd:.5, arms:[],desc:'Grows with every bounce: bigger, slower, harder hitting.',sig:['Avalanche','Grows faster']},
   tesla:  {name:'Tesla',      color:'#7fe7ff',hp:100,speed:165,spin:0,  dmg:6.06,   cd:.45,arms:[],desc:'Arcs lightning to the rival whenever they get close.',sig:['High voltage','Lightning reaches further']},
-  magnet: {name:'Magnet',     color:'#e2526f',hp:100,speed:160,spin:0,  dmg:30.91,  cd:1.4,arms:[],desc:'Drags the rival in, then blasts them away.',sig:['Stronger field','A bigger, harder blast, more often']},
-  mirror: {name:'Duplicator', color:'#a9b8d9',hp:100,speed:175,spin:0,  dmg:11.3,   cd:.5, arms:[],desc:'Splits in two when it is hit, sharing out its health. A double that lasts brings its share back.',sig:['Multiply','One more double, sooner; doubles are tougher and hit harder']},
+  magnet: {name:'Magnet',     color:'#e2526f',hp:100,speed:160,spin:0,  dmg:24.48,  cd:1.4,arms:[],desc:'Drags the rival in, then blasts them away.',sig:['Stronger field','A bigger, harder blast, more often']},
+  mirror: {name:'Duplicator', color:'#a9b8d9',hp:100,speed:175,spin:0,  dmg:13.53,   cd:.5, arms:[],desc:'Splits in two when it is hit, sharing out its health. A double that lasts brings its share back.',sig:['Multiply','One more double, sooner; doubles are tougher and hit harder']},
   spider: {name:'Spider',     color:'#8a6bd1',hp:100,speed:195,spin:0,  dmg:8.84,   cd:.5, arms:[],desc:'Strings webs between walls that slow whoever crosses.',sig:['More silk','More webs at once']},
   necro:  {name:'Necromancer',color:'#6fd3a0',hp:100,speed:160,spin:4.6,dmg:12.33,  cd:.45,arms:[{a:0,l:30}],desc:'Every wound it deals raises a minion.',sig:['Horde','More minions, tougher and quicker']},
-  painter:{name:'Painter',    color:'#ff7fd0',hp:100,speed:200,spin:0,  dmg:3.25, cd:.25,arms:[],desc:'Paints the floor. Its paint heals it and hurts the rival.',sig:['Wide brush','Paints a wider stripe']},
+  painter:{name:'Painter',    color:'#ff7fd0',hp:100,speed:200,spin:0,  dmg:2.7, cd:.25,arms:[],desc:'Paints the floor. Its paint heals it and hurts the rival.',sig:['Wide brush','Paints a wider stripe']},
   clock:  {name:'Clockmaker', color:'#d9b36c',hp:100,speed:160,spin:4.2,dmg:21.34,  cd:.4, arms:[{a:0,l:34},{a:Math.PI,l:20,d:.6,rate:.4}],desc:'Freezes the rival for a moment every few seconds.',sig:['Slow time','Longer freezes, more often']},
 };
 const ROSTER=Object.keys(FIGHTERS);
-const STRENGTHS=[
-  {label:'Tough', text:'35% more health',k:'hp',mul:1.35},
-  {label:'Strong',text:'35% more damage',k:'dmg',mul:1.35},
-  {label:'Quick', text:'Moves, spins and strikes 50% faster',k:'spd',mul:1.5},
-];
+// The second tap when making a fighter. Until Build 71 it was Tough, Strong or Quick: a plain 35% on one number. The user:
+// "we should probably change the beginning upgrades to something better and different", and, asked which upgrades, the
+// second tap. Since Build 72 it is a first upgrade: the class's own signature, or one of two others that show in a fight
+// from the first second. Which two depends on the class's place in the roster, so every class offers a different trio.
+// A build still stores the tap as str (0, 1 or 2; -1 = none), so saved fighters, ladder entries and proofs keep their
+// shape; only what the number means has changed. The first upgrade is kept in b.start, apart from b.ups (the upgrades
+// picked on the climb, which the proof of a climb counts): use allUps(b) wherever a fighter's upgrades are shown.
+const STARTERS=['blade','poison','frost','sidearm','shield','vampire','thorns','hornet','lunge','nova','barrier','crit','static','shoulder','ambush','regen'];
+function starts(key){
+  const i=Math.max(0,ROSTER.indexOf(key)),n=STARTERS.length,a=STARTERS[i%n];
+  let j=(i*5+7)%n;if(STARTERS[j]===a)j=(j+1)%n;
+  return ['sig',a,STARTERS[j]];
+}
+// Sizes. Only a fighter built round growing (the Snowball, the Balloon) or one made Big gets large: no upgrade makes a
+// body bigger. The user, having seen any fighter reach 31% of the arena through Bulk up and Colossus: "these guys are
+// too big idk if normal guys should be able to get that big, maybe getting bigger is only reserved for certain guys",
+// then: "No growth from upgrades. Shrink from upgrades is slightly less too. Also base medium size should be slightly
+// smaller as well." So Medium is 22 (it was 24), Shrink takes a tenth off (it took 16%), and the old Bulk up and
+// Colossus are now Hardy and Stalwart: their health, paid for in speed, with no change of size. Do not add an upgrade
+// that grows a fighter.
 const SIZES=[
   {label:'Small', text:'Hard to hit, a little less health',r:18,hp:.9},
-  {label:'Medium',text:'No tricks, no weak spots',r:24,hp:1},
+  {label:'Medium',text:'No tricks, no weak spots',r:22,hp:1},
   {label:'Big',   text:'Extra health, easy to hit',r:31,hp:1.12},
 ];
 // Upgrades picked during a climb. Every pick is counted in build.p.
@@ -101,8 +116,8 @@ const UPGRADES={
   tougher:  {name:'Tougher',    text:'+25% health',max:9,apply:b=>{b.ah+=.25}},
   sharper:  {name:'Sharper',    text:'+25% damage',max:9,apply:b=>{b.ad+=.25}},
   faster:   {name:'Faster',     text:'+20% speed: move, spin and strike faster',max:4,apply:b=>{b.as+=.2}},
-  bulk:     {name:'Bulk up',    text:'Bigger body, +35% health',max:2,apply:b=>{b.r=Math.min(40,b.r*1.2);b.ah+=.35}},
-  shrink:   {name:'Shrink',     text:'Smaller body, harder to hit, +10% speed',max:2,apply:b=>{b.r=Math.max(14,b.r*.84);b.as+=.1}},
+  bulk:     {name:'Hardy',      text:'+35% health, 10% slower',max:2,apply:b=>{b.ah+=.35;b.as-=.1}},
+  shrink:   {name:'Shrink',     text:'Smaller body, harder to hit, +10% speed',max:2,apply:b=>{b.r=Math.max(14,b.r*.9);b.as+=.1}},
   blade:    {name:'Extra blade',text:'One more spinning blade',max:3},
   reach:    {name:'Long reach', text:'Blades and chains 30% longer',max:2,needsArm:true},
   sidearm:  {name:'Sidearm',    text:'Fires a shot every 2 seconds',max:3},
@@ -122,12 +137,12 @@ const UP_IDS=Object.keys(UPGRADES);
 const upName=(b,id)=>id==='sig'?FIGHTERS[b.key].sig[0]:UPGRADES[id].name;
 const upText=(b,id)=>id==='sig'?FIGHTERS[b.key].sig[1]:UPGRADES[id].text;
 // The upgrade a fighter has stacked most gives it the first half of its type: a Knight with Frost is a Frost Knight.
-const PREFIX={sig:'Master',tougher:'Stout',sharper:'Savage',faster:'Swift',bulk:'Giant',shrink:'Tiny',blade:'Whirling',reach:'Long-arm',sidearm:'Armed',vampire:'Blood',
+const PREFIX={sig:'Master',tougher:'Stout',sharper:'Savage',faster:'Swift',bulk:'Hardy',shrink:'Tiny',blade:'Whirling',reach:'Long-arm',sidearm:'Armed',vampire:'Blood',
   regen:'Undying',armor:'Iron',thorns:'Thorned',poison:'Plague',frost:'Frost',crit:'Lucky',ambush:'Shadow',laststand:'Defiant',shield:'Shielded',revive:'Twice-born'};
 function typeOf(b){
   let top=null,n=0;const c={};
   for(const id of b.ups){c[id]=(c[id]||0)+1;if(c[id]>n){n=c[id];top=id}}
-  const pre=top?PREFIX[top]:b.str>=0?STRENGTHS[b.str].label:'';
+  const pre=top?PREFIX[top]:b.start?PREFIX[b.start]||'':'';
   return (pre?pre+' ':'')+FIGHTERS[b.key].name;
 }
 // How the ladder gets harder (the user's design, Build 55). A rival is another player's fighter exactly as its owner had
@@ -149,7 +164,10 @@ function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a
 // A build is everything a match needs to know about one fighter.
 function makeBuild(key,str,size,name,color){
   const z=SIZES[size>=0?size:1],b={key,str:str>=0?str:-1,size:size>=0?size:1,hp:z.hp,dmg:1,spd:1,ah:0,ad:0,as:0,r:z.r,p:{},ups:[],name:name||FIGHTERS[key].name,color:color||FIGHTERS[key].color};
-  if(str>=0)b[STRENGTHS[str].k]*=STRENGTHS[str].mul;
+  if(str>=0){                                         // its first upgrade: see STARTERS
+    const id=starts(key)[str],U=UPGRADES[id];
+    if(U){if(U.apply)U.apply(b);b.p[id]=(b.p[id]||0)+1;b.start=id}
+  }
   return b;
 }
 // what a build's numbers come to: its base (class, strength, size, the ladder's scaling) times one plus its added bonuses
@@ -157,7 +175,7 @@ const effHp=b=>FIGHTERS[b.key].hp*HP_SCALE*b.hp*Math.max(.3,1+(b.ah||0));
 const effDmg=b=>b.dmg*Math.max(.2,1+(b.ad||0));
 const effSpd=b=>b.spd*Math.max(.4,1+(b.as||0));
 function canTake(b,id){
-  const U=UPGRADES[id];let n=0;
+  const U=UPGRADES[id];let n=b.start===id?1:0;        // the first upgrade counts towards an upgrade's limit
   for(const x of b.ups)if(x===id)n++;
   if(n>=U.max)return false;
   if(U.needsArm&&!(FIGHTERS[b.key].arms.length||b.p.blade))return false;
@@ -165,6 +183,8 @@ function canTake(b,id){
   return true;
 }
 function addUpgrade(b,id){const U=UPGRADES[id];if(U.apply)U.apply(b);b.p[id]=(b.p[id]||0)+1;b.ups.push(id)}
+// every upgrade a fighter has, its first one included, for showing (b.ups alone is what was picked on the climb)
+const allUps=b=>b.start?[b.start].concat(b.ups):b.ups;
 function offers(b,rnd,n){
   const pool=UP_IDS.filter(id=>canTake(b,id)),out=[];
   // The class's own upgrade is the one players want most, and among sixty it would rarely come up, so it gets a seat

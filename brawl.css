@@ -406,3 +406,11 @@ body[data-mode="fight"],body[data-mode="replay"]{gap:5px}
    blurry" (the user). They are gone: the writing keeps its ink colour and nothing else. Do not put a blurred or
    offset shadow on small text again; sharpness comes first. */
 #panel,.card,button.pick,button.quiet{text-shadow:none}
+
+/* Build 72. The colour is chosen on a wheel, with the fighter beside it changing as the finger moves (the user: "a
+   circle color wheel that you can put your finger on and choose your precise color, and on the left of it you see your
+   unit that changes color in real time"). touch-action:none so a drag on the wheel never scrolls the page. */
+.hue{display:flex;align-items:center;justify-content:center;gap:18px;padding:2px 0}
+.hue canvas{display:block;flex:none}
+#wheelFace{width:84px;height:84px}
+#wheel{width:120px;height:120px;border-radius:50%;touch-action:none;cursor:crosshair;-webkit-tap-highlight-color:transparent}

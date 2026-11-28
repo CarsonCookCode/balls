@@ -16,7 +16,7 @@
 const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
 const fs = require('fs'), path = require('path'), os = require('os');
 const ROOT = path.join(__dirname, '..');
-const EXPORT = ';return {FIGHTERS,ROSTER,UPGRADES,UP_IDS,STRENGTHS,SIZES,makeBuild,canTake,addUpgrade,offers,rival,createMatch,mulberry32,typeOf,upName,effHp,effDmg,effSpd};';
+const EXPORT = ';return {FIGHTERS,ROSTER,UPGRADES,UP_IDS,starts,SIZES,makeBuild,canTake,addUpgrade,offers,rival,createMatch,mulberry32,typeOf,upName,effHp,effDmg,effSpd};';
 
 function simFiles(extra) {
   const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');

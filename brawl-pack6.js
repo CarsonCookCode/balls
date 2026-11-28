@@ -4,10 +4,10 @@
 
 // ---------- simulation ----------
 // As in brawl-sim.js, dmg is each class's single damage dial and f.sig (0-3) is the level of its signature upgrade.
-FIGHTERS.void   ={name:'Void',     color:'#3b3160',hp:100,speed:120,spin:0,  dmg:12.62,cd:.35, arms:[],desc:'A dark well. Whatever drifts too close is dragged in and hurt.',sig:['Event horizon','Its pull reaches further and drags harder'],sfx:{hit:'thump',shot:'whoosh'}};
+FIGHTERS.void   ={name:'Void',     color:'#3b3160',hp:100,speed:120,spin:0,  dmg:11.16,cd:.35, arms:[],desc:'A dark well. Whatever drifts too close is dragged in and hurt.',sig:['Event horizon','Its pull reaches further and drags harder'],sfx:{hit:'thump',shot:'whoosh'}};
 FIGHTERS.dice   ={name:'Dice',     color:'#b8323a',hp:100,speed:175,spin:0,  dmg:15.99,cd:.5, arms:[],desc:'Rolls a die every couple of seconds. A six is a heavy blow; a one hurts itself.',sig:['Loaded dice','Ones turn into sixes more and more often'],sfx:{hit:'thump',shot:'tick'}};
-FIGHTERS.monk   ={name:'Monk',     color:'#e2953a',hp:100,speed:125,spin:0,  dmg:8.51, cd:.6, arms:[],desc:'Does nothing while calm. Touch it and all that calm comes out as one palm strike.',sig:['Deeper calm','Calm builds faster and runs deeper'],sfx:{hit:'heavy',shot:'whoosh'}};
-FIGHTERS.gravity={name:'Gravity',  color:'#6f9a3c',hp:100,speed:165,spin:0,  dmg:10.35,cd:.6, arms:[],desc:'Tilts the floor. The rival slides to a wall and it drops on them there.',sig:['Heavier','The floor tilts more often and it lands harder'],sfx:{hit:'heavy',shot:'whoosh'}};
+FIGHTERS.monk   ={name:'Monk',     color:'#e2953a',hp:100,speed:125,spin:0,  dmg:9.92, cd:.6, arms:[],desc:'Does nothing while calm. Touch it and all that calm comes out as one palm strike.',sig:['Deeper calm','Calm builds faster and runs deeper'],sfx:{hit:'heavy',shot:'whoosh'}};
+FIGHTERS.gravity={name:'Gravity',  color:'#6f9a3c',hp:100,speed:165,spin:0,  dmg:9.06,cd:.6, arms:[],desc:'Tilts the floor. The rival slides to a wall and it drops on them there.',sig:['Heavier','The floor tilts more often and it lands harder'],sfx:{hit:'heavy',shot:'whoosh'}};
 FIGHTERS.mimic  ={name:'Mimic',    color:'#9a6a3c',hp:100,speed:180,spin:0,  dmg:13.82,cd:.5, arms:[],desc:'Becomes a copy of whoever it fights, with its own strength and upgrades.',sig:['Perfect copy','Its copy has the rival’s own upgrade, one level for each'],sfx:{hit:'chop',shot:'whoosh'}};
 ROSTER.push('void','dice','monk','gravity','mimic');
 

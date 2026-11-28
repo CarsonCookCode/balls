@@ -117,8 +117,8 @@ Object.assign(UPGRADES,{
   concuss:  {name:'Concussion',   text:'Every 5 seconds, your next hit dazes the rival for 0.6 seconds',max:1,
     hooks:{hit(f,v,dmg,m){if(m.t<(f.u.ccT===undefined?2:f.u.ccT)||v.hp<=0)return;f.u.ccT=m.t+5;v.stunT=Math.max(v.stunT,.6);m.events.push({k:'text',x:v.x,y:v.y-v.r,txt:'Dazed'});m.events.push({k:'proc',id:'concuss',i:f.i})}}},
   // ----- size
-  pocket:   {name:'Pocket-sized', text:'Much smaller, +20% speed, -15% health',max:1,apply:b=>{b.r=Math.max(13,b.r*.74);b.ah-=.15;b.as+=.2}},
-  colossus: {name:'Colossus',     text:'Much bigger, +50% health, -15% speed',max:1,apply:b=>{b.r=Math.min(40,b.r*1.3);b.ah+=.5;b.as-=.15}},
+  pocket:   {name:'Pocket-sized', text:'Much smaller, +20% speed, -15% health',max:1,apply:b=>{b.r=Math.max(13,b.r*.8);b.ah-=.15;b.as+=.2}},
+  colossus: {name:'Stalwart',     text:'+50% health, 15% slower',max:1,apply:b=>{b.ah+=.5;b.as-=.15}},   // was Colossus, which also grew the body: no upgrade grows a fighter (see SIZES)
   // ----- weapons, minions and shots
   whirlwind:{name:'Whirlwind',    text:'Your blades spin 40% faster and hit 12% harder',max:2,needsArm:true,
     hooks:{init(f,n){f.spin*=1+.4*n;for(const a of f.arms)a.dmg*=1+.12*n}}},
@@ -138,7 +138,7 @@ Object.assign(PREFIX,{glass:'Glass',heavyhit:'Heavy',bloodpact:'Bloodbound',wild
   ricochet:'Bouncing',giantkill:'Slayer',sunder:'Sundering',decay:'Withering',dodge:'Nimble',plating:'Thick-skinned',
   brace:'Braced',rebound:'Springy',clutch:'Stubborn',barrier:'Warded',static:'Static',icyskin:'Icy',mending:'Mending',siphon:'Draining',
   adrenaline:'Frantic',partingshot:'Spiteful',lunge:'Lunging',keepaway:'Wary',shoulder:'Barging',nova:'Blasting',concuss:'Stunning',pocket:'Pocket',
-  colossus:'Colossal',whirlwind:'Spinning',hornet:'Buzzing',packlead:'Swarming',rounds:'Loaded'});
+  colossus:'Stalwart',whirlwind:'Spinning',hornet:'Buzzing',packlead:'Swarming',rounds:'Loaded'});
 UP_IDS.push('glass','heavyhit','bloodpact','wild','execute','blitz','slowburn','combo','patient','riposte','momentum','bully','underdog',
   
   'ricochet','giantkill','sunder','decay','dodge','plating','brace','rebound','clutch','barrier','static','icyskin','mending','siphon',

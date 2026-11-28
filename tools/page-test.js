@@ -30,9 +30,9 @@ let g = boot(store, 25);
 // 1. three taps, then a name; types read as two words
 assert(g.p().mode === 'make' && g.p().step === 0 && count(g.els.panel.innerHTML, 'data-act="weapon"') === 3 && count(g.els.panel.innerHTML, 'data-thumb=') === 3, 'step 1 offers three fighters, each with its picture');
 g.click('weapon', { key: 'blade' }); g.click('str', { i: 0 }); g.click('size', { i: 1 });
-assert(g.p().step === 3 && /Name your Tough Knight/.test(g.els.panel.innerHTML), 'finish screen names the type: ' + g.els.panel.innerHTML.slice(0, 80));
+assert(g.p().step === 3 && /Name your Master Knight/.test(g.els.panel.innerHTML), 'finish screen names the type: ' + g.els.panel.innerHTML.slice(0, 80));
 g.type('inName', 'Bob');
-const kb = g.ctx.__mk('blade', 0, 1); assert(g.ctx.__type(kb) === 'Tough Knight', 'no upgrades: strength gives the prefix');
+const kb = g.ctx.__mk('blade', 0, 1); assert(g.ctx.__type(kb) === 'Master Knight', 'no upgrades picked: the first upgrade gives the prefix');
 g.ctx.__add(kb, 'frost'); assert(g.ctx.__type(kb) === 'Frost Knight', 'one upgrade names it');
 g.ctx.__add(kb, 'poison'); g.ctx.__add(kb, 'poison'); assert(g.ctx.__type(kb) === 'Plague Knight', 'most-stacked upgrade wins the name');
 assert(g.ctx.__type(g.ctx.__mk('mace', -1, 1)) === 'Ogre', 'plain house fighter is just its class');

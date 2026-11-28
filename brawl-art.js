@@ -16,9 +16,11 @@
 // weapon is drawn after the ball, cut off where it enters it, shaded where it joins, with its own shadow thrown on the
 // floor (never on the ball) because it is carried at mid-height, not lying on the bricks.
 //
-// The weapon pictures are in art/weapons/. Each is a strip of 8 frames, stacked: the weapon lying along x with the grip
-// at the left, lit as it would be when held at 0, 45, 90 ... degrees, so the game turns the picture and the light still
-// comes from the arena's lamp. They were rendered from free 3D models, all CC0 (no credit required; credited anyway in
+// The weapon pictures are in art/weapons/. Each is ONE picture: the weapon lying along x with the grip at the left, lit
+// from almost straight above, and the game turns it. (Build 69 had 8 frames a weapon, each lit for one held direction,
+// so the lamp stayed top left as it spun; in motion that made the weapon change at certain angles, and the user asked:
+// "Remove the effect that happens on weapons when it's moving in a certain direction". Do not bring per-direction
+// lighting back.) They were rendered from free 3D models, all CC0 (no credit required; credited anyway in
 // credits.html): KayKit Adventurers by Kay Lousberg (sword2, sword1, axe2), and from poly.pizza: Quaternius (bat, dagger,
 // knife, scythe, cutlass, tentacle, spear, crystal, hammer, rifle) and CreativeTrio (wrench). The game does not run 3D.
 // A weapon is drawn at the rules' true reach (the arm's length): the pictures were made for that, not for a longer look.
@@ -35,7 +37,7 @@ const ART=(function(){
     const c=mk(2,2).getContext('2d'),im=c.createImageData(2,2);im.data[3]=255;c.putImageData(im,0,0);
     if(c.getImageData(0,0,1,1).data[3]!==255||typeof Path2D==='undefined'||typeof Image==='undefined')return off;
   }catch(e){return off}
-  const TAU=6.2832,SS=2,PAD=.03,WV='v1';
+  const TAU=6.2832,SS=2,PAD=.03,WV='v2';
   const cl=(v,a,b)=>v<a?a:v>b?b:v,ss=(a,b,x)=>{const q=cl((x-a)/(b-a),0,1);return q*q*(3-2*q)},mix=(a,b,t)=>a+(b-a)*t;
   const hash=(x,y,s)=>{let h=(Math.imul(x|0,374761393)+Math.imul(y|0,668265263)+Math.imul(s|0,982451653))|0;h=Math.imul(h^(h>>>13),1274126177);return((h^(h>>>16))>>>0)/4294967296};
   const vn=(x,y,s)=>{const xi=Math.floor(x),yi=Math.floor(y),fx=x-xi,fy=y-yi,sx=fx*fx*(3-2*fx),sy=fy*fy*(3-2*fy);
@@ -110,10 +112,14 @@ const ART=(function(){
     const id=key+'|'+col+'|'+F;let cv=balls.get(id);if(cv)return cv;
     try{
       const T=stone(F),S=T.S,R=T.R,sd=emblem(key,S,R),base=hex(col),H=hsv(base),grey=H[1]<.1;
-      // the pigment, and how it looks in shade (a touch cooler); pale fighters get a dark emblem so it stays readable
+      // the pigment, and how it looks in shade (a touch cooler)
       const P=L3(rgb(H[0],H[1]*.9,H[2]*.96)),PS=L3(rgb(grey?H[0]:toward(H[0],265,14),Math.min(1,H[1]*1.05),H[2]*.96));
-      const lumB=.3*lin(base[0])+.59*lin(base[1])+.11*lin(base[2]),IV=lumB>.5?L3(rgb(grey?225:toward(H[0],265,25),.45,.17)):L3([.93,.895,.8]);
-      const ST=.17,ow=R*.02,wr=R*.03,c0=-R*.06,c1=-R*.01;
+      // The emblem is white on every fighter, and solid. Build 69 had it in grainy, worn ivory that took the ball's
+      // shading, and in dark ink on pale fighters; the user: "Make the icons less washed out and all should be white
+      // not black". So: near-white paint, hardly any grain or wear, kept bright on the ball's shaded side too. On a
+      // pale ball (the Snowball, the Ghost) a white emblem is told apart by its dark line and a soft dark surround.
+      const lumB=.3*lin(base[0])+.59*lin(base[1])+.11*lin(base[2]),pale=lumB>.5,IV=L3([.985,.975,.94]);
+      const ST=.17,ow=R*(pale?.03:.022),wr=R*.03,c0=-R*.06,c1=-R*.01,hw=R*.09;
       const tone=v=>v<=.75?v:.75+.25*(1-Math.exp(-(v-.75)/.25)),bil=(x,y)=>{x=cl(x,0,S-1.001);y=cl(y,0,S-1.001);const xi=x|0,yi=y|0,fx=x-xi,fy=y-yi,o=yi*S+xi;return (sd[o]*(1-fx)+sd[o+1]*fx)*(1-fy)+(sd[o+S]*(1-fx)+sd[o+S+1]*fx)*fy};
       const im=(cv=mk(F,F)).getContext('2d').createImageData(F,F),dd=im.data;
       for(let y=0;y<F;y++)for(let x=0;x<F;x++){
@@ -123,10 +129,12 @@ const ART=(function(){
           const d=bil(T.EX[i],T.EY[i]),m=ss(-.6,.6,d),clear=1-ss(c0,c1,d),chip=T.CHIP[i]*clear,lit=T.LIT[i];
           let M=T.M[i]*(1-.3*T.CEDGE[i]*clear);
           let pr=mix(mix(PS[0],P[0],lit),ST,chip),pg=mix(mix(PS[1],P[1],lit),ST,chip),pb=mix(mix(PS[2],P[2],lit),ST*.97,chip);
-          // painted on: a fine dark line round the emblem, the paint worn thin at its edges
-          const line=1-(ss(-ow-.6,-ow+.6,d)-m)*.75,cov=m*(1-ss(wr,0,d)*T.W[i])*T.CM[i],gr=T.GR[i]/M;
-          pr=mix(pr*line,IV[0]*gr,cov);pg=mix(pg*line,IV[1]*gr,cov);pb=mix(pb*line,IV[2]*gr,cov);
-          r+=tone(pr*M*T.LR[i]+T.SP[i])*al;g+=tone(pg*M*T.LG[i]+T.SP[i])*al;b+=tone(pb*M*T.LB[i]+T.SP[i]*.9)*al;a+=al;
+          // painted on: a dark line round the emblem (and on a pale ball a soft dark surround), then the white paint,
+          // which keeps half its brightness where the ball is in shade
+          const line=(1-(ss(-ow-.6,-ow+.6,d)-m)*(pale?.92:.85))*(pale?1-.34*ss(-hw,0,d)*(1-m):1);
+          const cov=m*(1-ss(wr,0,d)*T.W[i]*.2)*(1-(1-T.CM[i])*.35),gr=1+(T.GR[i]-1)*.3;
+          const er=IV[0]*gr*mix(T.LR[i],1.02,.5),eg=IV[1]*gr*mix(T.LG[i],1.02,.5),eb=IV[2]*gr*mix(T.LB[i],1.02,.5);
+          r+=tone(mix(pr*line*M*T.LR[i]+T.SP[i],er,cov))*al;g+=tone(mix(pg*line*M*T.LG[i]+T.SP[i],eg,cov))*al;b+=tone(mix(pb*line*M*T.LB[i]+T.SP[i]*.9,eb,cov))*al;a+=al;
         }
         if(a<=0)continue;const j=(y*F+x)*4;
         dd[j]=255*cl(Math.pow(r/a,1/2.2),0,1);dd[j+1]=255*cl(Math.pow(g/a,1/2.2),0,1);dd[j+2]=255*cl(Math.pow(b/a,1/2.2),0,1);dd[j+3]=a/(SS*SS)*255;
@@ -160,10 +168,10 @@ const ART=(function(){
   }
 
   // ---- weapons ----
-  // name -> [frame width, frame height] in the strip. Every strip was made at 170 pixels of reach, with a tenth of
-  // that behind the grip.
+  // name -> [width, height] of its picture. Every picture was made at 170 pixels of reach, with a tenth of that
+  // behind the grip.
   const STRIPS={sword2:[194,102],sword1:[194,84],axe2:[194,176],bat:[194,52],dagger:[194,74],knife:[194,68],scythe:[194,254],cutlass:[194,92],tentacle:[194,124],spear:[194,32],wrench:[194,74],crystal:[194,186],hammer:[194,156],rifle:[194,226]};
-  const RP=170,BACK=.1,FRAMES=8;
+  const RP=170,BACK=.1;
   // which picture each fighter's arm is; EXTRA is the blade an upgrade adds; GUN is the Gunner's barrel
   const HELD={blade:'sword2',mace:'bat',leech:'dagger',twin:'knife',fury:'axe2',necro:'scythe',pirate:'cutlass',octopus:'tentacle',spartan:'spear',engineer:'wrench',crystal:'crystal',smith:'hammer'};
   const strips={};
@@ -185,7 +193,7 @@ const ART=(function(){
   // a weapon set into the side of the ball at (x,y): an = the way it points, len = the arm's reach beyond the ball
   function drawHeld(g,x,y,r,T,an,len,alpha){
     const c=Math.cos(an),s=Math.sin(an),k=(len+r*.1)/RP,fw=T.fw*k,fh=T.fh*k,gx=BACK*RP*k,hx=x+c*r*.9,hy=y+s*r*.9,lift=r*.5;
-    const row=((Math.round(an/TAU*FRAMES)%FRAMES)+FRAMES)%FRAMES;
+    const row=0;                                                          // one picture, whichever way it points
     g.save();g.imageSmoothingEnabled=true;try{g.imageSmoothingQuality='high'}catch(e){}
     // its shadow, on the floor and never on the ball
     g.save();g.beginPath();g.rect(x-400,y-400,800,800);g.arc(x,y,r*1.01,0,TAU,true);g.clip('evenodd');
